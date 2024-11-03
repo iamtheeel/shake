@@ -10,7 +10,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-trialNum = 2
+trialNum = 0
 accelNum = 2
 nAccels = 19 # There are 20 acceleromiters
 # Path to your HDF5 file
@@ -42,7 +42,8 @@ plt.figure(figsize=(10, 4))
 for i in range(0,nAccels):
     plt.plot(time, acclData[i])
 #plt.plot(time, accelerometer_data)
-plt.title(f"Accelerometer Data: Trial {trialNum+1}, Sensor {accelNum+1}")
+plt.title(f"Accelerometer Data: Trial {trialNum+1}, Sensors 1-20")
+#plt.title(f"Accelerometer Data: Trial {trialNum+1}, Sensor {accelNum+1}")
 plt.xlabel("Time (seconds)")
 plt.ylabel("Acceleration")
 plt.xlim(24,26)
