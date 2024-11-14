@@ -11,9 +11,13 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-plotDir = "plots"
+#ICE default IO error handler doing an exit(), pid = 12090, errno = 32
+#import matplotlib
+#matplotlib.use('qt5agg')
 
-yLim = [-0.025, 0.025]
+plotDir = "plots_4"
+
+yLim = [-0.03, 0.03]
 
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
 sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
@@ -31,9 +35,16 @@ def plotOverlay(nSensors, time, acclData, runStr, plotTitle_str):
         plt.ylim(yLim)
         #plt.xlim(6.6,7)
         plt.grid(True)
-        plt.savefig(f"{plotDir}/{runStr}_overlayed.png")
+
+
+
+        # Save the plots
+        pltSaveDir = Path(f"{plotDir}/overLay")
+        pltSaveDir.mkdir(parents=True, exist_ok=True)
+        plt.savefig(f"{pltSaveDir}/{runStr}_overlayed.png")
 
         #plt.show()
+        plt.close
 
 def plotInLine(time, acclData, runStr, plotTitle_str):
     sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
@@ -60,9 +71,9 @@ def plotInLine(time, acclData, runStr, plotTitle_str):
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/inLine")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
-
     fig.savefig(f"{pltSaveDir}/{runStr}_combined.png")
     #plt.show()
+    plt.close
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
     # Plotting the data with time on the x-axis
@@ -71,43 +82,42 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     fig.supxlabel(f"Time (s)")
     fig.supylabel(f"Acceleration (g?)")
     #ylim = (-maxData, maxData)
-    ylim = (-0.02, 0.02)
     row = 0
     sensor = 0
     axs[row, 0].plot(time, acclData[sensor])
     axs[row, 0].set_title(f'Sensor {sensor+1}')
-    axs[row, 0].set_ylim(ylim)
+    axs[row, 0].set_ylim(yLim)
     sensor += 1
     axs[row, 1].plot(time, acclData[sensor])
     axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(ylim)
+    axs[row, 1].set_ylim(yLim)
     sensor += 1
     axs[row, 2].plot(time, acclData[sensor])
     axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(ylim)
+    axs[row, 2].set_ylim(yLim)
     sensor += 1
     axs[row, 3].plot(time, acclData[sensor])
     axs[row, 3].set_title(f'Sensor {sensor+1}')
-    axs[row, 3].set_ylim(ylim)
+    axs[row, 3].set_ylim(yLim)
 
     row +=1
     sensor += 1
     axs[row, 0].plot(time, acclData[sensor])
     axs[row, 0].set_title(f'Sensor {sensor+1}')
-    axs[row, 0].set_ylim(ylim)
+    axs[row, 0].set_ylim(yLim)
     sensor += 1
     axs[row, 1].plot(time, acclData[sensor])
     axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(ylim)
+    axs[row, 1].set_ylim(yLim)
     sensor += 1
     axs[row, 2].plot(time, acclData[sensor])
     axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(ylim)
+    axs[row, 2].set_ylim(yLim)
     sensor += 1
     # Sensor 8 is x, y, z
     axs[row, 3].plot(time, acclData[sensor])
     axs[row, 3].set_title(f'Sensor {sensor+1}, x,y,z')
-    axs[row, 3].set_ylim(ylim)
+    axs[row, 3].set_ylim(yLim)
     sensor += 1
     axs[row, 3].plot(time, acclData[sensor])
     sensor += 1
@@ -118,7 +128,7 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     # Sensor 9 is x, y, z
     axs[row, 0].plot(time, acclData[sensor])
     axs[row, 0].set_title(f'Sensor {sensor+1}, x,y,z')
-    axs[row, 0].set_ylim(ylim)
+    axs[row, 0].set_ylim(yLim)
     sensor += 1
     axs[row, 0].plot(time, acclData[sensor])
     sensor += 1
@@ -127,33 +137,37 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     sensor += 1
     axs[row, 1].plot(time, acclData[sensor])
     axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(ylim)
+    axs[row, 1].set_ylim(yLim)
     sensor += 1
     axs[row, 2].plot(time, acclData[sensor])
     axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(ylim)
+    axs[row, 2].set_ylim(yLim)
     sensor += 1
     axs[row, 3].plot(time, acclData[sensor])
     axs[row, 3].set_title(f'Sensor {sensor+1}')
-    axs[row, 3].set_ylim(ylim)
+    axs[row, 3].set_ylim(yLim)
 
     row +=1
     sensor += 1
     axs[row, 0].plot(time, acclData[sensor])
     axs[row, 0].set_title(f'Sensor {sensor+1}')
-    axs[row, 0].set_ylim(ylim)
+    axs[row, 0].set_ylim(yLim)
     sensor += 1
     axs[row, 1].plot(time, acclData[sensor])
     axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(ylim)
+    axs[row, 1].set_ylim(yLim)
     sensor += 1
     axs[row, 2].plot(time, acclData[sensor])
     axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(ylim)
+    axs[row, 2].set_ylim(yLim)
     sensor += 1
     axs[row, 3].plot(time, acclData[sensor])
     axs[row, 3].set_title(f'Sensor {sensor+1}')
-    axs[row, 3].set_ylim(ylim)
+    axs[row, 3].set_ylim(yLim)
             
     print(f"Saving plot {runStr}")
-    fig.savefig(f"{plotDir}/{runStr}_combined.png")
+    # Save the plots
+    pltSaveDir = Path(f"{plotDir}/combined")
+    pltSaveDir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(f"{pltSaveDir}/{runStr}_combined.png")
+    plt.close

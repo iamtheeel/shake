@@ -4,6 +4,7 @@
 Created on Sun May 12 22:21:21 2024
 
 @author: zsjiang
+@modifyed: jmehlman
 """
 
 import h5py, csv
@@ -11,29 +12,40 @@ import numpy as np
 
 from genPlots import *
 
-testNumber = 2
-trialNumber = 1
+testNumber = 4
 #subjectNumbers = ['001']
-subjectNumbers = ['001', '002', '003']
-
+subjectNumbers = ['three_people_ritght_after_the_other_001_002_003']
+#subjectNumbers = ['001', '002', '003']
 dataDir = 'TestData'
 
+
 for subjectNumber in subjectNumbers:
+    if(testNumber == 2):
+        trial_str = f"APDM_data_fixed_step/walking_hallway_single_person_APDM_{subjectNumber}_fixedstep"
+        csv_str = f"APDM_data_fixed_step/MLK Walk_trials_{subjectNumber}_fixedstep"
+        #walking_hallway_single_person_APDM_
+    elif(testNumber == 4):
+        trial_str = f"walking_hallway_classroom_{subjectNumber}"
+        #TestData/Test_4/data/walking_hallway_classroom_three_people_ritght_after_the_other_001_002_003.hdf5
+    else:
+        print(f"ERROR: No such test")
+
     # Path th the .csv label file
-    csv_path = f'{dataDir}/Test_{testNumber}/APDM_data_fixed_step/MLK Walk_trials_{subjectNumber}_fixedstep.csv'
-    with open(csv_path, mode='r') as labelFile:
-        labelFile_csv = csv.DictReader(labelFile)
-        #labelFile_csv = csv.reader(labelFile)
-        labelList = [] 
-        for line_number, row in enumerate(labelFile_csv, start=1):
-            speed_L = float(row['Gait - Lower Limb - Gait Speed L (m/s) [mean]'])
-            speed_R = float(row['Gait - Lower Limb - Gait Speed R (m/s) [mean]'])
-            #print(f"Line {line_number}: mean: L={speed_L}, R={speed_R}(m/s) ")
-            #thisLabel = (speed_L, speed_R, (speed_L+speed_R)/2)
-            labelList.append((speed_R+speed_L)/2)
+    if(testNumber==2):
+        csv_path = f'{dataDir}/Test_{testNumber}/{trial_str}.csv'
+        with open(csv_path, mode='r') as labelFile:
+            labelFile_csv = csv.DictReader(labelFile)
+            #labelFile_csv = csv.reader(labelFile)
+            labelList = [] 
+            for line_number, row in enumerate(labelFile_csv, start=1):
+                speed_L = float(row['Gait - Lower Limb - Gait Speed L (m/s) [mean]'])
+                speed_R = float(row['Gait - Lower Limb - Gait Speed R (m/s) [mean]'])
+                #print(f"Line {line_number}: mean: L={speed_L}, R={speed_R}(m/s) ")
+                #thisLabel = (speed_L, speed_R, (speed_L+speed_R)/2)
+                labelList.append((speed_R+speed_L)/2)
 
     # Path to your HDF5 file (data)
-    file_path = f'{dataDir}/Test_{testNumber}/data/walking_hallway_single_person_APDM_{subjectNumber}.hdf5'
+    file_path = f'{dataDir}/Test_{testNumber}/data/{trial_str}.hdf5'
     # Load the HDF5 file and extract data for the second accelerometer in the first trial
     with h5py.File(file_path, 'r') as file:
         # Get perameters from the data file
@@ -59,8 +71,11 @@ for subjectNumber in subjectNumbers:
         nTrials = dataBlockSize[0]
     
         #for trial in range(0,1):
+        #for trial in range(10,nTrials):
         for trial in range(0,nTrials):
-            plotTitle_str = f"Accelerometer Data: Test {testNumber}, subject: {subjectNumber}, trial: {trial+1}, speed: {labelList[trial]}"
+            plotTitle_str = f"Accelerometer Data: Test {testNumber}, subject: {subjectNumber}, trial: {trial+1}, speed: "
+            if(testNumber==2):
+                plotTitle_str = f"{plotTitle_str}{labelList[trial]}"
             print(f"{plotTitle_str}")
             acclData = [] #zero out the datablock
             print(f"trials: {nTrials}, sensors: {nSensors}")
@@ -79,6 +94,6 @@ for subjectNumber in subjectNumbers:
             # for filename
             runStr = f"test_{testNumber}-subject_{subjectNumber}-trial_{trial+1}"
     
-            #plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
-            #plotCombined(time, acclData, runStr, plotTitle_str)
+            plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
+            plotCombined(time, acclData, runStr, plotTitle_str)
             plotInLine(time, acclData, runStr, plotTitle_str)
