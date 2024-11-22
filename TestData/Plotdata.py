@@ -12,18 +12,24 @@ import numpy as np
 
 from genPlots import *
 
-testNumber = 4
-#subjectNumbers = ['001']
-subjectNumbers = ['three_people_ritght_after_the_other_001_002_003']
-#subjectNumbers = ['001', '002', '003']
 dataDir = 'TestData'
+testNumber = 3
+
+if(testNumber == 4):
+    subjectNumbers = ['three_people_ritght_after_the_other_001_002_003']
+else:
+    subjectNumbers = ['001', '002', '003']
+    #subjectNumbers = ['001']
 
 
 for subjectNumber in subjectNumbers:
     if(testNumber == 2):
-        trial_str = f"APDM_data_fixed_step/walking_hallway_single_person_APDM_{subjectNumber}_fixedstep"
+        trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}_fixedstep"
         csv_str = f"APDM_data_fixed_step/MLK Walk_trials_{subjectNumber}_fixedstep"
         #walking_hallway_single_person_APDM_
+    if(testNumber == 3):
+        trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}_free_pace"
+        csv_str = f"APDM_data_freepace/MLK Walk_trials_{subjectNumber}_freepace"
     elif(testNumber == 4):
         trial_str = f"walking_hallway_classroom_{subjectNumber}"
         #TestData/Test_4/data/walking_hallway_classroom_three_people_ritght_after_the_other_001_002_003.hdf5
@@ -31,8 +37,8 @@ for subjectNumber in subjectNumbers:
         print(f"ERROR: No such test")
 
     # Path th the .csv label file
-    if(testNumber==2):
-        csv_path = f'{dataDir}/Test_{testNumber}/{trial_str}.csv'
+    if(testNumber!=4):
+        csv_path = f'{dataDir}/Test_{testNumber}/{csv_str}.csv'
         with open(csv_path, mode='r') as labelFile:
             labelFile_csv = csv.DictReader(labelFile)
             #labelFile_csv = csv.reader(labelFile)
@@ -71,10 +77,9 @@ for subjectNumber in subjectNumbers:
         nTrials = dataBlockSize[0]
     
         #for trial in range(0,1):
-        #for trial in range(10,nTrials):
         for trial in range(0,nTrials):
             plotTitle_str = f"Accelerometer Data: Test {testNumber}, subject: {subjectNumber}, trial: {trial+1}, speed: "
-            if(testNumber==2):
+            if(testNumber!=4):
                 plotTitle_str = f"{plotTitle_str}{labelList[trial]}"
             print(f"{plotTitle_str}")
             acclData = [] #zero out the datablock
@@ -94,6 +99,6 @@ for subjectNumber in subjectNumbers:
             # for filename
             runStr = f"test_{testNumber}-subject_{subjectNumber}-trial_{trial+1}"
     
-            plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
-            plotCombined(time, acclData, runStr, plotTitle_str)
-            plotInLine(time, acclData, runStr, plotTitle_str)
+            #plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
+            #plotCombined(time, acclData, runStr, plotTitle_str)
+            plotInLine(time, acclData, testNumber, runStr, plotTitle_str)

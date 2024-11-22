@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 #import matplotlib
 #matplotlib.use('qt5agg')
 
-plotDir = "plots_4"
+plotDir = "plots_3"
 
 yLim = [-0.03, 0.03]
 
@@ -41,17 +41,20 @@ def plotOverlay(nSensors, time, acclData, runStr, plotTitle_str):
         # Save the plots
         pltSaveDir = Path(f"{plotDir}/overLay")
         pltSaveDir.mkdir(parents=True, exist_ok=True)
-        plt.savefig(f"{pltSaveDir}/{runStr}_overlayed.png")
+        plt.savefig(f"{pltSaveDir}/{runStr}_overlayed.jpg")
 
         #plt.show()
         plt.close
 
-def plotInLine(time, acclData, runStr, plotTitle_str):
-    sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
+def plotInLine(time, acclData, testNum, runStr, plotTitle_str):
+    if(testNum == 2):
+        sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
+    elif (testNum == 3):
+        sensorList = [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13]
 
     fig, axs = plt.subplots(len(sensorList), figsize=(12,12)) #figsize in inches?
     #Start and end the plot at x percent of the page, no space between each plot
-    fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0) 
+    fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
     fig.suptitle(plotTitle_str)
 
     thisRow = 0
@@ -59,8 +62,9 @@ def plotInLine(time, acclData, runStr, plotTitle_str):
         for ch in sensorChList[sensor-1]:
             #add all the ch for this sensor
             axs[thisRow].plot(time, acclData[ch-1])
-        axs[thisRow].set_ylabel(f'Sensor {sensor}:{sensorChList[sensor-1]}')
+        axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
         axs[thisRow].set_ylim(yLim)
+        #axs[thisRow].set_xlim([20, 21])
         axs[thisRow].get_xaxis().set_visible(False)
 
         thisRow +=1
@@ -71,8 +75,9 @@ def plotInLine(time, acclData, runStr, plotTitle_str):
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/inLine")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{pltSaveDir}/{runStr}_combined.png")
+
     #plt.show()
+    fig.savefig(f"{pltSaveDir}/{runStr}_combined.jpg")
     plt.close
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
@@ -165,9 +170,9 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     axs[row, 3].set_title(f'Sensor {sensor+1}')
     axs[row, 3].set_ylim(yLim)
             
-    print(f"Saving plot {runStr}")
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/combined")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{pltSaveDir}/{runStr}_combined.png")
+    print(f"Saving plot {pltSaveDir}/{runStr}")
+    fig.savefig(f"{pltSaveDir}/{runStr}_combined.jpg")
     plt.close
