@@ -1,0 +1,7 @@
+debugs:
+    debug: True 
+
+data:
+    dataPath: "../TestData"
+    test: "Test_2" #One person fixed pace, has labels
+    #test: "Test_4" #Multiple people variyed pace, no labels
