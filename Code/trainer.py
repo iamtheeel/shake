@@ -181,8 +181,8 @@ class Trainer:
                 #print(f"This lab: {thisLabel}")
                 labels_logits = torch.argmax(thisLabel,1) #convert to logits
 
-                print(f"Val Predicted logits: {val_pred_logits[0]}")
-                print(f"Labels: {labels_logits[0]}")
+                #print(f"Val Predicted logits: {val_pred_logits[0]}")
+                #print(f"Labels: {labels_logits[0]}")
 
                 correct += val_pred_logits.eq(labels_logits).sum().item()
                 test_loss += val_loss.item()
@@ -197,11 +197,11 @@ class Trainer:
 
             finalTestLoss = test_loss/numDatam
 
-            print(f"Final Val Predicted logits: {y_preds}")
-            print(f"Labels: {y_targs}")
-            print(f"y_logigs: {y_logits}")
+            #print(f"Final Val Predicted logits: {y_preds}")
+            #print(f"Labels: {y_targs}")
+            #print(f"y_logigs: {y_logits}")
 
-            print(f"Test Loss: {finalTestLoss:.3f} | Test Acc: {test_acc:.2f}%")
+            #print(f"Test Loss: {finalTestLoss:.3f} | Test Acc: {test_acc:.2f}%")
 
         
         #from torchmetrics import ConfusionMatrix
@@ -210,33 +210,14 @@ class Trainer:
         import matplotlib.pyplot as plt
         import seaborn  as sns
 
-        import sys
-        print(sys.path)
-        print(type(plt))  # Should output <class 'module'>
-
         y_preds = torch.stack(y_preds).squeeze(1)
         y_targs = torch.stack(y_targs).squeeze(1)
 
-        print(f"y_preds: {y_preds.shape}")
-        print(f"y_targs: {y_targs.shape}")
-
-        predicted_classes = torch.argmax(y_preds, dim=1)  # Shape: [13]
-        true_classes = torch.argmax(y_targs, dim=1)  # Shape: [13]
-
-        ## Now to Numpy, this is silly
-        true_classes = true_classes.numpy()  
-        predicted_classes = predicted_classes.numpy()
-
-        print(f"y_preds: {type(predicted_classes)}")
-        print(f"y_targs: {type(true_classes)}")
-
-        print(f"y_preds.shape: {y_preds.shape}")  # Should be [13, num_classes]
-        print(f"y_targs.shape: {y_targs.shape}")  # Should be [13, num_classes]
-        print(f"predicted_classes.shape: {predicted_classes.shape}")  # Should be [13]
-        print(f"true_classes.shape: {true_classes.shape}")  # Should be [13]
+        predicted_classes = torch.argmax(y_preds, dim=1).numpy()  # Shape: [13]
+        true_classes = torch.argmax(y_targs, dim=1).numpy()  # Shape: [13]
 
         cm = confusion_matrix(true_classes, predicted_classes)
-        print(f"Confusion Matrix: {cm}")
+        print(f"Confusion Matrix:\n{cm}")
 
         #plt.figure()
         plt.figure(figsize=(8, 6))
@@ -246,21 +227,5 @@ class Trainer:
         plt.title('Confusion Matrix')
         plt.show()
 
-        '''
-        classes = ['001', '002', '003']
-        y_pred_tensor = torch.cat(y_preds)
-        y_targ_tensor = torch.cat(y_targs)
-        print(f"y_preds: {y_pred_tensor.shape}")
-        print(f"y_targs: {y_targ_tensor.shape}")
-
-        confMat = ConfusionMatrix(num_classes=len(classes), task='multiclass')
-        confMat_values = confMat(preds=y_pred_tensor, target=y_targ_tensor)
-        print(f"confustion Matix: {confMat_values}")
-
-        plot_confusion_matrix(conf_mat=confMat_values.numpy(), class_names=classes)
-        #plt.title("Confusion Matrix")
-        #plt.savefig("../output/confMatrix.png")
-        plt.show()
-        '''
         
         return test_loss, test_acc
