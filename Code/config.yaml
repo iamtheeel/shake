@@ -2,6 +2,27 @@ debugs:
     debug: True 
 
 data:
+    valSplitPercen: .2 #20% of the data for validation
     dataPath: "../TestData"
-    test: "Test_2" #One person fixed pace, has labels
+    #test: "Test_2" #One person fixed pace, straight path, has labels
+    test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
+
+trainer:
+    criterion: "Huber"
+    #criterion: "CrossEntropyLoss"
+    #criterion: "MSE"
+    #optimizer: "Adam"
+    optimizer: "SGD"
+    learning_rate: 0.0001
+    epochs: 50
+
+model: 
+    #name: "leNetV5"
+    name: "multilayerPerceptron"
+
+    multilayerPerceptron:
+        hidden_neurons: 100
+
+    leNetV5:
+        hidden_neurons: 100
