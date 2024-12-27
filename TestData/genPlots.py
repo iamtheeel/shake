@@ -15,12 +15,15 @@ import matplotlib.pyplot as plt
 #import matplotlib
 #matplotlib.use('qt5agg')
 
-plotDir = "plots_3"
+plotDir = "../plots"
 
-yLim = [-0.03, 0.03]
+#yLim = [-0.03, 0.03]
+yLim = [-0.001, 0.001]
 
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
 sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
+# x is vert
+#sensorChList = [[1], [2], [3], [4], [5], [6], [7], [10], [11], [14], [15], [16], [17], [18], [19], [20] ]
 
 def plotOverlay(nSensors, time, acclData, runStr, plotTitle_str):
     plt.figure(figsize=(10, 4))
@@ -48,9 +51,11 @@ def plotOverlay(nSensors, time, acclData, runStr, plotTitle_str):
 
 def plotInLine(time, acclData, testNum, runStr, plotTitle_str):
     if(testNum == 2):
-        sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
+        #sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
+        sensorList = [7, 6, 5, 4, 3, 2, 12, 1] # the tri-ax does not look good
     elif (testNum == 3):
-        sensorList = [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13]
+        #sensorList = [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13]
+        sensorList = [6, 5, 4, 3, 2, 1, 10, 11, 12, 13] # the tri-ax does not look good
 
     fig, axs = plt.subplots(len(sensorList), figsize=(12,12)) #figsize in inches?
     #Start and end the plot at x percent of the page, no space between each plot
@@ -77,7 +82,7 @@ def plotInLine(time, acclData, testNum, runStr, plotTitle_str):
     pltSaveDir.mkdir(parents=True, exist_ok=True)
 
     #plt.show()
-    fig.savefig(f"{pltSaveDir}/{runStr}_combined.jpg")
+    fig.savefig(f"{pltSaveDir}/{runStr}_inLine.jpg")
     plt.close
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
@@ -121,24 +126,35 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     sensor += 1
     # Sensor 8 is x, y, z
     axs[row, 3].plot(time, acclData[sensor])
-    axs[row, 3].set_title(f'Sensor {sensor+1}, x,y,z')
+    axs[row, 3].set_title(f'Ch {sensor+1}, x,y,z')
     axs[row, 3].set_ylim(yLim)
+
+    row +=1
     sensor += 1
-    axs[row, 3].plot(time, acclData[sensor])
+    axs[row, 0].plot(time, acclData[sensor])
+    axs[row, 0].set_title(f'Ch {sensor+1}, x,y,z')
+    axs[row, 0].set_ylim(yLim)
     sensor += 1
-    axs[row, 3].plot(time, acclData[sensor])
+    axs[row, 1].plot(time, acclData[sensor])
+    axs[row, 1].set_title(f'Ch {sensor+1}, x,y,z')
+    axs[row, 1].set_ylim(yLim)
             
     row +=1
     sensor += 1
     # Sensor 9 is x, y, z
     axs[row, 0].plot(time, acclData[sensor])
-    axs[row, 0].set_title(f'Sensor {sensor+1}, x,y,z')
+    axs[row, 0].set_title(f'Ch {sensor+1}, x,y,z')
     axs[row, 0].set_ylim(yLim)
     sensor += 1
-    axs[row, 0].plot(time, acclData[sensor])
+    axs[row, 1].plot(time, acclData[sensor])
+    axs[row, 1].set_title(f'Ch {sensor+1}, x,y,z')
+    axs[row, 1].set_ylim(yLim)
     sensor += 1
-    axs[row, 0].plot(time, acclData[sensor])
+    axs[row, 2].plot(time, acclData[sensor])
+    axs[row, 2].set_title(f'Ch {sensor+1}, x,y,z')
+    axs[row, 2].set_ylim(yLim)
             
+    '''
     sensor += 1
     axs[row, 1].plot(time, acclData[sensor])
     axs[row, 1].set_title(f'Sensor {sensor+1}')
@@ -169,6 +185,7 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     axs[row, 3].plot(time, acclData[sensor])
     axs[row, 3].set_title(f'Sensor {sensor+1}')
     axs[row, 3].set_ylim(yLim)
+    '''
             
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/combined")

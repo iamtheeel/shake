@@ -36,7 +36,7 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class leNetV5(nn.Module):
-    def __init__(self, numClasses: int, config):
+    def __init__(self, numClasses: int, nCh, config):
         super().__init__() 
         """
         LeNet-5:
@@ -53,7 +53,6 @@ class leNetV5(nn.Module):
             FC, softmax
         """
         hidden_neurons = config['hidden_neurons']
-        input_shape = 1
 
         self.conv2d_layers = [0,4,7]
         self.bn_layers = [1,5,8]
@@ -61,47 +60,44 @@ class leNetV5(nn.Module):
         self.midLayEnd = 2
 
         conv_1Lay = 12
-        #conv_1Lay = 12
-        conv_2Lay = 24
+        conv_2Lay = 12
+        #conv_2Lay = 24
         torch.manual_seed(86)
 
         self.features = nn.Sequential(
-                                        nn.Conv2d(in_channels=input_shape, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=2),
+                                        nn.Conv2d(in_channels=nCh, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=1),
                                         nn.BatchNorm2d(conv_1Lay),
                                         nn.ReLU(),
                                         nn.MaxPool2d(kernel_size=2, stride=2),
 
-                                        nn.Conv2d(in_channels=conv_1Lay, out_channels=conv_2Lay, kernel_size=3, stride=1, padding=0),
-                                        nn.BatchNorm2d(conv_2Lay),
-                                        nn.ReLU(),
+                                        #nn.Conv2d(in_channels=conv_1Lay, out_channels=conv_2Lay, kernel_size=3, stride=1, padding=0),
+                                        #nn.BatchNorm2d(conv_2Lay),
+                                        #nn.ReLU(),
 
-                                        nn.Conv2d(in_channels=conv_2Lay, out_channels=hidden_neurons, kernel_size=3, stride=1, padding=0),
+                                        nn.Conv2d(in_channels=conv_1Lay, out_channels=hidden_neurons, kernel_size=3, stride=1, padding=0),
                                         nn.BatchNorm2d(hidden_neurons),
                                         nn.ReLU(),
                                         nn.MaxPool2d(kernel_size=2, stride=2)
                                      )
 
-        self.dropout = nn.Dropout(0.25)
-        #linConnections = 32
-        linConnections = 1
         #linMult = 605
-        linMult = 309725 # 1 = 24x linConnections
+        linMult = 6875 # 1 = 24x linConnections
         self.linear = nn.Sequential( nn.Flatten(),
-                                      nn.Linear(linMult*conv_2Lay, linConnections), # conv_1Lay = 6, conv_2Lay = 16
+                                      #nn.Linear(100 * 2 * 826, 512),  # Adjust based on input size after pooling
+                                      nn.Linear(linMult*conv_2Lay, 512), # conv_1Lay = 6, conv_2Lay = 16
                                       nn.ReLU(),
-                                      nn.Linear(linConnections, linConnections), # conv_1Lay = 6, conv_2Lay = 16
+                                      nn.Dropout(0.5),
+                                      nn.Linear(512, 128), # conv_1Lay = 6, conv_2Lay = 16
                                       nn.ReLU()
                                       )  
 
-        self.clasifyer = nn.Sequential(nn.Linear(linConnections, numClasses)  )
+        self.clasifyer = nn.Sequential(nn.Linear(128, numClasses)  )
 
 
     def forward(self, x: torch.Tensor):
         #x = self.layer(x)
         x = self.features(x)
-        #x = self.hiddenLayer(x)
 
-        #x = self.dropout(x)
         x = self.linear(x)
         x = self.clasifyer(x)
 

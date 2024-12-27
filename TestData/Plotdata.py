@@ -13,7 +13,7 @@ import numpy as np
 from genPlots import *
 
 dataDir = 'TestData'
-testNumber = 3
+testNumber = 2
 
 if(testNumber == 4):
     subjectNumbers = ['three_people_ritght_after_the_other_001_002_003']
@@ -24,7 +24,7 @@ else:
 
 for subjectNumber in subjectNumbers:
     if(testNumber == 2):
-        trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}_fixedstep"
+        trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}"
         csv_str = f"APDM_data_fixed_step/MLK Walk_trials_{subjectNumber}_fixedstep"
         #walking_hallway_single_person_APDM_
     if(testNumber == 3):
@@ -38,7 +38,7 @@ for subjectNumber in subjectNumbers:
 
     # Path th the .csv label file
     if(testNumber!=4):
-        csv_path = f'{dataDir}/Test_{testNumber}/{csv_str}.csv'
+        csv_path = f'../{dataDir}/Test_{testNumber}/{csv_str}.csv'
         with open(csv_path, mode='r') as labelFile:
             labelFile_csv = csv.DictReader(labelFile)
             #labelFile_csv = csv.reader(labelFile)
@@ -51,7 +51,7 @@ for subjectNumber in subjectNumbers:
                 labelList.append((speed_R+speed_L)/2)
 
     # Path to your HDF5 file (data)
-    file_path = f'{dataDir}/Test_{testNumber}/data/{trial_str}.hdf5'
+    file_path = f'../{dataDir}/Test_{testNumber}/data/{trial_str}.hdf5'
     # Load the HDF5 file and extract data for the second accelerometer in the first trial
     with h5py.File(file_path, 'r') as file:
         # Get perameters from the data file
@@ -100,5 +100,5 @@ for subjectNumber in subjectNumbers:
             runStr = f"test_{testNumber}-subject_{subjectNumber}-trial_{trial+1}"
     
             #plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
-            #plotCombined(time, acclData, runStr, plotTitle_str)
+            plotCombined(time, acclData, runStr, plotTitle_str)
             plotInLine(time, acclData, testNumber, runStr, plotTitle_str)

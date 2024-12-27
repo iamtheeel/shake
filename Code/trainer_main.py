@@ -60,10 +60,9 @@ nCh = np.shape(data)[1]
 nDataPts = np.shape(data)[2]
 print(f"Number Channels: {nCh}, number dataPonts:{nDataPts}")
 
-mean = np.average(data)
-max = np.max(data)
-logger.info(f"Data: Mean = {mean}, Min = {np.min(data)},Max = {max}")
-
+#mean = np.average(data)
+#max = np.max(data)
+#logger.info(f"Data: Mean = {mean}, Min = {np.min(data)},Max = {max}")
 
 train_data, val_data, train_labels, val_labels = data_preparation.split_trainVal(data,labels)
 logger.info(f"Train data: {type(train_data)}, {np.shape(train_data)}")
@@ -74,10 +73,11 @@ logger.info(f"Validation labels: {type(val_labels)}, {np.shape(val_labels)}")
 model_name = configs['model']['name']
 
 if model_name == "multilayerPerceptron":
-    model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=len(data_preparation.classes), config=configs['model']['multilayerPerceptron'])
+    model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
 elif model_name == "leNetV5":
     #train_data = train_data[np.newaxis, :, :, :]
-    model = leNetV5(numClasses=len(data_preparation.classes), config=configs['model']['leNetV5'] )
+    # For now use the ch as the height, and the npoints as the width
+    model = leNetV5(numClasses=data_preparation.nClasses,nCh=1, config=configs['model']['leNetV5'] )
 else: 
     print(f"{model_name} is not a model that we have")
     exit()
@@ -91,6 +91,7 @@ elif model_name == "MobileNetV1":
 '''
 
 modelSum = summary(model=model, 
+                      #Batch Size, inputch, height, width
             input_size=(1, 1, nCh, nDataPts), # make sure this is "input_size", not "input_shape"
             # col_names=["input_size"], # uncomment for smaller output
             col_names=["input_size", "output_size", "num_params", "trainable"],
@@ -100,7 +101,7 @@ modelSum = summary(model=model,
         #saveInfo(model=model, thingOne=model, fileName='_modelInfo.txt')
         #MACs, mPerams = countOperations(model=model, image=testImage)
 
-trainer = Trainer(model, train_data, train_labels, val_data, val_labels, configs)
-trainLoss, trainAcc = trainer.train()
+trainer = Trainer(model, device, train_data, train_labels, val_data, val_labels, configs)
 
-testLoss, testAcc = trainer.validation() # Unit test reqires singletion 
+#trainer.train()
+#trainer.validation()
