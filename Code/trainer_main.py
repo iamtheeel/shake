@@ -103,5 +103,5 @@ modelSum = summary(model=model,
 
 trainer = Trainer(model, device, train_data, train_labels, val_data, val_labels, configs)
 
-#trainer.train()
-#trainer.validation()
+trainer.train()
+trainer.validation()

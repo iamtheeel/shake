@@ -74,20 +74,18 @@ class leNetV5(nn.Module):
                                         #nn.BatchNorm2d(conv_2Lay),
                                         #nn.ReLU(),
 
-                                        nn.Conv2d(in_channels=conv_1Lay, out_channels=hidden_neurons, kernel_size=3, stride=1, padding=0),
+                                        nn.Conv2d(in_channels=conv_2Lay, out_channels=hidden_neurons, kernel_size=3, stride=1, padding=0),
                                         nn.BatchNorm2d(hidden_neurons),
                                         nn.ReLU(),
                                         nn.MaxPool2d(kernel_size=2, stride=2)
                                      )
 
-        #linMult = 605
-        linMult = 6875 # 1 = 24x linConnections
+        linMult = 825 # 1 = 24x linConnections
         self.linear = nn.Sequential( nn.Flatten(),
-                                      #nn.Linear(100 * 2 * 826, 512),  # Adjust based on input size after pooling
-                                      nn.Linear(linMult*conv_2Lay, 512), # conv_1Lay = 6, conv_2Lay = 16
+                                      nn.Linear(linMult*hidden_neurons, 512), 
                                       nn.ReLU(),
                                       nn.Dropout(0.5),
-                                      nn.Linear(512, 128), # conv_1Lay = 6, conv_2Lay = 16
+                                      nn.Linear(512, 128), 
                                       nn.ReLU()
                                       )  
 

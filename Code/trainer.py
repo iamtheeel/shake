@@ -22,7 +22,7 @@ class Trainer:
     def __init__(self,model, device, train_data, train_labels, val_data, val_labels, configs):
         self.device = device
 
-        self.model = model
+        self.model = model.to(self.device)
         self.train_data = train_data
         self.val_data = val_data
         self.train_labels = train_labels.float()
@@ -101,8 +101,8 @@ class Trainer:
         accArr = []
         train_predsArr =[] # for confusion matrix
         
-        #self.train_data = self.train_data.to(self.device)
-        #self.train_labels = self.train_labels.to(self.device)
+        self.train_data = self.train_data.to(self.device)
+        self.train_labels = self.train_labels.to(self.device)
 
         numDatam = self.train_data.shape[0] 
 
@@ -150,7 +150,7 @@ class Trainer:
                 correct_epoch += correct_batch
                 train_loss_epoch += loss.item()
 
-                print(f"e: {epoch}, run:{nRun_epoch}, Training Predicted : {out_pred}, labels: {labels_logits}, pred: {out_pred_logits}, correct: {100*correct_epoch/nRun_epoch}%")
+                print(f"epoch: {epoch}, run:{nRun_epoch}, Training Predicted : {out_pred.detach().cpu().numpy()}, labels: {labels_logits.detach().cpu().numpy()}, pred: {out_pred_logits.detach().cpu().numpy()}, correct: {100*correct_epoch/nRun_epoch}%")
                 #print(f"Run correct: {thisTestCorr}, loss: {loss.item()}")
                 #lossArr.append(loss.item())
 
@@ -175,7 +175,7 @@ class Trainer:
                 #print(f"Epoch: {epoch} | Train Loss: {thisTrainLoss:.3f} | Train Acc: {train_acc:.2f} | Elapsed Time: {runTime}")
 
         #trainPreds_np = np.array(train_predsArr)
-        trainPreds_np = torch.stack(train_predsArr).detach().numpy()
+        trainPreds_np = torch.stack(train_predsArr).detach().cpu().numpy()
         trainPreds_np_reshaped = trainPreds_np.reshape(trainPreds_np.shape[0], -1)
 
         np.savetxt("trainRes.csv", trainPreds_np_reshaped, delimiter=",", fmt="%.4f")
@@ -201,6 +201,9 @@ class Trainer:
         y_preds =[] # for confusion matrix
         y_logits =[] # for confusion matrix
         y_targs = []
+
+        self.val_data = self.val_data.to(self.device)
+        self.val_labels = self.val_labels.to(self.device)
 
         with torch.no_grad():
         #with torch.inference_mode():
@@ -257,8 +260,9 @@ class Trainer:
         y_targs = torch.stack(y_targs).squeeze(1)
         #print(f"pred: {y_preds}, targ: {y_targs}")
 
-        predicted_classes = torch.argmax(y_preds, dim=1).numpy()  # Shape: [13]
-        true_classes = torch.argmax(y_targs, dim=1).numpy()  # Shape: [13]
+        # Move back to the CPU befor making numpy
+        predicted_classes = torch.argmax(y_preds, dim=1).cpu().numpy()  # Shape: [13]
+        true_classes = torch.argmax(y_targs, dim=1).cpu().numpy()  # Shape: [13]
 
         cm = confusion_matrix(true_classes, predicted_classes)
         print(f"Confusion Matrix:\n{cm}")

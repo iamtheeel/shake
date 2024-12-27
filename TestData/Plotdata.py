@@ -101,4 +101,4 @@ for subjectNumber in subjectNumbers:
     
             #plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
             plotCombined(time, acclData, runStr, plotTitle_str)
-            plotInLine(time, acclData, testNumber, runStr, plotTitle_str)
+            #plotInLine(time, acclData, testNumber, runStr, plotTitle_str)
