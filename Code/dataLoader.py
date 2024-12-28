@@ -9,10 +9,13 @@
 
 import h5py, csv
 import numpy as np
+
 import torch
 import torch.nn.functional as tFun
+from torch.utils.data import DataLoader, TensorDataset, random_split
 
 #import math
+# this goes away
 from sklearn.model_selection import train_test_split #pip install scikit-learn
 
 import logging
@@ -38,6 +41,7 @@ class dataLoader:
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
         self.sensorList = config['data']['sensorList']
+        self.batchSize = config['data']['batchSize']
 
         #TODO: Get from file
         logger.info(f"data path: {self.dataPath}")
@@ -67,12 +71,13 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
+        logger.info(f"Sensor List: {self.sensorList}")
 
 
         self.subjects = self.getSubjects()
         for subjectNumber in self.subjects:
             data_file_hdf5, label_file_csv = self.getFileName(subjectNumber)
-            logger.info(f"\n-----------------------------------------")
+            logger.info(f"-----------------------------------------\n")
             logger.info(f"Dataloader, datafile: {data_file_hdf5}")
             logger.info(f"Dataloader, lablefile: {label_file_csv}")
 
@@ -93,17 +98,42 @@ class dataLoader:
             try:              labels = torch.cat((labels, thisSubLabels), 0) 
             except NameError: labels = thisSubLabels
 
-            logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
+            #logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
 
-        logger.info(f"Final Labels, data shapes: {labels.shape}, {data.shape}")
+        logger.info(f"====================================================")
+        logger.info(f"Data shapes: Labels, data: {labels.shape}, {data.shape}")
 
         # normalize the data
         data = self.std_data(data)
         #data = self.norm_data(data)
-        data = torch.tensor(data, dtype=torch.float32)
 
-        return data, labels
+        labels = labels.float()
+
+        loader_t, loader_v = self.createDataloaders(data, labels)
+
+        return loader_t, loader_v
     
+    def createDataloaders(self, data, labels):
+        # Add the "ch"
+        # Data is currently: datapoints, height(sensorch), width(datapoints)
+        data = torch.tensor(data, dtype=torch.float32) # dataloader wants a torch tensor
+        data = data.unsqueeze(1) # datapoints, image channels, height, width
+        #print(f"data shape: {data.shape}")
+
+        dataSet = TensorDataset(data, labels)
+        # Split sizes
+        trainRatio = 1 - self.valPercen
+        train_size = int(trainRatio * len(dataSet))  # 80% for training
+        val_size = len(dataSet) - train_size  # 20% for validation
+
+        print(f"dataset: {len(dataSet)}, valPer: {self.valPercen}, train: {train_size}, val: {val_size}")
+        dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size])
+
+        data_loader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
+        data_loader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+
+        return data_loader_t, data_loader_v
+
     def windowData(self, data, window_len, step_len):
         logger.info(f"Window length: {window_len}, step: {step_len}, data len: {data.shape}")
 
@@ -143,7 +173,6 @@ class dataLoader:
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
             # Get the data from the datafile
-            logger.info(f"Sensor List: {self.sensorList}")
             for sensor in self.sensorList:
                 ch = sensorZChList[sensor]-1 
                 #print(f"sensors: {sensor}, ch: {ch}")
@@ -175,7 +204,6 @@ class dataLoader:
         if(subjectNumber == '003'): label = 2
 
         labelListArr =  np.full((nRuns), label, dtype=int)
-        print(f"labelList: {labelListArr.shape}")
         labelListTens = torch.from_numpy(labelListArr)
         
         # make 0 = [1,0,0], 1 = [0,1,0]... etc
@@ -270,21 +298,3 @@ class dataLoader:
 
         #logger.info(f"Data: Mean = {mean}, Max = {max}")
         return data
-
-
-    def split_trainVal(self, data, labels ):
-        logger.info(f"Splitting Test/Train: {self.valPercen}:1")
-
-        splitSeed = 86 
-        train_data, test_data = train_test_split(data, test_size=self.valPercen, random_state=splitSeed)
-        train_label, test_label = train_test_split(labels, test_size=self.valPercen, random_state=splitSeed)
-        '''
-        train_data, test_data = train_test_split(data.reshape(-1,1), test_size=self.valPercen, random_state=splitSeed)
-        train_label, test_label = train_test_split(labels.reshape(-1,1), test_size=self.valPercen, random_state=splitSeed)
-        train_data = train_data.reshape(-1)
-        test_data = test_data.reshape(-1)
-        train_label = train_label.reshape(-1)
-        test_label = test_label.reshape(-1)
-        '''
-
-        return train_data, test_data, train_label, test_label

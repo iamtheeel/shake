@@ -50,25 +50,17 @@ logger.info(f"INIT: Get Data")
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs)
 
-data, labels = data_preparation.get_data()
+#data, labels = data_preparation.get_data()
+train_data_loader, val_data_loader = data_preparation.get_data()
 
-logger.info(f"data: {type(data)}, {np.shape(data)}")
-logger.info(f"labels: {type(labels)}, {np.shape(labels)}")
+data_Batch, label_batch = next(iter(train_data_loader))
+data, label = data_Batch[0], label_batch[0]
+dataShape =tuple(data_Batch.shape) 
+nCh = dataShape[2]
+nDataPts = dataShape[3]
 
-
-nCh = np.shape(data)[1]
-nDataPts = np.shape(data)[2]
-print(f"Number Channels: {nCh}, number dataPonts:{nDataPts}")
-
-#mean = np.average(data)
-#max = np.max(data)
-#logger.info(f"Data: Mean = {mean}, Min = {np.min(data)},Max = {max}")
-
-train_data, val_data, train_labels, val_labels = data_preparation.split_trainVal(data,labels)
-logger.info(f"Train data: {type(train_data)}, {np.shape(train_data)}")
-logger.info(f"Train labels: {type(train_labels)}, {np.shape(train_labels)}")
-logger.info(f"Validation data: {type(val_data)}, {np.shape(val_data)}")
-logger.info(f"Validation labels: {type(val_labels)}, {np.shape(val_labels)}")
+logger.info(f"dataset size:  train: {len(train_data_loader)}, val: {len(val_data_loader)}, batch: {dataShape}:  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
+print(f"Number Channels: {nCh}, number dataPonts: {nDataPts}")
 
 model_name = configs['model']['name']
 
@@ -92,7 +84,8 @@ elif model_name == "MobileNetV1":
 
 modelSum = summary(model=model, 
                       #Batch Size, inputch, height, width
-            input_size=(1, 1, nCh, nDataPts), # make sure this is "input_size", not "input_shape"
+            input_size=dataShape, # make sure this is "input_size", not "input_shape"
+            #input_size=(1, 1, nCh, nDataPts), # make sure this is "input_size", not "input_shape"
             # col_names=["input_size"], # uncomment for smaller output
             col_names=["input_size", "output_size", "num_params", "trainable"],
             col_width=20,
@@ -101,7 +94,8 @@ modelSum = summary(model=model,
         #saveInfo(model=model, thingOne=model, fileName='_modelInfo.txt')
         #MACs, mPerams = countOperations(model=model, image=testImage)
 
-trainer = Trainer(model, device, train_data, train_labels, val_data, val_labels, configs)
+trainer = Trainer(model, device, train_data_loader, val_data_loader, configs)
+#trainer = Trainer(model, device, train_data, train_labels, val_data, val_labels, configs)
 
 trainer.train()
 trainer.validation()
