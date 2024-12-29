@@ -35,7 +35,8 @@ sensorZChList = [1, 2, 3, 4, 5, 6, 7, 8, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just
 # TODO: downsample 
 
 class dataLoader:
-    def __init__(self, config):
+    def __init__(self, config, logfile):
+        torch.manual_seed(config['trainer']['seed'])
         # Load up the dataset info
         self.dataPath = config['data']['dataPath']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
@@ -44,12 +45,14 @@ class dataLoader:
         self.batchSize = config['data']['batchSize']
 
         #TODO: Get from file
-        logger.info(f"data path: {self.dataPath}")
+        self.logfile = logfile
 
-        self.classes = [0, 1, 2]
-        self.nClasses = 3
+        self.classes = config['data']['classes']
+        #self.classes = [0, 1, 2]
+        self.nClasses = len(self.classes)
 
         self.samRate_hz = 0
+        self.units = None
         self.dataLen_pts = 0
         self.windowLen_s = config['data']['windowLen'] 
         self.stepSize_s = config['data']['stepSize']
@@ -60,7 +63,7 @@ class dataLoader:
         self.nSensors = 0
         self.nTrials = 0
 
-    def get_data(self):
+    def get_data(self ):
         # Load all the data to a 3D numpy matrix:
         # 0 = trial: around 20
         # 1 = channels: 20
@@ -71,19 +74,20 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
-        logger.info(f"Sensor List: {self.sensorList}")
-
+        fieldnames = ['subject', 'data file', 'label file', 'dataRate', 'nSensors', 'nTrials', 'dataPoints']
+        with open(self.logfile, 'a', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
+            writer.writeheader()
 
         self.subjects = self.getSubjects()
         for subjectNumber in self.subjects:
             data_file_hdf5, label_file_csv = self.getFileName(subjectNumber)
-            logger.info(f"-----------------------------------------\n")
             logger.info(f"Dataloader, datafile: {data_file_hdf5}")
-            logger.info(f"Dataloader, lablefile: {label_file_csv}")
 
             # Load data file
             subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want
-            logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
+            subDataShape = np.shape(subjectData) 
+            #logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
 
             # Window the data
             windowedBlock = self.windowData(subjectData, self.windowLen, self.stepSize)
@@ -94,13 +98,23 @@ class dataLoader:
 
             #labels = np.append(labels, self.getSpeedLabels(label_file_csv))
             thisSubLabels = self.getSubjectLabels(subjectNumber, windowedBlock.shape[0]) # on lable per run/window
+
             #logger.info(f"Labels: {thisSubLabels}")
             try:              labels = torch.cat((labels, thisSubLabels), 0) 
             except NameError: labels = thisSubLabels
 
+            with open(self.logfile, 'a', newline='') as csvFile:
+                writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
+                writer.writerow({'subject': subjectNumber,
+                                'data file': data_file_hdf5, 
+                                'label file': label_file_csv, 
+                                'dataRate': self.samRate_hz, 
+                                'nSensors': subDataShape[1], 
+                                'nTrials': subDataShape[0], 
+                                'dataPoints': subDataShape[2]
+                                })
             #logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
 
-        logger.info(f"====================================================")
         logger.info(f"Data shapes: Labels, data: {labels.shape}, {data.shape}")
 
         # normalize the data
@@ -110,6 +124,7 @@ class dataLoader:
         labels = labels.float()
 
         loader_t, loader_v = self.createDataloaders(data, labels)
+        logger.info(f"====================================================")
 
         return loader_t, loader_v
     
@@ -132,10 +147,21 @@ class dataLoader:
         data_loader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
         data_loader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
 
+
+        with open(self.logfile, 'a', newline='') as csvFile:
+            data_Batch, label_batch = next(iter(data_loader_t))
+            data, label = data_Batch[0], label_batch[0]
+            dataShape =tuple(data_Batch.shape) 
+
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(['train size', 'validation size (batch size = 1)', 'batch ch height width', 'classes'])
+            writer.writerow([len(data_loader_t), len(data_loader_v), dataShape, self.classes])
+            writer.writerow(['---------'])
+
         return data_loader_t, data_loader_v
 
     def windowData(self, data, window_len, step_len):
-        logger.info(f"Window length: {window_len}, step: {step_len}, data len: {data.shape}")
+        #logger.info(f"Window length: {window_len}, step: {step_len}, data len: {data.shape}")
 
         # Strip the head/tails
 
@@ -182,7 +208,7 @@ class dataLoader:
                 try:              accelerometer_data = np.append(accelerometer_data, thisChData, axis=1)
                 except NameError: accelerometer_data = thisChData
 
-            logger.info(f"data shape: {np.shape(accelerometer_data)} ")
+            #logger.info(f"data shape: {np.shape(accelerometer_data)} ")
 
             # Get just the sensors we want
 
@@ -191,12 +217,12 @@ class dataLoader:
                 # ex: Sample Freq
                 self.getDataInfo(file) # get the sample rate from the file
 
-                logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.samRate_hz}")
+                #logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.samRate_hz}")
                 self.windowLen = self.windowLen_s * self.samRate_hz
                 self.stepSize  = self.stepSize_s  * self.samRate_hz
-                logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
+                #logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
 
-        return accelerometer_data
+        return accelerometer_data 
 
     def getSubjectLabels(self, subjectNumber, nRuns):
         if(subjectNumber == '001'): label = 0
@@ -260,8 +286,8 @@ class dataLoader:
         general_parameters = file['experiment/general_parameters'][:]
         #logger.info(f"Data File parameters: {general_parameters}")
         self.samRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
-        units = general_parameters[0]['units'].decode('utf-8')
-        logger.info(f"Data cap rate: {self.samRate_hz} {units}")
+        self.units = general_parameters[0]['units'].decode('utf-8')
+        #logger.info(f"Data cap rate: {self.samRate_hz} {units}")
 
         dataBlockSize = file['experiment/data'].shape 
         self.dataLen_pts = dataBlockSize[2]
@@ -269,7 +295,8 @@ class dataLoader:
         #nSensors = 19 # There are 20 acceleromiters
         self.nSensors = dataBlockSize[1]
         self.nTrials = dataBlockSize[0]
-        logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
+        #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
+
 
     def std_data(self, data):
         # Normalize the data
@@ -282,7 +309,15 @@ class dataLoader:
         # scale the data
         normData = (data - mean)/std # standardise
 
-        logger.info(f"Data: Mean = {mean}, std = {std}")
+        with open(self.logfile, 'a', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(['---------'])
+            writer.writerow(['mean', 'std dev'])
+            writer.writerow([mean, std])
+
+            writer.writerow(['---------'])
+        #logger.info(f"Data: Mean = {mean}, std = {std}")
+
         return normData
 
     def norm_data(self, data):
