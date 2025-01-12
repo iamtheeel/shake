@@ -91,6 +91,13 @@ for subjectNumber in subjectNumbers:
             print(f"accel data shape: {accelerometer_data.shape}")
             maxData = np.max(acclData)
             print(f"Max accl: {maxData}")
+
+            if(testNumber == 2):
+                #sensorList = [8, 7, 6, 5, 4, 3, 2, 12, 1]
+                sensorList = [7, 6, 5, 4, 3, 2, 12, 1] # the tri-ax does not look good
+            elif (testNumber == 3):
+                #sensorList = [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13]
+                sensorList = [6, 5, 4, 3, 2, 1, 10, 11, 12, 13] # the tri-ax does not look good
             
             # Calculate the time vector
             total_points = accelerometer_data.shape[0]
@@ -99,6 +106,6 @@ for subjectNumber in subjectNumbers:
             # for filename
             runStr = f"test_{testNumber}-subject_{subjectNumber}-trial_{trial+1}"
     
-            #plotOverlay(nSensors, time, acclData, runStr, plotTitle_str)
-            plotCombined(time, acclData, runStr, plotTitle_str)
-            #plotInLine(time, acclData, testNumber, runStr, plotTitle_str)
+            plotOverlay(nSensors, acclData, runStr, plotTitle_str, sampling_frequency)
+            #plotCombined(time, acclData, runStr, plotTitle_str)
+            plotInLine(acclData, sensorList, runStr, plotTitle_str, sampling_frequency)

@@ -9,47 +9,57 @@
 
 import h5py, csv
 import numpy as np
+import copy
 
 import torch
 import torch.nn.functional as tFun
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
-#import math
-# this goes away
-from sklearn.model_selection import train_test_split #pip install scikit-learn
+
+from genPlots import *
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Which sensor is which ch
-#sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
-sensorZChList = [1, 2, 3, 4, 5, 6, 7, 8, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
-
-
-# Look for "stomp, wait a sec, then go"
-# End block on???  all ch below a point?
-
-# add batch size
+from dataclasses import dataclass
+from typing import Optional
+@dataclass
+class normClass:
+    type: str
+    min: Optional[float] = None
+    max: Optional[float] = None 
+    mean: Optional[float] = None
+    std: Optional[float] = None
+    scale: Optional[float] = None
 
 # TODO: downsample 
 
 class dataLoader:
-    def __init__(self, config, logfile):
-        torch.manual_seed(config['trainer']['seed'])
+    def __init__(self, config, dir, logfile):
+        self.regression = config['model']['regression']
+        self.seed = config['trainer']['seed'] 
+        torch.manual_seed(self.seed)
         # Load up the dataset info
         self.dataPath = config['data']['dataPath']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
         self.sensorList = config['data']['sensorList']
         self.batchSize = config['data']['batchSize']
+        self.sensorChList = config['data']['sensorChList'] 
+        self.dataDir = dir
 
         #TODO: Get from file
         self.logfile = logfile
 
         self.classes = config['data']['classes']
-        #self.classes = [0, 1, 2]
-        self.nClasses = len(self.classes)
+        if self.regression: self.nClasses = 1
+        else:               self.nClasses = len(self.classes)
+
+        #Data
+        self.stompCh = config['data']['stompSens']
+        self.dataThresh = config['data']['dataThresh']
+        self.stompThresh = config['data']['stompThresh']
 
         self.samRate_hz = 0
         self.units = None
@@ -63,7 +73,22 @@ class dataLoader:
         self.nSensors = 0
         self.nTrials = 0
 
-    def get_data(self ):
+        self.scale = config['data']['scale']
+
+        self.data_raw = None
+        self.labels_raw = None
+        self.data = None
+        self.labels = None
+        self.data_norm = None
+        self.labels_norm = None
+        self.dataLoader_t = None
+        self.dataLoader_v = None
+
+        self.dataNormConst = None
+        self.labNormConst = None
+
+
+    def get_data(self):
         # Load all the data to a 3D numpy matrix:
         # 0 = trial: around 20
         # 1 = channels: 20
@@ -89,19 +114,31 @@ class dataLoader:
             subDataShape = np.shape(subjectData) 
             #logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
 
+            speed =  self.getSpeedLabels(label_file_csv)
+
             # Window the data
-            windowedBlock = self.windowData(subjectData, self.windowLen, self.stepSize)
+            windowedBlock, labelBlock = self.windowData(data=subjectData, window_len=self.windowLen, step_len=self.stepSize, subject=subjectNumber, speed=speed)
+            #logger.info(f"data: {windowedBlock.shape}, label: {labelBlock.shape}")
+
 
             # Append the data to the set
             try:              data = np.append(data, windowedBlock, axis=0)  # or should this be a torch tensor?
             except NameError: data = windowedBlock
 
-            #labels = np.append(labels, self.getSpeedLabels(label_file_csv))
-            thisSubLabels = self.getSubjectLabels(subjectNumber, windowedBlock.shape[0]) # on lable per run/window
+            # Onehot the labels
+            labelBlock = torch.from_numpy(labelBlock)
 
-            #logger.info(f"Labels: {thisSubLabels}")
+            if self.regression:
+                thisSubLabels = labelBlock.unsqueeze(1)
+            else: 
+                thisSubLabels = tFun.one_hot(labelBlock, num_classes=self.nClasses) # make 0 = [1,0,0], 1 = [0,1,0]... etc
+                #logger.info(f"one_hot label: {thisSubLabels.shape}")
+
+
             try:              labels = torch.cat((labels, thisSubLabels), 0) 
             except NameError: labels = thisSubLabels
+            #logger.info(f"Labels: {thisSubLabels}")
+            logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
@@ -113,94 +150,172 @@ class dataLoader:
                                 'nTrials': subDataShape[0], 
                                 'dataPoints': subDataShape[2]
                                 })
-            #logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
 
         logger.info(f"Data shapes: Labels, data: {labels.shape}, {data.shape}")
-
-        # normalize the data
-        data = self.std_data(data)
-        #data = self.norm_data(data)
-
-        labels = labels.float()
-
-        loader_t, loader_v = self.createDataloaders(data, labels)
+        # Plot the data
+        '''
+        sTime = 0
+        for row in range(data.shape[0]):
+        #for row in data:
+            # subject, run, time
+            # rms
+            thisLab = torch.argmax(labels[row])
+            fileN = f"{sTime}_.jpg"
+            title = f"{sTime} {labels[row]}"
+            print(f"data shape: {data[row].shape}")
+            plotInLine(data[row], 0, fileN, title, sFreq=self.samRate_hz)
+            sTime += self.stepSize_s
+        '''
+        self.data_raw = data
+        self.labels_raw = labels.float() 
         logger.info(f"====================================================")
 
-        return loader_t, loader_v
-    
-    def createDataloaders(self, data, labels):
+    def resetData(self):
+        self.data = copy.deepcopy(self.data_raw) #Data is numpy
+        self.labels = self.labels_raw.clone().detach() #labels are tensor
+
+    def createDataloaders(self):
         # Add the "ch"
         # Data is currently: datapoints, height(sensorch), width(datapoints)
-        data = torch.tensor(data, dtype=torch.float32) # dataloader wants a torch tensor
-        data = data.unsqueeze(1) # datapoints, image channels, height, width
-        #print(f"data shape: {data.shape}")
+        self.data_norm = torch.tensor(self.data_norm, dtype=torch.float32) # dataloader wants a torch tensor
+        self.data_norm = self.data_norm.unsqueeze(1) # datapoints, image channels, height, width
+        #logger.info(f"shape data: {self.data_norm.shape}, labels: {type(labels)}, {labels.shape}")
+        #plotLabels(self.labels_norm)
 
-        dataSet = TensorDataset(data, labels)
+        logger.info(f"labels: {self.labels_norm.shape}")
+        dataSet = TensorDataset(self.data_norm, self.labels_norm)
+        #plotRegreshDataSetLab(dataSet, "total set")
+
         # Split sizes
         trainRatio = 1 - self.valPercen
         train_size = int(trainRatio * len(dataSet))  # 80% for training
         val_size = len(dataSet) - train_size  # 20% for validation
 
-        print(f"dataset: {len(dataSet)}, valPer: {self.valPercen}, train: {train_size}, val: {val_size}")
-        dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size])
+        logger.info(f"dataset: {len(dataSet)}, valPer: {self.valPercen}, train: {train_size}, val: {val_size}")
+        # Rand split was not obeying  config['trainer']['seed'], so force the issue
+        # random_split sorts the data, this makes it hard to look at validation
+        dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
+        dataSet_v.indices.sort() # put the validation data back in order
+        #plotRegreshDataSetLab(dataSet_v, "validation set")
 
-        data_loader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
-        data_loader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=False)
+        self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+        #plotRegreshDataLoader(self.dataLoader_t)
+        #plotRegreshDataLoader(self.dataLoader_v)
 
 
         with open(self.logfile, 'a', newline='') as csvFile:
-            data_Batch, label_batch = next(iter(data_loader_t))
-            data, label = data_Batch[0], label_batch[0]
-            dataShape =tuple(data_Batch.shape) 
+            print(f"datashpe: {dataSet_t[0][0].shape}")
 
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['train size', 'validation size (batch size = 1)', 'batch ch height width', 'classes'])
-            writer.writerow([len(data_loader_t), len(data_loader_v), dataShape, self.classes])
+            writer.writerow([len(dataSet_t), len(dataSet_v), dataSet_t[0][0].shape, self.classes])
             writer.writerow(['---------'])
 
-        return data_loader_t, data_loader_v
+        #return data_loader_t, data_loader_v
+    
 
-    def windowData(self, data, window_len, step_len):
+    def windowData(self, data:np.ndarray, window_len, step_len, subject, speed):
         #logger.info(f"Window length: {window_len}, step: {step_len}, data len: {data.shape}")
-
         # Strip the head/tails
 
-        dataLen = data.shape[2]
-        startPoint = 200 #points
+        dataFile= f"{self.dataDir}/data.csv"
+        with open(dataFile , 'a', newline='') as csvFile:
+            csvFile.write('Subject, speed (m/s), run, startTime (s), label')
+            for i in range(data.shape[1]):
+                thisCh = self.sensorList[i]
+                csvFile.write(f", sensor {thisCh} rms")
+            csvFile.write(f", startTime(s)")
+            csvFile.write("\n")
 
-        # do while endPoint <= thisPoint + data len
-        while True:
-            endPoint = startPoint + window_len
-            if dataLen <= endPoint: break
+            # do while endPoint <= thisPoint + data len
+            logger.debug(f"windowData, Data: {data.shape}")
+            for run in range(data.shape[0]): # make sure the data is in order one run at a time
+                startPoint = 0 #points
+                hasStomp = -1 # -1: no stomp yet, then = #since stomp
 
-            thisDataBlock = data[:, :, startPoint:endPoint]  # trial, sensor, dataPoint
+                while True:
+                    endPoint = startPoint + window_len
+                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {window_len}, endPoint: {endPoint}, dataLen: {self.datalen_pts}")
+                    if self.dataLen_pts <= endPoint: break
+    
+                    thisDataBlock = data[run, :, startPoint:endPoint]  # trial, sensor, dataPoint
+                    #logger.info(f"window data shape: {thisDataBlock.shape}")
 
-            #logger.info(f"Find End Point: {thisDataBlock.shape}")
-            #logger.info(f"Find Start Point: step: {startPoint}")
-            # Look for stomp
+                    for i in range(thisDataBlock.shape[0]): # Each ch
+                        rms_thisCh = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
+                        try:              rms_allCh = np.append(rms_allCh, rms_thisCh)
+                        except NameError: rms_allCh = rms_thisCh
+                        #print(f"rms_allCh: {rms_allCh.shape}")
 
-            #logger.info(f"Find End Point: {endPoint}")
-            # Look for rms < val
-            # or rather if rms < val, don't use this block
+                    # Look for stomp
+                    if startPoint == 0: rms_BaseLine = rms_allCh.copy()
+                    rms_ratio = rms_allCh/rms_BaseLine
+                    #print(f"rms_allCh = {rms_allCh}")
+                    #print(f"rms_BaseLin = {rms_BaseLine}")
+                    thisSubjectId = 0 # we don't know what we have yet
+                    if hasStomp  < 0:
+                        for i in self.stompCh:
+                            dataNum = self.sensorList.index(i)
+                            value = rms_ratio[dataNum]
+                            #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
+                            if value > self.stompThresh: 
+                                thisSubjectId = -1
+                                hasStomp = 0 
+                                break
+                    else: hasStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
 
-            # append the data
-            try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-            except NameError: windowedData = thisDataBlock
+
+                    ### for investigation
+                    #plotThis = rms_ratio
+                    plotThis = rms_allCh
+                    try:              plot_run = np.append(plot_run, plotThis.reshape(-1, 1), axis=1)
+                    except NameError: plot_run = plotThis.reshape(-1, 1)
+                    ###
+    
+                    # append the data
+                    if hasStomp >= 3:
+                        thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
+                        try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
+                        except NameError: windowedData = thisDataBlock
+                        #append the labels
+                        # The detection of no step is done in getSubjecteLabel
+
+                        if thisSubjectId >=0: # Negitives reservered 
+                            thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
+                            if self.regression: thisLabel = speed[run]
+                            else:               thisLabel = thisSubjectId
+
+                        try:              labels = np.append(labels, thisLabel)
+                        except NameError: labels = thisLabel
+    
+                        csvFile.write(f"{subject}, {speed[run]}, {run}, {startPoint/self.samRate_hz}, {thisSubjectId}")
+                        for i in range(len(rms_allCh)): # Each ch
+                            csvFile.write(f", {rms_allCh[i]}")
+                        csvFile.write("\n")
+    
+                    startPoint += step_len
+                    del rms_allCh
+
+                    ## End each window
+                #logger.info(f"Data Block: {windowedData.shape}, labels: {labels.shape}")
+
+                # Plot the rms, and max of each run
+                #title = f"rmsRatio of t=1 Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
+                title = f"rms Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
+                fileN = f"{self.test}-subject_{subject}-trial_{run}"
+                #plotOverlay(plot_run, fileN, title, self.stepSize_s)
+                del plot_run
 
 
-            #logger.info(f"Data Block: {windowedData.shape}")
-            startPoint += window_len
-
-        return windowedData
-
-
+        return windowedData, labels
 
 
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
             # Get the data from the datafile
             for sensor in self.sensorList:
-                ch = sensorZChList[sensor]-1 
+                ch = self.sensorChList[sensor]-1 
                 #print(f"sensors: {sensor}, ch: {ch}")
                 thisChData = file['experiment/data'][:, ch-1, :]  # trial, sensor, dataPoint
                 thisChData = np.expand_dims(thisChData, axis=1)
@@ -208,10 +323,9 @@ class dataLoader:
                 try:              accelerometer_data = np.append(accelerometer_data, thisChData, axis=1)
                 except NameError: accelerometer_data = thisChData
 
-            #logger.info(f"data shape: {np.shape(accelerometer_data)} ")
+            #logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
 
             # Get just the sensors we want
-
             if self.samRate_hz == 0: 
                 # get the peramiters if needed
                 # ex: Sample Freq
@@ -224,31 +338,34 @@ class dataLoader:
 
         return accelerometer_data 
 
-    def getSubjectLabels(self, subjectNumber, nRuns):
-        if(subjectNumber == '001'): label = 0
-        if(subjectNumber == '002'): label = 1
-        if(subjectNumber == '003'): label = 2
+    def getSubjectLabel(self, subjectNumber, vals):
+        # TODO: get from config
+        label = 0
 
-        labelListArr =  np.full((nRuns), label, dtype=int)
-        labelListTens = torch.from_numpy(labelListArr)
-        
-        # make 0 = [1,0,0], 1 = [0,1,0]... etc
-        labelList = tFun.one_hot(labelListTens, num_classes=self.nClasses)
+        #print(f"vals: {vals}")
+        #If any ch is above the thresh, we call it a step
+        for chVal in vals:
+            if chVal > self.dataThresh: 
+                if(subjectNumber == '001'): label = 1
+                elif(subjectNumber == '002'): label = 2
+                elif(subjectNumber == '003'): label = 3
+                break
 
-        return labelList
+        return label
 
     def getSpeedLabels(self, csv_file_name ):
-        with open(csv_file_name, mode='r') as labelFile:
-            labelFile_csv = csv.DictReader(labelFile)
-            for line_number, row in enumerate(labelFile_csv, start=1):
+        with open(csv_file_name, mode='r') as speedFile:
+            speedFile_csv = csv.DictReader(speedFile)
+            for line_number, row in enumerate(speedFile_csv, start=1):
                 speed_L = float(row['Gait - Lower Limb - Gait Speed L (m/s) [mean]'])
                 speed_R = float(row['Gait - Lower Limb - Gait Speed R (m/s) [mean]'])
                 #logger.info(f"Line {line_number}: mean: L={speed_L}, R={speed_R}(m/s) ")
                 aveSpeed = (speed_L+speed_R)/2
-                labelList = np.append(labelList, aveSpeed)
+                try:              speedList = np.append(speedList, aveSpeed)
+                except NameError: speedList = aveSpeed
 
-        print(f"Labels: {labelList}")
-        return labelList
+        #print(f"Labels: {speedList}")
+        return speedList
 
 
     def getSubjects(self):
@@ -298,38 +415,85 @@ class dataLoader:
         #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
 
 
-    def std_data(self, data):
+    def scale_data(self, data, scaler, logFile):
+        isTensor = False
+        if isinstance(data, torch.Tensor): #convert to numpy
+            data = data.numpy()
+            isTensor = True
+
+        if scaler == "std": dataScaled, norm = self.std_data(data, logFile)
+        else:               dataScaled, norm = self.norm_data(data, logFile, scaler)
+        #elif scaler == "minMaxNorm": dataScaled, norm = self.norm_data(data, logFile, scaler)
+
+        if isTensor: # and back to tensor
+            dataScaled = torch.from_numpy(dataScaled)
+
+        return dataScaled, norm
+
+    def unScale_data(self, data, scalerClass):
+        print(f"data: {type(data)}, {type(data[0])}, {len(data)}")
+        print(f" scalerClass: mean: {type(scalerClass.std)}")
+        data = np.array(data) # make numpy so we can work with it
+
+        if scalerClass.type == "std":
+            data = self.unScale_std(data, scalerClass)
+        else:
+            data = self.unScale_norm(data, scalerClass)
+
+        return data
+
+    def unScale_std(self, data, scalerClass):
+        data = data * scalerClass.std + scalerClass.mean
+
+        return data
+
+    def unScale_norm(self, data, scalerClass:normClass):
+        if   scalerClass.type == 'meanNorm'  : normTo = scalerClass.mean
+        elif scalerClass.type == 'minMaxNorm': normTo = scalerClass.min
+
+        data = normTo + data * (scalerClass.max - scalerClass.min) / scalerClass.scale
+
+        return data
+
+    def std_data(self, data, logFile):
         # Normalize the data
         # float: from 0 to 1
         # 0.5 = center
-        mean = np.mean(data)
-        std = np.std(data)
+
+        norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
+        #norm = normClass(type="std", min=np.min(data), max=np.max(data), mean=mean, std=std)
         #logger.info(f"Orig: {data[0:3, 0:5, 0:2]}")
 
         # scale the data
-        normData = (data - mean)/std # standardise
+        normData = (data - norm.mean)/norm.std # standardise
 
-        with open(self.logfile, 'a', newline='') as csvFile:
+        self.logScaler(logFile,'standardize', 'mean', 'std dev', norm.mean, norm.std)
+        logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        return normData, norm
+
+    def norm_data(self, data, logFile, scaler):
+        newMin = -self.scale
+        newMax = self.scale
+        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean)
+
+        if scaler == 'meanNorm':
+            normTo = norm.mean
+            norm.scale = 1
+        elif scaler == 'minMaxNorm':
+            normTo = norm.min
+            norm.scale = (newMax - newMin)
+
+        normData = norm.scale*(data-normTo)/(norm.max - norm.min) 
+
+        self.logScaler(logFile, scaler, 'min', 'max', norm.min, norm.mean)
+        logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        return normData, norm
+
+    def logScaler(self, logFile, scaler, name_a, name_b, data_a, data_b, scale=1):
+        with open(logFile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow([f'--------- {scaler}  -------'])
+            writer.writerow([name_a, name_b, 'scale'])
+            writer.writerow([data_a, data_b, scale])
             writer.writerow(['---------'])
-            writer.writerow(['mean', 'std dev'])
-            writer.writerow([mean, std])
-
-            writer.writerow(['---------'])
-        #logger.info(f"Data: Mean = {mean}, std = {std}")
-
-        return normData
-
-    def norm_data(self, data):
-        # Normalize the data
-        # float: from 0 to 1
-        max = np.max(data)
-        #logger.info(f"Orig: {data[0:3, 0:5, 0:2]}")
-
-        # scale the data
-        data = data/(2*1.1*max) # 2 time the max to leave room for the shift, and give 10% headroom
-        mean = np.average(data)
-        data = data - mean + 0.5 # shift to the mean = 0.5
-
-        #logger.info(f"Data: Mean = {mean}, Max = {max}")
-        return data
+        logger.info(f"Data: {name_a} = {data_a}, {name_b} = {data_b}, scale = {scale}")

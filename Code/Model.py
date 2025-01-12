@@ -13,7 +13,7 @@ from torch import nn
     # Start with a supoer simple multi layer perseptron
 class multilayerPerceptron(nn.Module):
     def __init__(self,input_features,num_classes,config):
-        torch.manual_seed(1678)
+        torch.manual_seed(config['trainer']['seed'])
         super().__init__() 
         hidden_neurons = config['hidden_neurons']
         self.dropout = nn.Dropout(0.2)
@@ -62,7 +62,11 @@ class leNetV5(nn.Module):
         conv_1Lay = 12
         conv_2Lay = 12
         #conv_2Lay = 24
-        torch.manual_seed(86)
+        self.seed = config['seed']
+
+        torch.manual_seed(self.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
         self.features = nn.Sequential(
                                         nn.Conv2d(in_channels=nCh, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=1),
