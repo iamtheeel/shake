@@ -10,7 +10,7 @@
 from timeit import default_timer as timer
 import torch
 from torch import nn
-#import numpy as np
+import numpy as np
 
 import matplotlib.pyplot as plt
 import csv
@@ -20,8 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep,  configs, logFile, dateTime_str):
-    #def __init__(self,model, device, train_data_loader, val_data_loader,  configs, logFile, dateTime_str):
+    def __init__(self,model, device, dataPrep,  configs, logFile, logDir):
         self.device = device
 
         self.dataPrep = dataPrep
@@ -43,10 +42,14 @@ class Trainer:
         self.batchSize = configs['data']['batchSize']
         self.classes = self.configs['data']['classes']
 
+        if self.regression:
+            self.accStr = f"accuracy (RMS Error)"
+        else:
+            self.accStr = f"accuracy (%)"
 
         self.hyperPeramStr = f"{modelName}, batch size:{self.batchSize}, epochs:{self.epochs}"
 
-        self.dateTime_str = dateTime_str
+        self.logDir = logDir
         self.logfile = logFile
 
         torch.manual_seed(configs['trainer']['seed'])
@@ -71,15 +74,15 @@ class Trainer:
         ## Loss Functions
         print(f"Selected Loss Function = {self.critName}")
         if self.critName == "MSE": 
-            print(f"Loss function: Mean Squared Error, L2")
+            #print(f"Loss function: Mean Squared Error, L2")
             self.criterion = nn.MSELoss()
             self.testCrit = nn.MSELoss()
         elif self.critName == "MAE": 
-            print(f"Loss function: Mean Absolute Error, L1")
+            #print(f"Loss function: Mean Absolute Error, L1")
             self.criterion = nn.L1Loss() 
             self.testCrit = nn.L1Loss()
         elif self.critName == "Huber": # 
-            print(f"Loss function: Huber")
+            #print(f"Loss function: Huber")
             self.criterion = nn.HuberLoss()
             self.testCrit = nn.MSELoss()
         elif self.critName == "Sigmoid":
@@ -97,7 +100,8 @@ class Trainer:
         accArr = []
         train_predsArr =[] # for confusion matrix
 
-        fieldnames = ['epoch', 'batch', 'batch correct', 'accuracy (%)', 'loss', 'time(s)']
+        fieldnames = ['epoch', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
+
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
             writer.writeheader()
@@ -107,6 +111,7 @@ class Trainer:
             correct_epoch = 0
             train_loss_epoch, train_acc_epoch = 0, 0
             epoch_StartTime = timer()
+            epoch_squared_diff = []
 
             for data, labels  in self.train_data_loader:
                 data = data.to(self.device)
@@ -132,6 +137,20 @@ class Trainer:
 
                 ## The Accuracy 
                 if self.regression:
+                    #print(f"Regression: {out_pred.shape}, {labels.shape}")
+                    # Calculate RMS accuracy between predictions and labels
+                    preds_unSc = self.dataPrep.unScale_data(out_pred.squeeze().detach().cpu().numpy(), self.dataPrep.labNormConst)
+                    targs_unSc = self.dataPrep.unScale_data(labels.squeeze().detach().cpu().numpy(), self.dataPrep.labNormConst)
+                    #preds_unSc = out_pred.squeeze().detach().cpu().numpy()
+                    #targs_unSc = labels.squeeze().detach().cpu().numpy()
+                    # Calculate RMS difference between predictions and targets
+                    diff_sq = np.square(preds_unSc - targs_unSc)
+                    rms_diff_sq = np.mean(diff_sq)
+                    rms_diff = np.sqrt(rms_diff_sq)
+                    #print(f"Regression diff: {diff.shape}, rms_diff: {rms_diff}")
+                    thisAcc = rms_diff
+                    # keep track of the squared diffs for the epoch
+                    epoch_squared_diff = np.append(epoch_squared_diff, diff_sq)
                     correct_batch = 0
                 else:
                     out_pred_argMax = torch.argmax(out_pred, 1) # Convert to argMax
@@ -156,25 +175,30 @@ class Trainer:
                 print(f"{info_str} | {lab_argMax_str} | {pred_argMax_str} | {percCorr_str} | {batchTime_str}")
                 '''
                 # Write a file
+                if not self.regression:
+                    thisAcc = 100*correct_batch/self.batchSize
+
                 with open(self.logfile, 'a', newline='') as csvFile:
                     writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
                     writer.writerow({'epoch'            : epoch,
                                      'batch'            : batchNumber,
                                      'batch correct'    : correct_batch, 
-                                     'accuracy (%)'     : 100*correct_batch/self.batchSize, 
+                                     self.accStr        : thisAcc,
                                      'loss'             : loss.item(),
                                      'time(s)'          : batch_Time
                                      })
 
                 #print(f"Run correct: {thisTestCorr}, loss: {loss.item()}")
-                #lossArr.append(loss.item())
-
                 train_predsArr.append(out_pred) #for confusion matrix
                 #End  Batch
 
-            ## Epoch
+            ## Now in Epoch
             batchSize = self.configs['data']['batchSize']
-            train_acc_epoch = 100 * correct_epoch / (batchNumber*batchSize )
+            if self.regression:
+                train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
+                #train_acc_epoch = correct_epoch / (batchNumber*batchSize )
+            else:
+                train_acc_epoch = 100 * correct_epoch / (batchNumber*batchSize )
             train_loss_epoch = train_loss_epoch/batchNumber
 
             lossArr.append(train_loss_epoch)
@@ -185,31 +209,18 @@ class Trainer:
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
         
             if epoch%1==0:
-                if self.regression:
-                    print(f"Epoch: {epoch} | Train Loss: {train_loss_epoch:.3f} | Epoch Time: {epoch_runTime:.3f}s")
-                else:
-                    print(f"Epoch: {epoch} | Train Loss: {train_loss_epoch:.3f} | Epoch Acc: {train_acc_epoch:.2f} | Epoch Time: {epoch_runTime:.3f}s")
+                print(f"Training Epoch: {epoch} | Loss: {train_loss_epoch:.3f} | {self.accStr}: {train_acc_epoch:.2f} | Time: {epoch_runTime:.3f}s")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
-                writer.writerow({'epoch'            : epoch,
-                                 'accuracy (%)'     : train_acc_epoch, 
-                                 'loss'             : train_loss_epoch,
-                                 'time(s)'             : epoch_runTime
+                writer.writerow({'epoch'    : epoch,
+                                 self.accStr: train_acc_epoch, 
+                                 'loss'     : train_loss_epoch,
+                                 'time(s)'  : epoch_runTime
                                  })
         # End Epoch
 
-        # write the data 
-        #trainPreds_np = torch.stack(train_predsArr).detach().cpu().numpy()
-        #trainPreds_np_reshaped = trainPreds_np.reshape(trainPreds_np.shape[0], -1)
-
-        #np.savetxt("trainRes.csv", trainPreds_np_reshaped, delimiter=",", fmt="%.4f")
-        #print(f"Final Training Predicted argMax: {out_pred_argMax}")
-        #print(f"Labels: {labels_argMax}")
-        if self.regression:
-            self.plotTrainingLossRegresh(lossArr=lossArr)
-        else:
-            self.plotTrainingLoss(lossArr=lossArr, accArr=accArr)
+        self.plotTrainingLoss(lossArr=lossArr, accArr=accArr)
 
         return train_loss_epoch, train_acc_epoch
 
@@ -220,12 +231,11 @@ class Trainer:
         plt.ylabel("Training Loss")
         plt.ylim([0,1])
         plt.plot(lossArr)    
-        plt.savefig(f"output/{self.dateTime_str}/{self.dateTime_str}_trainingLoss.jpg")
+        plt.savefig(f"{self.logDir}/trainingLoss.jpg")
 
     def plotTrainingLoss(self, lossArr, accArr):
         #print(f"Loss shape: {len(lossArr)}")
         nPlots = 2
-        #if self.regression: nPlots = 1
         fig, axis = plt.subplots(nPlots, 1)
         fig.subplots_adjust(top = 0.92, hspace = .05, left= 0.125, right = 0.99)
         axis[0].plot(range(len(lossArr)), lossArr)    
@@ -233,21 +243,21 @@ class Trainer:
         axis[0].set_ylabel("Training Loss")
         axis[0].get_xaxis().set_visible(False)
 
-        if not self.regression:
-            axis[1].plot(range(len(accArr)), accArr)    
-            axis[1].set_ylabel("Accuracy (%)")
-            axis[1].get_xaxis().set_visible(True)
-            axis[1].set_xlabel("Epoch")
+        axis[1].plot(range(len(accArr)), accArr)    
+        axis[1].set_ylabel(self.accStr)
+        axis[1].get_xaxis().set_visible(True)
+        axis[1].set_xlabel("Epoch Number")
 
-        plt.savefig(f"output/{self.dateTime_str}/{self.dateTime_str}_trainingLoss.jpg")
+        plt.savefig(f"{self.logDir}/trainingLoss.jpg")
         #plt.show()
     
     def validation(self):
         self.model.eval()
         test_loss, test_acc, total = 0, 0, 0
         correct,total = 0,0
-        y_preds =[] # for confusion matrix
+        y_preds = [] # for confusion matrix
         y_targs = []
+        y_sqDif = []
 
         with torch.no_grad():
         #with torch.inference_mode():
@@ -264,10 +274,16 @@ class Trainer:
                 #logger.info(f"val_preds: {type(y_preds)}, {len(y_preds)}, labels: {type(y_targs)}, {len(y_targs)}")
                 if self.regression:
                     val_loss = self.criterion(val_pred, labels)
+                    # Unscale the data
+                    preds_unSc = self.dataPrep.unScale_data(val_pred.item(), self.dataPrep.labNormConst)
+                    targs_unSc = self.dataPrep.unScale_data(labels.item(), self.dataPrep.labNormConst)
                     #logger.info(f"val_pred: {type(val_pred)}, {val_pred.shape}, labels: {type(labels)}, {labels.shape}")
                     #logger.info(f"val_pred: {val_pred}, labels: {labels}")
-                    y_preds.append(val_pred.item())
-                    y_targs.append(labels.item())
+                    diff_sq = np.square(preds_unSc - targs_unSc)
+
+                    y_sqDif.append(diff_sq)
+                    y_preds.append(preds_unSc)
+                    y_targs.append(targs_unSc)
                 else:
                     labels_argMax = torch.argmax(labels,1) #convert to argMax
                     labels_argMax = labels_argMax.to(self.device)
@@ -277,8 +293,6 @@ class Trainer:
                     #labels_argMax = torch.argmax(labels,1) #convert to argMax
                     correct += val_pred_argMax.eq(labels_argMax).sum().item()
                     #print(f"This pred: {val_pred}, lab: {labels}, {labels_argMax}")
-                    #y_preds.append(val_pred) #for confusion matrix
-                    #y_targs.append(labels) #for confusion matrix 
                     # Convert to torch tensor
                     y_preds.append(val_pred) 
                     y_targs.append(labels) 
@@ -286,7 +300,8 @@ class Trainer:
                     y_targs = torch.stack(y_targs)
 
                 test_loss += val_loss.item()
-                test_acc = 100 * correct / (nData+1)
+                if not self.regression:
+                    test_acc = 100 * correct / (nData+1)
 
 
                 # This gets written to a csv
@@ -295,23 +310,21 @@ class Trainer:
 
 
             finalValLoss = test_loss/nData
-
             #print(f"Final Val Predicted: {y_preds}")
             #print(f"Labels: {y_targs}")
             #print(f"y_logigs: {y_argMax}")
+            if self.regression:
+                test_acc = np.sqrt(np.mean(y_sqDif))
 
-            print(f"Validation Loss: {finalValLoss:.3f} | Test Acc: {test_acc:.2f}%")
+            print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.2f}")
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.writer(csvFile, dialect='unix')
-                writer.writerow(["-------", "Validation"])
-                writer.writerow(["Loss", "Accuracy"])
+                writer.writerow(["------- Validation --------"])
+                writer.writerow(["Loss", self.accStr])
                 writer.writerow([finalValLoss, test_acc])
 
 
         if self.regression:
-            # descale the data, note, converts to numpy
-            y_preds = self.dataPrep.unScale_data(y_preds, self.dataPrep.labNormConst)
-            y_targs = self.dataPrep.unScale_data(y_targs, self.dataPrep.labNormConst)
             if(self.configs['debugs']['writeValData']): self.logRegression(y_preds, y_targs)
             self.plotRegRes(y_preds, y_targs)
         else:
@@ -319,22 +332,29 @@ class Trainer:
             self.plotConfMat(y_preds, y_targs)
 
         return finalValLoss, test_acc
-    
+
+    #TODO: Put the subject, run, and time info in the log 
     def logRegression(self, y_preds, labels):
-        logger.info(f"log results: {len(y_preds)}, labels: {len(labels)}")
+        logger.info(f"log results: {len(y_preds)}")#, y_preds_targets: {type(y_preds_targets)}")
+
+        with open(f"{self.logDir}/valiResults.csv", 'w', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(['Predictions', 'Labels'])
+            for pred, label in zip(y_preds, labels):
+                writer.writerow([pred, label])
 
     def logClassification(self, y_preds, y_targs):
-            nClasses = len(self.classes)
-            y_preds_flt = y_preds.view(-1,nClasses)
-            y_targs_flt = y_targs.view(-1,nClasses)
-            y_preds_targets = torch.cat((y_preds_flt, y_targs_flt), dim=1)
-            print(f"pred: {y_preds_flt.shape}, targ: {y_targs_flt.shape}, combined: {y_preds_targets.shape}")
-            with open(f"{self.configs['outputDir']}/{self.dateTime_str}/{self.dateTime_str}_valiResults.csv", 'w', newline='') as csvFile:
-                writer = csv.writer(csvFile, dialect='unix')
-                writer.writerow(['Predictions', '', '', 'Labels'])
-                writer.writerow(self.classes + self.classes)
-                for row in y_preds_targets:
-                    writer.writerow(row.tolist())
+        nClasses = len(self.classes)
+        y_preds_flt = y_preds.view(-1,nClasses)
+        y_targs_flt = y_targs.view(-1,nClasses)
+        y_preds_targets = torch.cat((y_preds_flt, y_targs_flt), dim=1)
+        print(f"pred: {y_preds_flt.shape}, targ: {y_targs_flt.shape}, combined: {y_preds_targets.shape}")
+        with open(f"{self.logDir}/valiResults.csv", 'w', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(['Predictions', '', '', 'Labels'])
+            writer.writerow(self.classes + self.classes)
+            for row in y_preds_targets:
+                writer.writerow(row.tolist())
     
     def plotRegRes(self, preds, targets):
         #logger.info(f"Type preds: {type(preds[0])}, targets: {type(targets[0])}")
@@ -347,8 +367,8 @@ class Trainer:
         #plt.plot(targets, preds)    
         plt.xlabel('Validation Test #')
         plt.ylabel('Speed (m/s)')
-        plt.savefig(f"output/{self.dateTime_str}/{self.dateTime_str}_validation.jpg")
-        plt.show()
+        plt.savefig(f"{self.logDir}/validation.jpg")
+        #plt.show()
 
     def plotConfMat(self, y_preds, y_targs):
         from sklearn.metrics import confusion_matrix
@@ -377,6 +397,6 @@ class Trainer:
         plt.xlabel('Predicted Labels')
         plt.ylabel('True Labels')
         plt.title(f'Confusion Matrix: {self.hyperPeramStr}')
-        plt.savefig(f"output/{self.dateTime_str}/{self.dateTime_str}_validation.jpg")
-        plt.show()
+        plt.savefig(f"{self.logDir}/validation.jpg")
+        #plt.show()
         

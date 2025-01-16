@@ -12,6 +12,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from jFFT import jFFT_cl
+
 #ICE default IO error handler doing an exit(), pid = 12090, errno = 32
 #import matplotlib
 #matplotlib.use('qt5agg')
@@ -25,8 +27,9 @@ plotDir = configs['plts']['pltDir']
 yLim = configs['plts']['yLim']
 
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
-sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
-sensorList = configs['data']['sensorList'] 
+#sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
+#sensorList = configs['data']['sensorList'] 
+chList = configs['data']['chList'] 
 # x is vert
 #sensorChList = [[1], [2], [3], [4], [5], [6], [7], [10], [11], [14], [15], [16], [17], [18], [19], [20] ]
 
@@ -81,10 +84,10 @@ def plotOverlay(acclData, runStr, plotTitle_str, sFreq):
     for sens, row in enumerate(acclData):
         thisMarker = markers[sens%len(markers)]
         #if sens == 0: thisSens = 'total'
-        if sens >= len(sensorList): thisSens = 'all'
-        else:         thisSens = sensorList[sens]
-        plt.plot(time, row, label=f"ch {thisSens}", marker= thisMarker)
-        #sens +=1
+        if sens >= len(chList): thisSens = 'all'
+        else:         thisSens = chList[sens]
+        plt.plot(time, row, label=f"ch {thisSens}")
+        #plt.plot(time, row, label=f"ch {thisSens}", marker= thisMarker)
 
         #plt.plot(time, acclData[i])
         #plt.plot(time, accelerometer_data)
@@ -106,26 +109,19 @@ def plotOverlay(acclData, runStr, plotTitle_str, sFreq):
 
     plt.close
 
-def plotInLine(acclData, sensorList, runStr, plotTitle_str, sFreq):
+def plotInLine(acclData, runStr, plotTitle_str, sFreq):
     time = getTime(acclData.shape[1], sFreq)
 
     fig, axs = plt.subplots(acclData.shape[0], figsize=(12,12)) #figsize in inches?
-    #fig, axs = plt.subplots(len(sensorList), figsize=(12,12)) #figsize in inches?
     #Start and end the plot at x percent of the page, no space between each plot
     fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
     fig.suptitle(plotTitle_str)
 
     thisRow = 0
-    #for sensor in sensorList:
-    #    for ch in sensorChList[sensor-1]:
-    #        #add all the ch for this sensor
-    #        axs[thisRow].plot(time, acclData[ch-1])
-    #    axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
-    #print(f"dataLen: {acclData.shape}")
-    for row in acclData:
+    for chData in acclData:
         #print(f"rowLen: {row.shape}, {time.shape}")
-        axs[thisRow].plot(time, row)
-        axs[thisRow].set_ylabel(f'S#, Ch', fontsize=8)
+        axs[thisRow].plot(time, chData)
+        axs[thisRow].set_ylabel(f'Ch {chList[thisRow]}', fontsize=8)
         #axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
 
         axs[thisRow].set_ylim(yLim)
@@ -140,11 +136,11 @@ def plotInLine(acclData, sensorList, runStr, plotTitle_str, sFreq):
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/inLine")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
-
-    plt.show()
     fileName = f"{pltSaveDir}/{runStr}_inLine.jpg"
     print(f"Saving: {fileName}")
-    #fig.savefig(fileName)
+
+    #plt.show()
+    fig.savefig(fileName)
     plt.close
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
@@ -255,3 +251,48 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     print(f"Saving plot {pltSaveDir}/{runStr}")
     fig.savefig(f"{pltSaveDir}/{runStr}_combined.jpg")
     plt.close
+
+def plotRunFFT(data, samRate, subject, timeStart, name):
+    #run, ch, datapoint
+    for runNum, runData in enumerate(data):
+        plotFFT(runData, samRate, subject, runNum, timeStart, name)
+
+def plotFFT(data, samRate, subject, runNum, timeStart, name):
+    xlim = [0, 65]
+    fftClass = jFFT_cl()
+    #ch, datapoint
+    nSamp = data.shape[1]
+    freqList = fftClass.getFreqs(samRate,nSamp)
+
+    pltSaveDir = Path(f"{plotDir}/freq_df-{fftClass.deltaF:.3f}_fMax-{fftClass.fMax}_plotXMax-{xlim[1]}hz")
+    pltSaveDir.mkdir(parents=True, exist_ok=True)
+    print(f"plotFFT: data: {data.shape}, nSamp: {nSamp}, sRate: {samRate}, subject: {subject}")
+
+    runStr = f"sub-{subject}_run-{runNum+1}_time-{timeStart}_{name}"
+    titleStr = f"{name} subject: {subject}, run: {runNum+1}, startTime: {timeStart}sec"
+
+    plt.figure(figsize=(15, 10))
+    #print(f"run {runNum}: {runData.shape}")
+    for ch, chData in enumerate(data):
+        windowedData = fftClass.appWindow(chData, window="Hanning")
+        freqData = fftClass.calcFFT(windowedData) #Mag, phase
+        #plotData = np.log10(freqData[0])
+        plotData = freqData[0]
+        #plotData[0] = 0 #dont plot the dc
+        #plotData[1] = 0 #dont plot the dc
+        #plotData[2] = 0 #dont plot the dc
+        #plotData[3] = 0 #dont plot the dc
+
+        plt.plot(freqList, plotData, label=f"ch {chList[ch]}")
+
+    plt.xlim(xlim)
+    plt.xlabel("Frequency (Hz)")
+    plt.ylabel("Magnitude")
+    plt.legend()
+    plt.title(titleStr)
+
+    fileName = f"{pltSaveDir}/{runStr}_freq.jpg"
+    print(f"Saving plot {fileName}")
+    plt.savefig(fileName)
+
+    #plt.show()

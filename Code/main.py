@@ -61,9 +61,10 @@ def saveSumary(outputDir, dateTime_str, model, dataShape):
 
 # Write a log
 
-def writeLogHdr():
-    dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
+def writeLogHdr(dateTime_str, expNum):
+    #dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
     outputDir = f"{configs['outputDir']}/{dateTime_str}"
+    if expNum > 0: outputDir = f"{outputDir}/run-{expNum}"
     if not os.path.isdir(outputDir): os.makedirs(outputDir)
     logfile = f'{outputDir}/{dateTime_str}_log.csv'
 
@@ -71,13 +72,18 @@ def writeLogHdr():
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
         writer.writerow(['Data Path', configs['data']['dataPath']])
-        writer.writerow(['sensorList', configs['data']['sensorList']])
+        writer.writerow(['Ch List', configs['data']['chList']])
+        #writer.writerow(['sensorList', configs['data']['sensorList']])
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
         writer.writerow(['batchSize', configs['data']['batchSize']])
+
+        writer.writerow(['dataScalers', configs['data']['dataScalers']])
+        writer.writerow(['labelScalers', configs['data']['labelScalers']])
+        writer.writerow(['dataScale', configs['data']['dataScale']])
+        writer.writerow(['labelScale', configs['data']['labelScale']])
     
         writer.writerow(['criterion', critName])
-        #writer.writerow(['criterion', configs['trainer']['criterion']])
         writer.writerow(['optimizer', configs['trainer']['optimizer']])
         writer.writerow(['learning_rate', configs['trainer']['learning_rate']])
         writer.writerow(['weight_decay', configs['trainer']['weight_decay']])
@@ -85,14 +91,30 @@ def writeLogHdr():
         writer.writerow(['seed', configs['trainer']['seed']])
 
         writer.writerow(['model', configs['model']['name']])
+
         writer.writerow(['---------'])
     return logfile, dateTime_str, outputDir
+
+def writeThisLogHdr(logDir, expNum, dataScaler, dataScale, labelScaler, labelScale):
+    outputDir = f"{logDir}/run-{expNum}"
+    logfile = f'{outputDir}/run-{expNum}_log.csv'
+    if not os.path.isdir(outputDir): os.makedirs(outputDir)
+
+    with open(logfile, 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, dialect='unix')
+        writer.writerow(['dataScaler', dataScaler])
+        writer.writerow(['dataScale', dataScale])
+        writer.writerow(['labelScaler', labelScaler])
+        writer.writerow(['labelScale', labelScale])
+        writer.writerow(['---------'])
+    return logfile, outputDir
 
 torch.manual_seed(configs['trainer']['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-logfile, dateTime_str, outputDir = writeLogHdr()
+dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
+logfile, dateTime_str, outputDir = writeLogHdr(dateTime_str, expNum=0)
 
 """
 Data Preparation
@@ -101,35 +123,34 @@ logger.info(f"INIT: Get Data")
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, outputDir, logfile)
 
-#data, labels = data_preparation.get_data()
 data_preparation.get_data()
-#data_raw, labels_raw = data_preparation.get_data()
 
 #TODO: exptracking for loops start here
-expTrackFile = f'{configs['outputDir']}/{dateTime_str}_dataTrack.csv'
-expFieldnames = ['Test', 'Scaler', 'Train Loss', 'Train Acc(%)', 'Val Loss', 'Val Acc(%)']
+if configs['model']['regression']:
+    accStr = f"Acc (RMS Error)"
+else: accStr = f"Acc (%)"
+
+expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
+expFieldnames = ['Test', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
-firstRun = True
-for scaler in configs['data']['scalers']:
-    logger.info(f"==============================")
-    logger.info(f"Experiment: {scaler}")
-
-    if(firstRun): firstRun = False
-    else:         logfile, dateTime_str, outputDir = writeLogHdr()
+def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, labelScale):
+    #TODO: write THIS log headder, with the configus used
+    #logfile, dateTime_str, outputDir = writeLogHdr(initialDateTime, expNum)
+    logfile, outputDir = writeThisLogHdr(outputDir, expNum, dataScaler, dataScale, labelScaler, labelScale)
 
     #Make sure we start with a fresh dataset
     data_preparation.resetData()
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
     logger.info(f"Norm the data")
-    data_preparation.data_norm, data_preparation.dataNormConst = data_preparation.scale_data(data_preparation.data, scaler, logfile)
+    data_preparation.data_norm, data_preparation.dataNormConst = data_preparation.scale_data(data_preparation.data, dataScaler, logfile, dataScale)
     if configs['model']['regression']: 
         logger.info(f"Norm the labels")
-        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, scaler, logfile)
+        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, dataScaler, logfile, labelScale)
         #print(f"{data_preparation.labNormConst.type}")
 
     
@@ -155,8 +176,7 @@ for scaler in configs['data']['scalers']:
 
     if configs['debugs']['runModel']:
         data_preparation.createDataloaders() 
-        trainer = Trainer(model, device, data_preparation, configs, logfile, dateTime_str)
-        #trainer = Trainer(model, device, train_data_loader, val_data_loader, configs, logfile, dateTime_str)
+        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir)
         trainLoss, trainAcc = trainer.train()
         valLoss, valAcc = trainer.validation()
         del trainer
@@ -167,17 +187,26 @@ for scaler in configs['data']['scalers']:
     with open(expTrackFile, 'a', newline='') as csvFile:
         print(f"Writing data: {expTrackFile}")
         writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
-        writer.writerow({'Test': dateTime_str,
-                         'Scaler': scaler, 
+        writer.writerow({'Test': expNum,
+                         'Data Scaler': dataScaler, 
+                         'Data Scale': dataScale, 
+                         'Label Scaler': labelScaler, 
+                         'Label Scale': labelScale, 
                          'Train Loss': trainLoss, 
-                         'Train Acc(%)': trainAcc, 
+                         f'Train {accStr}': trainAcc, 
                          'Val Loss': valLoss, 
-                         'Val Acc(%)': valAcc 
+                         f'Val {accStr}': valAcc 
         })
 
     del model
-    #del train_data_loader
-    #del val_data_loader
-    #del labels, normData
-#end scailer
-    
+
+expNum = 1
+for dataScaler in configs['data']['dataScalers']:
+    for labelScaler in configs['data']['labelScalers']:
+        for dataScale in configs['data']['dataScale']:
+            for labelScale in configs['data']['labelScale']:
+                logger.info(f"==============================")
+                logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale}, labelScale: {labelScale}")
+
+                runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, dataScaler=dataScaler, dataScale=dataScale, labelScaler=labelScaler, labelScale=labelScale)
+                expNum += 1

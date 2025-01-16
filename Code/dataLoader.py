@@ -44,9 +44,10 @@ class dataLoader:
         self.dataPath = config['data']['dataPath']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
-        self.sensorList = config['data']['sensorList']
+        self.chList = config['data']['chList']
+        #self.sensorList = config['data']['sensorList']
         self.batchSize = config['data']['batchSize']
-        self.sensorChList = config['data']['sensorChList'] 
+        #self.sensorChList = config['data']['sensorChList'] 
         self.dataDir = dir
 
         #TODO: Get from file
@@ -72,8 +73,6 @@ class dataLoader:
         self.dataPoints = 0 #99120
         self.nSensors = 0
         self.nTrials = 0
-
-        self.scale = config['data']['scale']
 
         self.data_raw = None
         self.labels_raw = None
@@ -112,7 +111,9 @@ class dataLoader:
             # Load data file
             subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want
             subDataShape = np.shape(subjectData) 
-            #logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
+            logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
+            #self.plotTimeData(subjectData, subjectNumber)
+            #plotRunFFT(subjectData, self.samRate_hz, subjectNumber, 0, "ByRun")
 
             speed =  self.getSpeedLabels(label_file_csv)
 
@@ -151,24 +152,36 @@ class dataLoader:
                                 'dataPoints': subDataShape[2]
                                 })
 
+
         logger.info(f"Data shapes: Labels, data: {labels.shape}, {data.shape}")
-        # Plot the data
-        '''
+
+        self.data_raw = data
+        self.labels_raw = labels.float()
+        logger.info(f"====================================================")
+        
+    def plotWindowdData(self, data, subject, run):
         sTime = 0
+        for row in range(data.shape[0]):
+            fileN = f"subject-{subject}_run{run+1}_time-{sTime}"
+            title = f"subject:{subject}, run: {run+1}, time: {sTime}"
+            #print(f"data shape: {data[row].shape}, sampRate: {self.samRate_hz}")
+            plotInLine(data[row], fileN, title, sFreq=self.samRate_hz)
+            sTime += self.stepSize_s
+
+    def plotTimeData(self, data, subject):
+        # Plot the data
+        runNum = 1
         for row in range(data.shape[0]):
         #for row in data:
             # subject, run, time
             # rms
-            thisLab = torch.argmax(labels[row])
-            fileN = f"{sTime}_.jpg"
-            title = f"{sTime} {labels[row]}"
-            print(f"data shape: {data[row].shape}")
-            plotInLine(data[row], 0, fileN, title, sFreq=self.samRate_hz)
-            sTime += self.stepSize_s
-        '''
-        self.data_raw = data
-        self.labels_raw = labels.float() 
-        logger.info(f"====================================================")
+            #thisLab = torch.argmax(labels[row])
+            fileN = f"subject-{subject}_run-{runNum}"
+            title = f"subject:{subject}, run:{runNum}"
+            #print(f"data shape: {data[row].shape}, sampRate: {self.samRate_hz}")
+            plotInLine(data[row], fileN, title, sFreq=self.samRate_hz)
+            runNum += 1
+
 
     def resetData(self):
         self.data = copy.deepcopy(self.data_raw) #Data is numpy
@@ -223,7 +236,7 @@ class dataLoader:
         with open(dataFile , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
             for i in range(data.shape[1]):
-                thisCh = self.sensorList[i]
+                thisCh = self.chList[i]
                 csvFile.write(f", sensor {thisCh} rms")
             csvFile.write(f", startTime(s)")
             csvFile.write("\n")
@@ -231,6 +244,7 @@ class dataLoader:
             # do while endPoint <= thisPoint + data len
             logger.debug(f"windowData, Data: {data.shape}")
             for run in range(data.shape[0]): # make sure the data is in order one run at a time
+
                 startPoint = 0 #points
                 hasStomp = -1 # -1: no stomp yet, then = #since stomp
 
@@ -241,6 +255,10 @@ class dataLoader:
     
                     thisDataBlock = data[run, :, startPoint:endPoint]  # trial, sensor, dataPoint
                     #logger.info(f"window data shape: {thisDataBlock.shape}")
+                    title = f"Subject: {subject}, run: {run+1}, speed: {speed[run]:.2f}, startTime: {startPoint/self.samRate_hz} sec"
+                    fileN = f"{self.test}-subject_{subject}-trial_{run+1}-sTime_{startPoint/self.samRate_hz}"
+                    #plotInLine(thisDataBlock, fileN, title, sFreq=self.samRate_hz)
+                    #plotFFT(thisDataBlock, self.samRate_hz, subject, run, startPoint/self.samRate_hz, "ByWindow")
 
                     for i in range(thisDataBlock.shape[0]): # Each ch
                         rms_thisCh = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
@@ -256,7 +274,7 @@ class dataLoader:
                     thisSubjectId = 0 # we don't know what we have yet
                     if hasStomp  < 0:
                         for i in self.stompCh:
-                            dataNum = self.sensorList.index(i)
+                            dataNum = self.chList.index(i)
                             value = rms_ratio[dataNum]
                             #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
                             if value > self.stompThresh: 
@@ -298,14 +316,17 @@ class dataLoader:
                     del rms_allCh
 
                     ## End each window
-                #logger.info(f"Data Block: {windowedData.shape}, labels: {labels.shape}")
+                #logger.info(f"Data Block: {windowedData.shape}, rms: {plot_run.shape}, labels: {labels.shape}")
 
                 # Plot the rms, and max of each run
                 #title = f"rmsRatio of t=1 Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
                 title = f"rms Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
                 fileN = f"{self.test}-subject_{subject}-trial_{run}"
                 #plotOverlay(plot_run, fileN, title, self.stepSize_s)
-                del plot_run
+                #self.plotWindowdData(windowedData, subject, run) # Buggy, see the fft plots for the fix
+
+                #End window
+            #end Run
 
 
         return windowedData, labels
@@ -314,8 +335,9 @@ class dataLoader:
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
             # Get the data from the datafile
-            for sensor in self.sensorList:
-                ch = self.sensorChList[sensor]-1 
+            #for ch in self.sensorChList[sensor]-1: 
+            for ch in self.chList:
+                #ch = self.sensorChList[sensor]-1 
                 #print(f"sensors: {sensor}, ch: {ch}")
                 thisChData = file['experiment/data'][:, ch-1, :]  # trial, sensor, dataPoint
                 thisChData = np.expand_dims(thisChData, axis=1)
@@ -415,24 +437,25 @@ class dataLoader:
         #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
 
 
-    def scale_data(self, data, scaler, logFile):
+    def scale_data(self, data, scaler, logFile, scale):
         isTensor = False
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
             isTensor = True
 
-        if scaler == "std": dataScaled, norm = self.std_data(data, logFile)
-        else:               dataScaled, norm = self.norm_data(data, logFile, scaler)
-        #elif scaler == "minMaxNorm": dataScaled, norm = self.norm_data(data, logFile, scaler)
+        if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile)
+        else:               dataScaled, scalerClass = self.norm_data(data, logFile, scaler, scale)
+
+        scalerClass.type = scaler
 
         if isTensor: # and back to tensor
             dataScaled = torch.from_numpy(dataScaled)
 
-        return dataScaled, norm
+        return dataScaled, scalerClass
 
     def unScale_data(self, data, scalerClass):
-        print(f"data: {type(data)}, {type(data[0])}, {len(data)}")
-        print(f" scalerClass: mean: {type(scalerClass.std)}")
+        #print(f"data: {type(data)}, {type(data[0])}, {len(data)}")
+        #print(f" scalerClass: mean: {type(scalerClass.mean)}")
         data = np.array(data) # make numpy so we can work with it
 
         if scalerClass.type == "std":
@@ -450,8 +473,10 @@ class dataLoader:
     def unScale_norm(self, data, scalerClass:normClass):
         if   scalerClass.type == 'meanNorm'  : normTo = scalerClass.mean
         elif scalerClass.type == 'minMaxNorm': normTo = scalerClass.min
+        #print(f"type: {scalerClass.type}")
 
-        data = normTo + data * (scalerClass.max - scalerClass.min) / scalerClass.scale
+        #data = normData* (norm.max - norm.min)/(norm.scale) + normTo 
+        data =  (data * (scalerClass.max - scalerClass.min) / scalerClass.scale) + normTo
 
         return data
 
@@ -471,17 +496,14 @@ class dataLoader:
         logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
-    def norm_data(self, data, logFile, scaler):
-        newMin = -self.scale
-        newMax = self.scale
-        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean)
+    def norm_data(self, data, logFile, scaler, scale):
+        newMin = -scale
+        newMax = scale
+        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data))
 
-        if scaler == 'meanNorm':
-            normTo = norm.mean
-            norm.scale = 1
-        elif scaler == 'minMaxNorm':
-            normTo = norm.min
-            norm.scale = (newMax - newMin)
+        norm.scale = (newMax - newMin)
+        if scaler == 'meanNorm'    : normTo = norm.mean
+        elif scaler == 'minMaxNorm': normTo = norm.min
 
         normData = norm.scale*(data-normTo)/(norm.max - norm.min) 
 
