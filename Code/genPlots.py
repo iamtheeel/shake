@@ -109,7 +109,7 @@ def plotOverlay(acclData, runStr, plotTitle_str, sFreq):
 
     plt.close
 
-def plotInLine(acclData, runStr, plotTitle_str, sFreq):
+def plotInLine(acclData, runStr, plotTitle_str, sFreq, show=False):
     time = getTime(acclData.shape[1], sFreq)
 
     fig, axs = plt.subplots(acclData.shape[0], figsize=(12,12)) #figsize in inches?
@@ -137,10 +137,13 @@ def plotInLine(acclData, runStr, plotTitle_str, sFreq):
     pltSaveDir = Path(f"{plotDir}/inLine")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
     fileName = f"{pltSaveDir}/{runStr}_inLine.jpg"
-    print(f"Saving: {fileName}")
+    print(f"FileName: {fileName}")
 
-    #plt.show()
-    fig.savefig(fileName)
+    if show:
+        plt.show()
+    else:
+        fig.savefig(fileName)
+
     plt.close
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
@@ -257,7 +260,7 @@ def plotRunFFT(data, samRate, subject, timeStart, name):
     for runNum, runData in enumerate(data):
         plotFFT(runData, samRate, subject, runNum, timeStart, name)
 
-def plotFFT(data, samRate, subject, runNum, timeStart, name):
+def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
     xlim = [0, 65]
     fftClass = jFFT_cl()
     #ch, datapoint
@@ -293,6 +296,9 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name):
 
     fileName = f"{pltSaveDir}/{runStr}_freq.jpg"
     print(f"Saving plot {fileName}")
-    plt.savefig(fileName)
+    if show:
+        plt.show()
+    else:
+        plt.savefig(fileName)
 
-    #plt.show()
+    plt.close()

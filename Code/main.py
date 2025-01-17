@@ -15,6 +15,8 @@ import csv
 
 from torchinfo import summary
 
+from timeit import default_timer as timer
+
 from Model import multilayerPerceptron, leNetV5
 from trainer import Trainer
 
@@ -23,7 +25,7 @@ config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
 
 
-if configs['model']['regression']: critName = configs['trainer']['criterion_regresh']
+if configs['model']['regression']: critName = configs['trainer']['loss_regresh']
 else:                             critName = configs['trainer']['criterion_class']
 
 ## Logging
@@ -80,10 +82,10 @@ def writeLogHdr(dateTime_str, expNum):
 
         writer.writerow(['dataScalers', configs['data']['dataScalers']])
         writer.writerow(['labelScalers', configs['data']['labelScalers']])
-        writer.writerow(['dataScale', configs['data']['dataScale']])
-        writer.writerow(['labelScale', configs['data']['labelScale']])
+        writer.writerow(['dataScale_values', configs['data']['dataScale_values']])
+        writer.writerow(['labelScale_values', configs['data']['labelScale_values']])
     
-        writer.writerow(['criterion', critName])
+        writer.writerow(['loss', critName])
         writer.writerow(['optimizer', configs['trainer']['optimizer']])
         writer.writerow(['learning_rate', configs['trainer']['learning_rate']])
         writer.writerow(['weight_decay', configs['trainer']['weight_decay']])
@@ -95,7 +97,7 @@ def writeLogHdr(dateTime_str, expNum):
         writer.writerow(['---------'])
     return logfile, dateTime_str, outputDir
 
-def writeThisLogHdr(logDir, expNum, dataScaler, dataScale, labelScaler, labelScale):
+def writeThisLogHdr(logDir, expNum, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
     outputDir = f"{logDir}/run-{expNum}"
     logfile = f'{outputDir}/run-{expNum}_log.csv'
     if not os.path.isdir(outputDir): os.makedirs(outputDir)
@@ -106,6 +108,10 @@ def writeThisLogHdr(logDir, expNum, dataScaler, dataScale, labelScaler, labelSca
         writer.writerow(['dataScale', dataScale])
         writer.writerow(['labelScaler', labelScaler])
         writer.writerow(['labelScale', labelScale])
+        writer.writerow(['loss', lossFunction])
+        writer.writerow(['optimizer', optimizer])
+        writer.writerow(['learning_rate', learning_rate])
+        writer.writerow(['weight_decay', weight_decay])
         writer.writerow(['---------'])
     return logfile, outputDir
 
@@ -123,24 +129,29 @@ logger.info(f"INIT: Get Data")
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, outputDir, logfile)
 
-data_preparation.get_data()
+if configs['data']['dataSetDir'] != "" and os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
+      data_preparation.loadDataSet()
+else: data_preparation.get_data()
 
-#TODO: exptracking for loops start here
-if configs['model']['regression']:
-    accStr = f"Acc (RMS Error)"
-else: accStr = f"Acc (%)"
+if configs['model']['regression']: accStr = f"Acc (RMS Error)"
+else                             : accStr = f"Acc (%)"
+
+# Plots for each window of data
+#data_preparation.plotWindowdData()
+#data_preparation.plotFFTWindowdData()
 
 expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
-expFieldnames = ['Test', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}']
+expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
+                 'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
-def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, labelScale):
+def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
     #TODO: write THIS log headder, with the configus used
     #logfile, dateTime_str, outputDir = writeLogHdr(initialDateTime, expNum)
-    logfile, outputDir = writeThisLogHdr(outputDir, expNum, dataScaler, dataScale, labelScaler, labelScale)
+    logfile, outputDir = writeThisLogHdr(outputDir, expNum, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
 
     #Make sure we start with a fresh dataset
     data_preparation.resetData()
@@ -166,7 +177,7 @@ def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, 
         model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
     elif model_name == "leNetV5":
         # For now use the ch as the height, and the npoints as the width
-        model = leNetV5(numClasses=data_preparation.nClasses,nCh=1, config=configs['model']['leNetV5'] )
+        model = leNetV5(numClasses=data_preparation.nClasses,nCh=1, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
@@ -174,39 +185,71 @@ def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, 
     if configs['debugs']['saveModelInfo']: saveSumary( outputDir, dateTime_str, model, dataShape)
 
 
+    exp_StartTime = timer()
     if configs['debugs']['runModel']:
-        data_preparation.createDataloaders() 
-        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir)
+        data_preparation.createDataloaders(expNum) 
+        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
+                          lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         trainLoss, trainAcc = trainer.train()
-        valLoss, valAcc = trainer.validation()
+        valLoss, valAcc, classAcc = trainer.validation()
         del trainer
     else:
         trainLoss, valLoss = 0, 0
         trainAcc , valAcc  = 0, 0
+        classAcc = 0
+
+    exp_runTime = timer() - exp_StartTime
 
     with open(expTrackFile, 'a', newline='') as csvFile:
         print(f"Writing data: {expTrackFile}")
         writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
         writer.writerow({'Test': expNum,
+                         'Epochs': epochs,
                          'Data Scaler': dataScaler, 
                          'Data Scale': dataScale, 
                          'Label Scaler': labelScaler, 
                          'Label Scale': labelScale, 
+                         'Loss': lossFunction,
+                         'Optimizer': optimizer,
+                         'Learning Rate': learning_rate,
+                         'Weight Decay': weight_decay,
                          'Train Loss': trainLoss, 
                          f'Train {accStr}': trainAcc, 
                          'Val Loss': valLoss, 
-                         f'Val {accStr}': valAcc 
+                         f'Val {accStr}': valAcc,
+                         f'Class Acc {accStr}': classAcc,
+                         'Time(s)': exp_runTime
         })
 
     del model
 
 expNum = 1
 for dataScaler in configs['data']['dataScalers']:
-    for labelScaler in configs['data']['labelScalers']:
-        for dataScale in configs['data']['dataScale']:
-            for labelScale in configs['data']['labelScale']:
-                logger.info(f"==============================")
-                logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale}, labelScale: {labelScale}")
+    if dataScaler == "std": dataScale_values = [1]
+    else:                   dataScale_values = configs['data']['dataScale_values']
+    for dataScale_value in dataScale_values:
 
-                runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, dataScaler=dataScaler, dataScale=dataScale, labelScaler=labelScaler, labelScale=labelScale)
-                expNum += 1
+        for labelScaler in configs['data']['labelScalers']:
+            if labelScaler == "std": 
+                labelScale_values = [1]
+            else:                   labelScale_values = configs['data']['labelScale_values']
+            for labelScale_value in labelScale_values:
+
+                for lossFunction in configs['trainer']['loss_regresh']:
+
+                    for optimizer in configs['trainer']['optimizer']:
+
+                        for learning_rate in configs['trainer']['learning_rate']:
+
+                            for weight_decay in configs['trainer']['weight_decay']:
+
+                                for epochs in configs['trainer']['epochs']:
+
+                                    logger.info(f"==============================")
+                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+
+                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
+                                           dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                           lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                                    expNum += 1

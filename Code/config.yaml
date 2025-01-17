@@ -4,8 +4,10 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: False
-    runModel: True
+    runModel: False
 
+    showFFTPlots: False
+    showWindowPlots: False
 plts:
     pltDir: "../plots"
     #saveCombined: True
@@ -19,6 +21,8 @@ plts:
 data:
     valSplitPercen: .2 #20% of the data for validation
     dataPath: "../TestData"
+    dataSetDir: "savedDataSet_test2"
+
     test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
@@ -44,27 +48,28 @@ data:
 
     batchSize: 256 #Should be power of 2
 
-    #dataScalers: ["minMaxNorm"]
-    #labelScalers: ["std"]
-    dataScalers: ["meanNorm", "minMaxNorm", "std"]
-    labelScalers: ["meanNorm", "minMaxNorm", "std"]
+    dataScalers: ["std"]
+    labelScalers: ["std"]
+    #dataScalers: ["meanNorm", "minMaxNorm", "std"]
+    #labelScalers: ["meanNorm", "minMaxNorm", "std"]
     #scalers: ["meanNorm", "std", "minMaxNorm"]
-    dataScale: [1, 100] 
-    labelScale: [1, 100] 
+    dataScale_values: [1] 
+    labelScale_values: [1] 
     #scale: 100 # Classification
+
 
 trainer:
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
-    criterion_regresh: "MSE" # for regresion
-    criterion_class: "CrossEntropyLoss" #For classification
+    loss_regresh: ["MSE"] # for regresion
+    #loss_regresh: ["MSE", "MAE", "Huber"] # for regresion
+    loss_class: "CrossEntropyLoss" #For classification
 
-    optimizer: "Adam"
-    #optimizer: "SGD"
-    learning_rate: 0.0001
-    weight_decay: 0.00001
-    epochs: 50
-    #epochs: 40 # best for class
+    optimizer: ["Adam"]
+    #optimizer: ["Adam", "SGD"]
+    learning_rate: [0.00001] # note: test with smaller values
+    weight_decay:  [0.00001]
+    epochs: [50]
     seed: 4601
 
 model: 
@@ -74,8 +79,6 @@ model:
 
     multilayerPerceptron:
         hidden_neurons: 100
-        seed: 4601
 
     leNetV5:
         hidden_neurons: 100
-        seed: 4601

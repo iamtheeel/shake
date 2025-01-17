@@ -52,7 +52,10 @@ class leNetV5(nn.Module):
             FC, tanh
             FC, softmax
         """
-        hidden_neurons = config['hidden_neurons']
+        self.configsModel = config['model']['leNetV5']
+        hidden_neurons = self.configsModel['hidden_neurons']
+        self.seed = config['trainer']['seed']
+
 
         self.conv2d_layers = [0,4,7]
         self.bn_layers = [1,5,8]
@@ -62,8 +65,6 @@ class leNetV5(nn.Module):
         conv_1Lay = 12
         conv_2Lay = 12
         #conv_2Lay = 24
-        self.seed = config['seed']
-
         torch.manual_seed(self.seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
