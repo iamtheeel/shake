@@ -41,22 +41,6 @@ class dataConfigs:
     nTrials: Optional[int] = None
 
 
-# TODO: downsample 
-'''
-class dataSetWithSubjects:
-    def __init__(self, data, labels, subjects):
-        self.data = data
-        self.labels = labels
-        self.subjects = subjects
-    def __len__(self):
-        return len(self.data)
-    def __getitem__(self, index):
-        return {
-            'data': self.data[index], 
-            'labels': self.labels[index], 
-            'subjects': self.subjects[index]
-        }
-'''
 
 class dataLoader:
     def __init__(self, config, dir, logfile):
@@ -102,6 +86,9 @@ class dataLoader:
         self.data_raw = None
         self.labels_raw = None
         self.subjectList_raw = None
+        self.runList_raw = None
+        self.startTimes_raw = None
+
 
         self.data = None
         self.labels = None
@@ -395,8 +382,8 @@ class dataLoader:
                         except NameError: labels = thisLabel
                         try:              subjects = np.append(subjects, thisSubjectId)
                         except NameError: subjects = thisSubjectId
-                        try:              runs = np.append(runs, run)
-                        except NameError: runs = run
+                        try:              runs = np.append(runs, run+1)
+                        except NameError: runs = run+1
                         thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
                         try:              startTimes = np.append(startTimes, thisStartTime)
                         except NameError: startTimes = thisStartTime

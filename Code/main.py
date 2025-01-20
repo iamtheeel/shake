@@ -132,6 +132,7 @@ data_preparation = dataLoader(configs, outputDir, logfile)
 if configs['data']['dataSetDir'] != "" and os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
       data_preparation.loadDataSet()
 else: data_preparation.get_data()
+logger.info(f"data_preparation.data.shape: {data_preparation.data_raw.shape}")
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
@@ -139,6 +140,29 @@ else                             : accStr = f"Acc (%)"
 # Plots for each window of data
 #data_preparation.plotWindowdData()
 #data_preparation.plotFFTWindowdData()
+
+# CWT Transform
+from cwtTransform import cwt
+
+# The hyperperamiters setup for expTracking
+wavelet = configs['cwt']['wavelet'][3]
+wavelet_params = 10
+cwt_class = cwt(configs, wavelet_name=wavelet, wavelet_params=wavelet_params, dataConfigs = data_preparation.dataConfigs)
+#cwt_class.plotWavelet()
+
+data_preparation.resetData() # The data is windows, channels, dataPoints
+#15 sec in for subject 1, run 1
+thisTimeWindow = 3
+thisChannel = 0
+thisData = data_preparation.data[thisTimeWindow][thisChannel]
+run = data_preparation.runList_raw[thisTimeWindow]
+timeWindow = data_preparation.startTimes_raw[thisTimeWindow]
+subject = data_preparation.subjectList_raw[thisTimeWindow]
+ch = data_preparation.chList[thisChannel]
+logger.info(f"subject: {data_preparation.subjectList_raw[thisTimeWindow]}, run: {data_preparation.runList_raw[thisTimeWindow]}, timeWindow: {data_preparation.startTimes_raw[thisTimeWindow]}, channel: {data_preparation.chList[thisChannel]}")
+cwt_class.cwtTransform(data_preparation.data[thisTimeWindow][thisChannel]) 
+cwt_class.plotCWTransformed_data(run, timeWindow, subject, ch)
+exit()
 
 expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
 expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 

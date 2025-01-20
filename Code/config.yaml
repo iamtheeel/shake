@@ -57,6 +57,14 @@ data:
     labelScale_values: [1] 
     #scale: 100 # Classification
 
+cwt:
+    #F0 is the center frequency (higher values = better frequency resolution)
+    #B is the bandwidth parameter (higher values = better time resolution)
+    # cmor give diagnal lines, no good
+    # PUt this in exp track, and save the plots
+    wavelet: ["cmor", "cmor3.0-1.0", "cmor1.5-0.5", "cmor3.0-0.75"]
+    wavelet_params: [10]
+
 
 trainer:
     #criterion_regresh: "Huber" # for regresion
