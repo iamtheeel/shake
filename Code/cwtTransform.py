@@ -62,37 +62,46 @@ class cwt:
         # Perform continuous wavelet transform using the defined wavelet
 
         start_time = time.time()
-        [data, self.data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
+        [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
         #logger.info(f"Frequencies: {self.data_frequencies.shape}")
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
         logger.info(f"CWT Calculation time: {end_time - start_time} seconds")
 
         # Keep only every nth column (time point) from the results
-        self.data_coefficients = data
+        data_coefficients = transformedData
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
         #self.data_coefficients = data[:, ::step_size]
-        logger.info(f"Coefficients: type: {type(data[0][0])}, shape: {data.shape},  shape: {self.data_coefficients.shape}") #each dataum is a numpy.complex128
+        #logger.info(f"Coefficients: type: {type(transformedData[0][0])}, shape: {transformedData.shape},  shape: {data_coefficients.shape}") #each dataum is a numpy.complex128
+
+        return data_coefficients, data_frequencies
         
         # Plot the CWT coefficients
-    def plotCWTransformed_data(self, run, timeWindow, subjectLabel, ch, logScale, save=False, display=True):
+    def plotCWTransformed_data(self, data_coefficients, data_frequencies, run, timeWindow, subjectLabel, ch, logScale, save=False, display=True):
         plt.figure(figsize=(12, 8))
         colorMap = 'gray'
         #colorMap = 'jet'
-        plt.imshow(np.abs(self.data_coefficients), aspect='auto', cmap=colorMap)
+        plt.imshow(np.abs(data_coefficients), aspect='auto', cmap=colorMap)
         plt.colorbar(label='Magnitude')
 
         #plt.ylabel('Scale')
         plt.ylabel('Frequency (Hz)')
         # Get y-axis ticks and convert frequencies to Hz
         yticks = plt.gca().get_yticks()
-        freq_labels = self.data_frequencies[yticks.astype(int)[yticks < len(self.data_frequencies)]]
-        plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
+        valid_ticks = yticks.astype(int)[(yticks >= 0) & (yticks < len(data_frequencies))]
+        freq_labels = data_frequencies[valid_ticks]
+        plt.gca().set_yticks(valid_ticks)
+        plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])  # Then set the labels
+
+
 
         plt.xlabel('Time (s)')
         # Scale x-axis by sample rate to show time in seconds
+        #xticks = plt.gca().get_xticks()
         xticks = plt.gca().get_xticks()
-        time_labels = xticks * self.samplePeriod
+        valid_ticks = xticks.astype(int)[(xticks >= 0) & (xticks < data_coefficients.shape[1])]  # Only positive indices within data width
+        time_labels = valid_ticks * self.samplePeriod
+        plt.gca().set_xticks(valid_ticks)
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
         plt.title(f'CWT using {self.wavelet_name} wavelet (scales={self.numScales})\n'
                   f'run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}, channel: {ch}, logScale: {logScale}')
@@ -145,8 +154,8 @@ class cwt:
                         logger.info(f"Wavelet name: {wavelet_name}")
                         self.setupWavelet(wavelet_name)
                         self.setScale(logScale=logScale)
-                        self.cwtTransform(data) 
-                        self.plotCWTransformed_data(run, timeWindow, subjectLabel, ch, logScale=logScale, save=True, display=False)
+                        cwtData, cwtFrequencies = self.cwtTransform(data) 
+                        self.plotCWTransformed_data(cwtData, cwtFrequencies, run, timeWindow, subjectLabel, ch, logScale=logScale, save=True, display=True)
 
 
     def getDataForWaveletTracking(self, dataPrep, dataumNumber, ch ):
