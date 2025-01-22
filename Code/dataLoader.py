@@ -39,6 +39,7 @@ class dataConfigs:
     dataLen_pts: Optional[int] = None
     nSensors: Optional[int] = None
     nTrials: Optional[int] = None
+    chList: Optional[list] = None
 
 
 
@@ -51,10 +52,7 @@ class dataLoader:
         self.dataPath = config['data']['dataPath']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
-        self.chList = config['data']['chList']
-        #self.sensorList = config['data']['sensorList']
         self.batchSize = config['data']['batchSize']
-        #self.sensorChList = config['data']['sensorChList'] 
         self.dataDir = dir
 
         #TODO: Get from file
@@ -73,6 +71,8 @@ class dataLoader:
         self.dataConfigs.sampleRate_hz = 0
         self.dataConfigs.units = None
         self.dataConfigs.dataLen_pts = 0
+        self.dataConfigs.chList = config['data']['chList']
+        self.dataConfigs.nSensors = len(self.dataConfigs.chList)
 
         self.windowLen_s = config['data']['windowLen']
         self.stepSize_s = config['data']['stepSize']
@@ -80,7 +80,6 @@ class dataLoader:
         self.stepSize = 0
 
         self.dataPoints = 0 #99120
-        self.nSensors = 0
         self.nTrials = 0
 
         self.data_raw = None
@@ -113,7 +112,7 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
-        fieldnames = ['subject', 'data file', 'label file', 'dataRate', 'nSensors', 'nTrials', 'dataPoints']
+        fieldnames = ['subject', 'data file', 'label file', 'dataRate', 'nSensors', 'nTrials', 'dataPoints', 'chList']
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
             writer.writeheader()
@@ -178,7 +177,8 @@ class dataLoader:
                                 'dataRate': self.dataConfigs.sampleRate_hz, 
                                 'nSensors': subDataShape[1], 
                                 'nTrials': subDataShape[0], 
-                                'dataPoints': subDataShape[2]
+                                'dataPoints': subDataShape[2],
+                                'chList': self.dataConfigs.chList
                                 })
 
 
@@ -311,7 +311,7 @@ class dataLoader:
         with open(dataFile , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
             for i in range(data.shape[1]):
-                thisCh = self.chList[i]
+                thisCh = self.dataConfigs.chList[i]
                 csvFile.write(f", sensor {thisCh} rms")
             csvFile.write(f", startTime(s)")
             csvFile.write("\n")
@@ -348,7 +348,7 @@ class dataLoader:
                     thisSubjectId = 0 # we don't know what we have yet
                     if hasStomp  < 0:
                         for i in self.stompCh:
-                            dataNum = self.chList.index(i)
+                            dataNum = self.dataConfigs.chList.index(i)
                             value = rms_ratio[dataNum]
                             #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
                             if value > self.stompThresh: 
@@ -416,7 +416,7 @@ class dataLoader:
         with h5py.File(data_file_name, 'r') as file:
             # Get the data from the datafile
             #for ch in self.sensorChList[sensor]-1: 
-            for ch in self.chList:
+            for ch in self.dataConfigs.chList:
                 #ch = self.sensorChList[sensor]-1 
                 #print(f"sensors: {sensor}, ch: {ch}")
                 thisChData = file['experiment/data'][:, ch-1, :]  # trial, sensor, dataPoint

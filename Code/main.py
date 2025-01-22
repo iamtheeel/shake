@@ -145,23 +145,20 @@ else                             : accStr = f"Acc (%)"
 from cwtTransform import cwt
 
 # The hyperperamiters setup for expTracking
-wavelet = configs['cwt']['wavelet'][3]
+wavelet_base = configs['cwt']['wavelet'][0]
+wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
 wavelet_params = 10
-cwt_class = cwt(configs, wavelet_name=wavelet, wavelet_params=wavelet_params, dataConfigs = data_preparation.dataConfigs)
+cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
+cwt_class.setupWavelet(wavelet_name)
+cwt_class.setScale(logScale=True)
 #cwt_class.plotWavelet()
 
-data_preparation.resetData() # The data is windows, channels, dataPoints
-#15 sec in for subject 1, run 1
-thisTimeWindow = 3
-thisChannel = 0
-thisData = data_preparation.data[thisTimeWindow][thisChannel]
-run = data_preparation.runList_raw[thisTimeWindow]
-timeWindow = data_preparation.startTimes_raw[thisTimeWindow]
-subject = data_preparation.subjectList_raw[thisTimeWindow]
-ch = data_preparation.chList[thisChannel]
-logger.info(f"subject: {data_preparation.subjectList_raw[thisTimeWindow]}, run: {data_preparation.runList_raw[thisTimeWindow]}, timeWindow: {data_preparation.startTimes_raw[thisTimeWindow]}, channel: {data_preparation.chList[thisChannel]}")
-cwt_class.cwtTransform(data_preparation.data[thisTimeWindow][thisChannel]) 
-cwt_class.plotCWTransformed_data(run, timeWindow, subject, ch)
+
+#Get the data for the wavelet transform
+#15 sec in for subject 1, run 1 is the 3rd dataum
+thisTimeWindow = 3 # Subjects and runs are in here
+thisChannel = 7
+cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
 exit()
 
 expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'

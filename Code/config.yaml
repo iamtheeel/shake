@@ -30,15 +30,14 @@ data:
     #classes: [0, 1, 2, 3]
     classes: ['No Step', '001', '002', '003']
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    #chList: [7, 8, 9, 10] # Test 2, Note: looking at 8Z. seems dead
-    #chList: [5, 6, 7, 8, 9, 10] # Test 2, Note: looking at 8Z. seems dead
-    chList: [7, 6, 5, 4, 3, 2, 16, 1] # Test 2, Note: Sensor 8Z seems dead
+    chList: [7, 8, 9, 10] # Test 2, Note: looking at 8Z. seems dead
+    #chList: [7, 6, 5, 4, 3, 2, 16, 1] # Test 2, Note: Sensor 8Z seems dead
     #chList: [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13] # test 3
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
-    #stompSens: [7, 8]
-    stompSens: [5, 6, 7]
+    stompSens: [7, 8]
+    #stompSens: [5, 6, 7]
     stompThresh: 1.5
     dataThresh: 1.5
 
@@ -62,8 +61,11 @@ cwt:
     #B is the bandwidth parameter (higher values = better time resolution)
     # cmor give diagnal lines, no good
     # PUt this in exp track, and save the plots
-    wavelet: ["cmor", "cmor3.0-1.0", "cmor1.5-0.5", "cmor3.0-0.75"]
-    wavelet_params: [10]
+    wavelet: ["cmor"]
+    #wavelet: ["cmor", "mexh"]
+    waveLet_center_freq: [10]
+    waveLet_bandwidth: [0.8]
+    #waveLet_bandwidth: [0.7]
 
 
 trainer:
