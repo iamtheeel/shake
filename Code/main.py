@@ -20,7 +20,7 @@ from timeit import default_timer as timer
 from Model import multilayerPerceptron, leNetV5
 from trainer import Trainer
 
-from genPlots import makeMovie
+from genPlots import saveMovieFrames
 
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
@@ -155,7 +155,7 @@ cwt_class.setupWavelet(wavelet_name)
 cwt_class.setScale(logScale=True)
 #cwt_class.plotWavelet()
 
-makeMovie(data_preparation, cwt_class)
+saveMovieFrames(data_preparation, cwt_class)
 
 
 #Get the data for the wavelet transform

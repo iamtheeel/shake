@@ -135,7 +135,7 @@ class dataLoader:
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
-            logger.info(f"data: {windowedBlock.shape}, label: {labelBlock.shape}")
+            #logger.info(f"data: {windowedBlock.shape}, label: {labelBlock.shape}")
 
 
             # Append the data to the set
@@ -623,7 +623,7 @@ class dataLoader:
     
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
-        logger.info(f"Getting data for wavelet tracking")
+        #logger.info(f"Getting data for wavelet tracking")
 
         if ch == 0:
             thisData = self.data[dataumNumber]

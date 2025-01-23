@@ -63,10 +63,9 @@ class cwt:
 
         start_time = time.time()
         [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
-        logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}")
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
-        logger.info(f"CWT Calculation time: {end_time - start_time} seconds")
+        logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
         # Keep only every nth column (time point) from the results
         data_coefficients = transformedData

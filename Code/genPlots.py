@@ -57,7 +57,6 @@ def plotRegreshDataSetLab(dataset, title):
 
 
 
-
 def plotRegreshDataLoader(dataLoader):
     labels = []
     for _, batchlabels in dataLoader:
@@ -305,13 +304,20 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 
-def makeMovie(data_preparation, cwt_class):
+def saveMovieFrames(data_preparation, cwt_class):
     data_preparation.resetData() #makes a fresh copy of the data and labels from _raw
     print(f"makeMovie: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
-    #dataEnd = data_preparation.data.shape[0]
-    dataEnd = 20
+    saveAnimation = True
+    if saveAnimation:
+        animation_frames = []
+        # Create animation directory if it doesn't exist
+        animDir = os.path.join(configs['plts']['pltDir'], 'animations')
+        os.makedirs(animDir, exist_ok=True)
+
+    dataEnd = data_preparation.data.shape[0]
+    #dataEnd = 20
     for dataumNumber in range(0, dataEnd):
         #This will get moved out of the loop when we animate
         fig, axs = plt.subplots(2, 2, figsize=(16,12)) #w, h figsize in inches?
@@ -330,9 +336,9 @@ def makeMovie(data_preparation, cwt_class):
         data, run, timeWindow, subjectLabel = data_preparation.getThisWindowData(dataumNumber, ch=0)
         #Data is ch, timepoint
         time = getTime(data.shape[1], data_preparation.dataConfigs.sampleRate_hz)
-        print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
+        #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
         freqList, fftData = data_preparation.getFFTData(data)
-        print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
+        #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
 
         for i, chData in enumerate(data):
             thisColor = colorList[i%len(colorList)]
@@ -400,17 +406,20 @@ def makeMovie(data_preparation, cwt_class):
 
         #cwt_class.plotCWTransformed_data_3CH(cwtData, cwtFrequencies, run, timeWindow, subjectLabel, configs['cwt']['rgbPlotChList'], data_preparation.dataConfigs.chList, logScale=True, save=False, display=True)
         # Save animation frames
-        saveAnimation = True
         if saveAnimation:
-            # Create animation directory if it doesn't exist
-            animDir = os.path.join(configs['plts']['pltDir'], 'animations')
-            os.makedirs(animDir, exist_ok=True)
+            # Keep track of saved files for animation
             
-            # Save the figure
-            fileName = f"combined_plot_run{run}_window{timeWindow}_label{subjectLabel}.png"
+            # Save this frame and add to list
+            fileName = f"{dataumNumber:04d}_run-{run}_subject-{subjectLabel}_timeStart-{timeWindow}.png"
+            #fileName = f"combined_plot_run{run}_window{timeWindow}_label{subjectLabel}.jpg"
             filePath = os.path.join(animDir, fileName)
-            plt.savefig(filePath, bbox_inches='tight', dpi=300)
-            print(f"Saved animation frame: {filePath}")
+            plt.savefig(filePath, dpi=250, bbox_inches=None)
+            #plt.savefig(filePath, dpi=300)
+            #plt.savefig(filePath, bbox_inches='tight', dpi=300)
+            animation_frames.append(filePath) #List of the files to animate
+            print(f"Saved image file: {filePath}")
+            
+
         else:
             plt.show()
 
