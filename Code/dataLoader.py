@@ -330,9 +330,6 @@ class dataLoader:
     
                     thisDataBlock = data[run, :, startPoint:endPoint]  # trial, sensor, dataPoint
                     #logger.info(f"window data shape: {thisDataBlock.shape}")
-                    title = f"Subject: {subject}, run: {run+1}, speed: {speed[run]:.2f}, startTime: {startPoint/self.dataConfigs.sampleRate_hz} sec"
-                    fileN = f"{self.test}-subject_{subject}-trial_{run+1}-sTime_{startPoint/self.dataConfigs.sampleRate_hz}"
-                    #plotInLine(thisDataBlock, fileN, title, sFreq=self.dataConfigs.sampleRate_hz)
 
                     for i in range(thisDataBlock.shape[0]): # Each ch
                         rms_thisCh = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
@@ -340,23 +337,18 @@ class dataLoader:
                         except NameError: rms_allCh = rms_thisCh
                         #print(f"rms_allCh: {rms_allCh.shape}")
 
-                    # Look for stomp
+                    # Keep the RMS of time = 0 for a baseline
                     if startPoint == 0: rms_BaseLine = rms_allCh.copy()
-                    rms_ratio = rms_allCh/rms_BaseLine
+                    rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for stomp and no step
                     #print(f"rms_allCh = {rms_allCh}")
                     #print(f"rms_BaseLin = {rms_BaseLine}")
-                    thisSubjectId = 0 # we don't know what we have yet
-                    if hasStomp  < 0:
-                        for i in self.stompCh:
-                            dataNum = self.dataConfigs.chList.index(i)
-                            value = rms_ratio[dataNum]
-                            #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
-                            if value > self.stompThresh: 
-                                thisSubjectId = -1
-                                hasStomp = 0 
-                                break
-                    else: hasStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
 
+                    # Look for stomp, and keeps track of how many windows since the stomp
+                    # The detection of no step is done in getSubjecteLabel
+                    if self.stompThresh == 0: nSkips = 0
+                    else                    : nSkips = 3
+                    thisSubjectId, hasStomp = self.findDataStart(hasStomp, rms_ratio, nSkips)
+                    #print(f"stompThresh: {self.stompThresh}, nSkips: {nSkips}")
 
                     ### for investigation
                     #plotThis = rms_ratio
@@ -366,22 +358,23 @@ class dataLoader:
                     ###
     
                     # append the data
-                    if hasStomp >= 3:
+                    if hasStomp >= nSkips:
                         thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
                         try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
                         except NameError: windowedData = thisDataBlock
-                        #append the labels
-                        # The detection of no step is done in getSubjecteLabel
+
 
                         if thisSubjectId >=0: # Negitives reservered 
                             thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
                             if self.regression: thisLabel = speed[run]
                             else:               thisLabel = thisSubjectId
 
+                        # Append the data, labes, and all that junk
                         try:              labels = np.append(labels, thisLabel)
                         except NameError: labels = thisLabel
-                        try:              subjects = np.append(subjects, thisSubjectId)
-                        except NameError: subjects = thisSubjectId
+                        thisSubjectNumber = self.getSubjectID(subject) #Keep track of the subject number appart from the label
+                        try:              subjects = np.append(subjects, thisSubjectNumber)
+                        except NameError: subjects = thisSubjectNumber
                         try:              runs = np.append(runs, run+1)
                         except NameError: runs = run+1
                         thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
@@ -399,18 +392,29 @@ class dataLoader:
                     ## End each window
                 #logger.info(f"Data Block: {windowedData.shape}, rms: {plot_run.shape}, labels: {labels.shape}")
 
-                # Plot the rms, and max of each run
-                #title = f"rmsRatio of t=1 Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
-                title = f"rms Subject: {subject}, run: {run}, speed: {speed[run]:.2f} "
-                fileN = f"{self.test}-subject_{subject}-trial_{run}"
-                #plotOverlay(plot_run, fileN, title, self.stepSize_s)
-
                 #End window
             #end Run
 
 
         return windowedData, labels, subjects, runs, startTimes
 
+    def findDataStart(self, hasStomp, rms_ratio, nSkips):
+        thisSubjectID = 0
+        if hasStomp  < 0:
+            if self.stompThresh == 0:
+                hasStomp = nSkips
+            else:
+                for i in self.stompCh:
+                    dataNum = self.dataConfigs.chList.index(i)
+                    value = rms_ratio[dataNum]
+                    #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
+                    if value > self.stompThresh: 
+                        thisSubjectId = -1
+                        hasStomp = 0 
+                        break
+        else: hasStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
+
+        return thisSubjectID, hasStomp
 
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
@@ -441,19 +445,24 @@ class dataLoader:
         return accelerometer_data 
 
     def getSubjectLabel(self, subjectNumber, vals):
+        #Vals is currently the RMS ratio of the data to the baseline
         # TODO: get from config
         label = 0
 
         #print(f"vals: {vals}")
         #If any ch is above the thresh, we call it a step
         for chVal in vals:
-            if chVal > self.dataThresh: 
-                if(subjectNumber == '001'): label = 1
-                elif(subjectNumber == '002'): label = 2
-                elif(subjectNumber == '003'): label = 3
+            if chVal > self.dataThresh:
+                label = self.getSubjectID(subjectNumber)
                 break
 
         return label
+
+    def getSubjectID(self, subjectNumber):
+        if subjectNumber == '001': return 1
+        elif subjectNumber == '002': return 2
+        elif subjectNumber == '003': return 3
+        else: return 0
 
     def getSpeedLabels(self, csv_file_name ):
         with open(csv_file_name, mode='r') as speedFile:
@@ -611,3 +620,36 @@ class dataLoader:
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
             writer.writerow(['---------'])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {scaler.mean}, scale: {scaler.scale}")
+    
+    def getThisWindowData(self, dataumNumber, ch=0 ):
+        # If ch is 0, then we want all the channels
+        logger.info(f"Getting data for wavelet tracking")
+
+        if ch == 0:
+            thisData = self.data[dataumNumber]
+        else:
+            logger.info(f"dataConfigs.chList: {self.dataConfigs.chList}, ch: {ch}")
+            chNumInList = self.dataConfigs.chList.index(ch)
+            thisData = self.data[dataumNumber][chNumInList]
+        run = self.runList_raw[dataumNumber]
+        timeWindow = self.startTimes_raw[dataumNumber]
+        subjectLabel = self.subjectList_raw[dataumNumber]
+
+        if ch == 0: ch = self.dataConfigs.chList
+        logger.info(f"subjectLabel: {subjectLabel}, run: {run}, timeWindow: {timeWindow}, channel: {ch}")
+
+        return thisData, run, timeWindow, subjectLabel
+    
+    def getFFTData(self, data):
+        fftClass = jFFT_cl()
+        #ch, datapoint
+        nSamp = data.shape[1]
+        freqList = fftClass.getFreqs(self.dataConfigs.sampleRate_hz, nSamp)
+        fftData = np.zeros((len(self.dataConfigs.chList), len(freqList)))
+
+        for ch, chData in enumerate(data):
+            windowedData = fftClass.appWindow(chData, window="Hanning")
+            freqData = fftClass.calcFFT(windowedData) #Mag, phase
+            fftData[ch] = freqData[0]
+
+        return freqList, fftData

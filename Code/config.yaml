@@ -37,6 +37,7 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
+
     stompSens: [7, 8]
     #stompSens: [5, 6, 7]
     stompThresh: 0 #1.5 #If 0, then no stomp detection
@@ -67,6 +68,7 @@ cwt:
     waveLet_center_freq: [10]
     waveLet_bandwidth: [0.8]
     #waveLet_bandwidth: [0.7]
+    rgbPlotChList: [5, 6, 7] # For 3 channel plot
 
 
 trainer:

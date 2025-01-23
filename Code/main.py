@@ -20,6 +20,8 @@ from timeit import default_timer as timer
 from Model import multilayerPerceptron, leNetV5
 from trainer import Trainer
 
+from genPlots import makeMovie
+
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
@@ -145,20 +147,25 @@ else                             : accStr = f"Acc (%)"
 from cwtTransform import cwt
 
 # The hyperperamiters setup for expTracking
+cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
+
 wavelet_base = configs['cwt']['wavelet'][0]
 wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
-wavelet_params = 10
-cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
 cwt_class.setupWavelet(wavelet_name)
 cwt_class.setScale(logScale=True)
 #cwt_class.plotWavelet()
 
+makeMovie(data_preparation, cwt_class)
+
 
 #Get the data for the wavelet transform
-#15 sec in for subject 1, run 1 is the 3rd dataum
-thisTimeWindow = 3 # Subjects and runs are in here
-thisChannel = 7
+#For the stomp triggered data: 15 sec in for subject 1, run 1 is the 3rd dataum
+'''
+thisTimeWindow = 15 #3 # Subjects and runs are in here
+thisChannel = 0 #Ch 0 is all channels
 cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
+'''
+
 exit()
 
 expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
