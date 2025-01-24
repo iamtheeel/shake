@@ -23,6 +23,15 @@ from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
 
+## Logging
+import logging
+debug = configs['debugs']['debug']
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+if debug == False:
+    logging.disable(level=logging.CRITICAL)
+    logger.disabled = True
+
 plotDir = configs['plts']['pltDir']
 yLim = configs['plts']['yLim']
 
@@ -404,8 +413,10 @@ def saveMovieFrames(data_preparation, cwt_class, showImageNoSave, expDir):
         # Plot the wavelet transformed data
         #cwtData, cwtFrequencies = cwt_class.cwtTransform(data) #frequency, ch, time
         normTo_max = configs['cwt']['normTo_max'] #If 0, then norm each channel to its max 
-        normTo_min = configs['cwt']['normTo_min'] #If 0, then norm each channel to its max 
-        rgb_data = cwt_class.get3ChData(chList, chData, data_preparation.dataConfigs.chList, normTo_max, normTo_min)
+        normTo_min = configs['cwt']['normTo_min'] #If 0, then norm each channel to its min 
+        logger.info(f"cwtData: {type(data_preparation.cwtData)}, {data_preparation.cwtData.shape}")
+        #rgb_data = cwt_class.get3ChData(chList, data_preparation.cwtData[dataumNumber, :, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
+        rgb_data = cwt_class.get3ChData(chList, data_preparation.cwtData[:, dataumNumber, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
         axs[1, 1].imshow(rgb_data, aspect='auto')
 
         valid_ticks, freq_labels = cwt_class.getYAxis(data_preparation.cwtFrequencies, plt.gca().get_yticks())

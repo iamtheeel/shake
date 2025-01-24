@@ -102,6 +102,8 @@ class dataLoader:
 
         self.dataSaveDir = f"{self.dataPath}/{config['data']['dataSetDir']}"
 
+        self.configs = config
+
     def get_data(self):
         # Load all the data to a 3D numpy matrix:
         # 0 = trial: around 20
@@ -261,7 +263,7 @@ class dataLoader:
     def resetData(self):
         self.data = copy.deepcopy(self.data_raw) #Data is numpy
         self.labels = self.labels_raw.clone().detach() #labels are tensor
-        self.cwtData = copy.deepcopy(self.cwtData_raw)
+        self.cwtData = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
     
 
     def createDataloaders(self, expNum):
@@ -321,16 +323,25 @@ class dataLoader:
 
             # do while endPoint <= thisPoint + data len
             logger.debug(f"windowData, Data: {data.shape}")
-            for run in range(data.shape[0]): # make sure the data is in order one run at a time
+            if self.configs['data']['limitRuns'] > 0:
+                dataEnd = self.configs['data']['limitRuns']
+            else:
+                dataEnd = data.shape[0]
+            #for run in range(data.shape[0]): # make sure the data is in order one run at a time
+            for run in range(dataEnd): # test with the first few dataums
 
                 startPoint = 0 #points
                 hasStomp = -1 # -1: no stomp yet, then = #since stomp
+                nWindows = 0
 
                 while True:
+                    nWindows += 1
                     endPoint = startPoint + self.windowLen
                     #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {window_len}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}")
                     if self.dataConfigs.dataLen_pts <= endPoint: break
-    
+                    if self.configs['data']['limitWindowLen'] > 0:
+                        if nWindows >= self.configs['data']['limitWindowLen']: break
+
                     thisDataBlock = data[run, :, startPoint:endPoint]  # trial, sensor, dataPoint
                     #logger.info(f"window data shape: {thisDataBlock.shape}")
 
@@ -671,13 +682,41 @@ class dataLoader:
     def cwtTransofrmData(self, cwt_class):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
-        timeData = self.data_raw[0:5, :, :] # test with the first few dataums
+        timeData = self.data_raw
         logger.info(f"Starting transorm of data_raw: {type(timeData)}, {timeData.shape}")
         timeStart = time.time()
-        self.cwtData_raw, self.cwtFrequencies = cwt_class.cwtTransform(timeData)
-        cwtTransformTime = time.time() - timeStart
-        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime}s")
+        self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData)
+        # This is: freqs, windows, ch, timepoints
+        '''
+        self.cwtData_raw = None
+        self.cwtFrequencies = None
 
+        #TODO: This is a for loop, but we can do it in one shot
+        for i, data in enumerate(timeData):
+            #logger.info(f"Transforming data: {i}, {data.shape}")
+            cwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
+            logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
+
+            cwtData_raw = np.expand_dims(cwtData_raw, axis=0) # add the run dim back to append
+            print(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}")
+            if self.cwtData_raw is None:
+                self.cwtData_raw = cwtData_raw.copy()
+                #logger.info(f"created self.cwtData_rawf.: {self.cwtData_raw.shape}")
+            else:
+                self.cwtData_raw = np.append(self.cwtData_raw, cwtData_raw, axis=0)
+                #logger.info(f"appended: {self.cwtData_raw.shape}")
+
+            #Everybody is the same freq list
+            if self.cwtFrequencies is None: self.cwtFrequencies = cwtFrequencies
+
+
+            logger.info(f"Data Number {i}: self.cwtData_raw: {self.cwtData_raw.shape}, self.cwtFrequencies: {self.cwtFrequencies.shape}")
+        '''
+
+
+        cwtTransformTime = time.time() - timeStart
+
+        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime}s")
         logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
         np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", self.cwtData_raw)
         np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", self.cwtFrequencies)

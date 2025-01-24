@@ -61,9 +61,9 @@ class cwt:
         #logger.info(f"Scales: {self.scales}")
         #logger.info(f"Scales: {self.scales.shape}")
 
-    def cwtTransform(self, data, logScale=True):
+    def cwtTransform(self, data):
         # Perform continuous wavelet transform using the defined wavelet
-        logger.info(f"logScale: {type(data)}")
+        #logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
         [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)

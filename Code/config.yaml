@@ -39,6 +39,9 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
+    limitRuns: 2 # Limit the number of runs to load
+    limitWindowLen: 20 # Limit the number of windows to load
+
 
     stompSens: [7, 8]
     #stompSens: [5, 6, 7]
@@ -74,12 +77,13 @@ cwt:
     rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
-    #normTo_max: 0 #0.008
-    normTo_max: 8.7 #Max for log scale
-    normTo_min: 3.0 #0.008
+    normTo_max: 0 #0.008
+    normTo_min: 0
+    #normTo_max: 8.7 #Max for log scale
+    #normTo_min: 3.0 #0.008
     #normTo_max: 8.708692765932984 #Max for log scale
     #normTo_max: 8.92159461776423 #Max for log scale
-    logScale: True
+    logScale: False
 
 trainer:
     #criterion_regresh: "Huber" # for regresion
