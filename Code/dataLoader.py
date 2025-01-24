@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as tFun
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import pickle
+import time
 
 from genPlots import *
 
@@ -218,6 +219,7 @@ class dataLoader:
         self.startTimes_raw = torch.load(f"{self.dataSaveDir}/startTimes.pt", weights_only=False)
 
         with open(f"{self.dataSaveDir}/dataConfigs.pkl", 'rb') as f:
+            #This will load the ch list from the saved file
             self.dataConfigs = pickle.load(f)
         logger.info(f"Loaded data configs from {self.dataSaveDir}/dataConfigs.pkl")
 
@@ -259,6 +261,7 @@ class dataLoader:
     def resetData(self):
         self.data = copy.deepcopy(self.data_raw) #Data is numpy
         self.labels = self.labels_raw.clone().detach() #labels are tensor
+        self.cwtData = copy.deepcopy(self.cwtData_raw)
     
 
     def createDataloaders(self, expNum):
@@ -653,3 +656,29 @@ class dataLoader:
             fftData[ch] = freqData[0]
 
         return freqList, fftData
+    def getCWTData(self, cwt_class):
+        cwtFile = f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy"
+        if self.dataSaveDir != "" and os.path.exists(cwtFile):
+            logger.info(f"loading: {self.dataSaveDir}, cwtFile: {cwtFile}")
+            self.loadCWTData(cwt_class)
+        else: 
+            self.cwtTransofrmData(cwt_class)
+
+    def loadCWTData(self, cwt_class):
+        self.cwtData_raw = np.load(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy")
+        self.cwtFrequencies = np.load(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
+
+    def cwtTransofrmData(self, cwt_class):
+        # Can we transform the data in one shot? or dos this need a for loop?
+        # Transform the RAW data. We do not actually have the data yet.
+        timeData = self.data_raw[0:5, :, :] # test with the first few dataums
+        logger.info(f"Starting transorm of data_raw: {type(timeData)}, {timeData.shape}")
+        timeStart = time.time()
+        self.cwtData_raw, self.cwtFrequencies = cwt_class.cwtTransform(timeData)
+        cwtTransformTime = time.time() - timeStart
+        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime}s")
+
+        logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
+        np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", self.cwtData_raw)
+        np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", self.cwtFrequencies)
+        #torch.save(labels, f"{self.dataSaveDir}/labels.pt")

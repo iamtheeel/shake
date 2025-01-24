@@ -64,20 +64,26 @@ def saveSumary(outputDir, dateTime_str, model, dataShape):
         sys.stdout = sys.__stdout__
 
 # Write a log
-
-def writeLogHdr(dateTime_str, expNum):
-    #dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
+def getLogFileNames(dateTime_str, expNum):
     outputDir = f"{configs['outputDir']}/{dateTime_str}"
     if expNum > 0: outputDir = f"{outputDir}/run-{expNum}"
     if not os.path.isdir(outputDir): os.makedirs(outputDir)
     logfile = f'{outputDir}/{dateTime_str}_log.csv'
+    return logfile, outputDir
+
+def writeLogHdr(logfile, dataConfigs):
+#def writeLogHdr(dateTime_str, expNum):
+    #dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
+    #outputDir = f"{configs['outputDir']}/{dateTime_str}"
+    #if expNum > 0: outputDir = f"{outputDir}/run-{expNum}"
+    #if not os.path.isdir(outputDir): os.makedirs(outputDir)
+    #logfile = f'{outputDir}/{dateTime_str}_log.csv'
 
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
         writer.writerow(['Data Path', configs['data']['dataPath']])
-        writer.writerow(['Ch List', configs['data']['chList']])
-        #writer.writerow(['sensorList', configs['data']['sensorList']])
+        writer.writerow(['Ch List', dataConfigs.chList])
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
         writer.writerow(['batchSize', configs['data']['batchSize']])
@@ -97,15 +103,19 @@ def writeLogHdr(dateTime_str, expNum):
         writer.writerow(['model', configs['model']['name']])
 
         writer.writerow(['---------'])
-    return logfile, dateTime_str, outputDir
+    #return logfile, dateTime_str, outputDir
 
-def writeThisLogHdr(logDir, expNum, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
+def writeThisLogHdr(logDir, expNum, wavelet_name, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
     outputDir = f"{logDir}/run-{expNum}"
     logfile = f'{outputDir}/run-{expNum}_log.csv'
     if not os.path.isdir(outputDir): os.makedirs(outputDir)
 
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
+        writer.writerow(['wavelet', wavelet_name])
+        writer.writerow(['wavelet_center_freq', wavelet_center_freq])
+        writer.writerow(['wavelet_bandwidth', wavelet_bandwidth])
+        writer.writerow(['logScaleData', logScaleData])
         writer.writerow(['dataScaler', dataScaler])
         writer.writerow(['dataScale', dataScale])
         writer.writerow(['labelScaler', labelScaler])
@@ -122,7 +132,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
-logfile, dateTime_str, outputDir = writeLogHdr(dateTime_str, expNum=0)
+logfile, outputDir = getLogFileNames(dateTime_str, expNum=0)
 
 """
 Data Preparation
@@ -139,6 +149,7 @@ logger.info(f"data_preparation.data.shape: {data_preparation.data_raw.shape}")
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 
+writeLogHdr(logfile, data_preparation.dataConfigs)
 # Plots for each window of data
 #data_preparation.plotWindowdData()
 #data_preparation.plotFFTWindowdData()
@@ -149,13 +160,16 @@ from cwtTransform import cwt
 # The hyperperamiters setup for expTracking
 cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
 
+'''
 wavelet_base = configs['cwt']['wavelet'][0]
 wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
 cwt_class.setupWavelet(wavelet_name)
-cwt_class.setScale(logScale=True)
+cwt_class.setFreqScale(freqLogScale=True)
+data_preparation.resetData() #makes a fresh copy of the data and labels from _raw
 #cwt_class.plotWavelet()
-
 saveMovieFrames(data_preparation, cwt_class)
+#exit()
+'''
 
 
 #Get the data for the wavelet transform
@@ -166,7 +180,6 @@ thisChannel = 0 #Ch 0 is all channels
 cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
 '''
 
-exit()
 
 expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
 expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
@@ -176,13 +189,21 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
-def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-    #TODO: write THIS log headder, with the configus used
-    #logfile, dateTime_str, outputDir = writeLogHdr(initialDateTime, expNum)
-    logfile, outputDir = writeThisLogHdr(outputDir, expNum, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+
+
+    # TODO: Set to save the transformed data
+    if wavelet_base != "None":
+        if wavelet_base != "mexh":
+            wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
+        cwt_class.setupWavelet(wavelet_name)
+        cwt_class.setFreqScale(freqLogScale=True)
+        data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
     #Make sure we start with a fresh dataset
     data_preparation.resetData()
+
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
     logger.info(f"Norm the data")
@@ -192,14 +213,18 @@ def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, 
         data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, dataScaler, logfile, labelScale)
         #print(f"{data_preparation.labNormConst.type}")
 
-    
+    if configs['plts']['saveFilesForAnimation']:
+        expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}"
+        saveMovieFrames(data_preparation, cwt_class, showImageNoSave=True, expDir=expDir) 
+
+    #TODO: Get model to function with if statement on CWT or not
+    #      Each model gets a cwt and a non-cwt version
     #Info for the models
     nCh = data_preparation.data.shape[1]
     nDataPts = data_preparation.data.shape[2]
     dataShape = (configs['data']['batchSize'], 1, nCh, nDataPts)
     logger.info(f"nCh: {nCh}, nDataPts: {nDataPts}, dataShape: {dataShape}")
     #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
-
     model_name = configs['model']['name']
     if model_name == "multilayerPerceptron":
         model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
@@ -216,6 +241,7 @@ def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, 
     exp_StartTime = timer()
     if configs['debugs']['runModel']:
         data_preparation.createDataloaders(expNum) 
+
         trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
                           lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         trainLoss, trainAcc = trainer.train()
@@ -252,32 +278,44 @@ def runExp(outputDir, expNum, dateTime_str, dataScaler, dataScale, labelScaler, 
     del model
 
 expNum = 1
-for dataScaler in configs['data']['dataScalers']:
-    if dataScaler == "std": dataScale_values = [1]
-    else:                   dataScale_values = configs['data']['dataScale_values']
-    for dataScale_value in dataScale_values:
+# Wavelet
+# Center Frequency
+# Bandwidth
+# logData
+for wavelet_base in configs['cwt']['wavelet']:
+    for center_freq in configs['cwt']['waveLet_center_freq']:
+        for bandwidth in configs['cwt']['waveLet_bandwidth']:
+            for logScaleData in [True, False]:
+                for dataScaler in configs['data']['dataScalers']:
+                    #TODO: Normalize the cwt data by dividing both the real and image by the magnitude
+                    if dataScaler == "std": dataScale_values = [1]
+                    else:                   dataScale_values = configs['data']['dataScale_values']
 
-        for labelScaler in configs['data']['labelScalers']:
-            if labelScaler == "std": 
-                labelScale_values = [1]
-            else:                   labelScale_values = configs['data']['labelScale_values']
-            for labelScale_value in labelScale_values:
+                    for dataScale_value in dataScale_values:
 
-                for lossFunction in configs['trainer']['loss_regresh']:
+                        for labelScaler in configs['data']['labelScalers']:
+                            if labelScaler == "std": 
+                                labelScale_values = [1]
+                            else:                   labelScale_values = configs['data']['labelScale_values']
+                            for labelScale_value in labelScale_values:
 
-                    for optimizer in configs['trainer']['optimizer']:
+                                for lossFunction in configs['trainer']['loss_regresh']:
 
-                        for learning_rate in configs['trainer']['learning_rate']:
+                                    for optimizer in configs['trainer']['optimizer']:
 
-                            for weight_decay in configs['trainer']['weight_decay']:
+                                        for learning_rate in configs['trainer']['learning_rate']:
 
-                                for epochs in configs['trainer']['epochs']:
+                                            for weight_decay in configs['trainer']['weight_decay']:
 
-                                    logger.info(f"==============================")
-                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+                                                for epochs in configs['trainer']['epochs']:
 
-                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
-                                           dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                           lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
-                                    expNum += 1
+                                                    logger.info(f"==============================")
+                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+
+                                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
+                                                            wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData,
+                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                                                    expNum += 1

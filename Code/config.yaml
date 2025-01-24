@@ -10,6 +10,8 @@ debugs:
     showWindowPlots: False
 plts:
     pltDir: "../plots"
+    animDir: "/Volumes/Data/thesis/animations"
+    saveFilesForAnimation: True
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -30,7 +32,7 @@ data:
     #classes: [0, 1, 2, 3]
     classes: ['No Step', '001', '002', '003']
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    chList: [5, 6, 7] # Try for 3 color plot
+    chList: [7, 6, 5] # Try for 3 color plot
     #chList: [7, 8, 9, 10] # Test 2, Note: looking at 8Z. seems dead
     #chList: [7, 6, 5, 4, 3, 2, 16, 1] # Test 2, Note: Sensor 8Z seems dead
     #chList: [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13] # test 3
@@ -63,19 +65,28 @@ cwt:
     #B is the bandwidth parameter (higher values = better time resolution)
     # cmor give diagnal lines, no good
     # PUt this in exp track, and save the plots
-    wavelet: ["cmor"]
+    doCWT: True
+    wavelet: ["cmor"] #"None" for no CWT
     #wavelet: ["cmor", "mexh"]
     waveLet_center_freq: [10]
     waveLet_bandwidth: [0.8]
     #waveLet_bandwidth: [0.7]
-    rgbPlotChList: [5, 6, 7] # For 3 channel plot
-
+    rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
+    # Norms to each ch/data if normTo_max is 0
+    #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
+    #normTo_max: 0 #0.008
+    normTo_max: 8.7 #Max for log scale
+    normTo_min: 3.0 #0.008
+    #normTo_max: 8.708692765932984 #Max for log scale
+    #normTo_max: 8.92159461776423 #Max for log scale
+    logScale: True
 
 trainer:
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
     loss_regresh: ["MSE"] # for regresion
     #loss_regresh: ["MSE", "MAE", "Huber"] # for regresion
+
     loss_class: "CrossEntropyLoss" #For classification
 
     optimizer: ["Adam"]

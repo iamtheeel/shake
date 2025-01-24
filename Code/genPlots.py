@@ -29,7 +29,8 @@ yLim = configs['plts']['yLim']
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
 #sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 #sensorList = configs['data']['sensorList'] 
-chList = configs['data']['chList'] 
+# Erorr on missing chList. Load from dataConfigs.chList
+#chList = configs['data']['chList'] 
 # x is vert
 #sensorChList = [[1], [2], [3], [4], [5], [6], [7], [10], [11], [14], [15], [16], [17], [18], [19], [20] ]
 
@@ -304,20 +305,19 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 
-def saveMovieFrames(data_preparation, cwt_class):
+def saveMovieFrames(data_preparation, cwt_class, showImageNoSave, expDir):
     data_preparation.resetData() #makes a fresh copy of the data and labels from _raw
-    print(f"makeMovie: data: {data_preparation.data.shape} ")
+    print(f"saveMovieFrames: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
-    saveAnimation = True
-    if saveAnimation:
+    if not showImageNoSave:
         animation_frames = []
         # Create animation directory if it doesn't exist
-        animDir = os.path.join(configs['plts']['pltDir'], 'animations')
+        animDir = os.path.join(configs['plts']['animDir'], expDir)
         os.makedirs(animDir, exist_ok=True)
 
     dataEnd = data_preparation.data.shape[0]
-    #dataEnd = 20
+    #dataEnd = 10
     for dataumNumber in range(0, dataEnd):
         #This will get moved out of the loop when we animate
         fig, axs = plt.subplots(2, 2, figsize=(16,12)) #w, h figsize in inches?
@@ -333,7 +333,7 @@ def saveMovieFrames(data_preparation, cwt_class):
         
 
         #The time domain data and labels
-        data, run, timeWindow, subjectLabel = data_preparation.getThisWindowData(dataumNumber, ch=0)
+        data, run, timeWindow, subjectLabel = data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels
         #Data is ch, timepoint
         time = getTime(data.shape[1], data_preparation.dataConfigs.sampleRate_hz)
         #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
@@ -341,23 +341,33 @@ def saveMovieFrames(data_preparation, cwt_class):
         #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
 
         for i, chData in enumerate(data):
+            if configs['cwt']['rgbPlotChList'] == 0:
+                chList = data_preparation.dataConfigs.chList
+            else:
+                chList = configs['cwt']['rgbPlotChList']
             thisColor = colorList[i%len(colorList)]
             #The upper left is information about the data
             axs[0, 0].plot(0, label=f"ch {chList[i]}", color=thisColor) #Col, row
             axs[0, 0].get_xaxis().set_visible(False)
             axs[0, 0].get_yaxis().set_visible(False)
             # Add text box with run info
-            textstr = f'Run: {run}\nTime Window: {timeWindow}\nSubject: {subjectLabel}'
+            textstr = f'Run: {run}\n' \
+                      f'Time Window: {timeWindow}\n' \
+                      f'Subject: {subjectLabel}'
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             axs[0, 0].text(0.05, 0.95, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
 
-            textstr = f'Note:\nThe stomp has very high frequency\n but steps are lower'
+            textstr = f'Note:\n' \
+                      f'The stomp has very high frequency\n' \
+                      f'but steps are lower\n' \
+                      f'CWT Normalized to 1'
             props = dict(boxstyle='round', facecolor='white', alpha=0.5)
             axs[0, 0].text(0.05, 0.50, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
 
             #Plot the time domain data
             # Flip x-axis direction
             axs[0, 1].set_xlim(0, time[-1] + (time[1] - time[0]))
+            axs[0, 1].set_ylim([-0.015, 0.015])
             axs[0, 1].plot(time, chData, color=thisColor) #Col, row
             axs[0, 1].set_ylabel(f'Amplitude (accl)', fontsize=8)
 
@@ -365,11 +375,12 @@ def saveMovieFrames(data_preparation, cwt_class):
             #plotInLine(data, "foobar", "barfoo", data_preparation.dataConfigs.sampleRate_hz, show=True)
 
             # Plot the Frequency domain data
-            axs[1, 0].invert_xaxis()
             # Set x-axis to log scale for frequency plot
             #axs[1, 0].set_xscale('log')
             axs[1, 0].set_yscale('log')
-            # Add minor grid lines
+            axs[1, 0].set_xlim([0, 0.5])
+            axs[1, 0].invert_xaxis()
+              # Add minor grid lines
             axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
             axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
 
@@ -391,35 +402,31 @@ def saveMovieFrames(data_preparation, cwt_class):
         axs[0, 0].legend()
 
         # Plot the wavelet transformed data
-        cwtData, cwtFrequencies = cwt_class.cwtTransform(data) #frequency, ch, time
-        rgb_data = cwt_class.get3ChData(configs['cwt']['rgbPlotChList'], cwtData, data_preparation.dataConfigs.chList)
+        #cwtData, cwtFrequencies = cwt_class.cwtTransform(data) #frequency, ch, time
+        normTo_max = configs['cwt']['normTo_max'] #If 0, then norm each channel to its max 
+        normTo_min = configs['cwt']['normTo_min'] #If 0, then norm each channel to its max 
+        rgb_data = cwt_class.get3ChData(chList, chData, data_preparation.dataConfigs.chList, normTo_max, normTo_min)
         axs[1, 1].imshow(rgb_data, aspect='auto')
 
-        valid_ticks, freq_labels = cwt_class.getYAxis(cwtFrequencies, plt.gca().get_yticks())
+        valid_ticks, freq_labels = cwt_class.getYAxis(data_preparation.cwtFrequencies, plt.gca().get_yticks())
         plt.gca().set_yticks(valid_ticks)
         plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
 
         plt.xlabel('Time (s)')
-        valid_ticks, time_labels = cwt_class.getXAxis(cwtData[0], plt.gca().get_xticks())
+        valid_ticks, time_labels = cwt_class.getXAxis(data_preparation.cwtData[0], plt.gca().get_xticks())
         plt.gca().set_xticks(valid_ticks)
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
 
+        # Uncomment to show the plot
         #cwt_class.plotCWTransformed_data_3CH(cwtData, cwtFrequencies, run, timeWindow, subjectLabel, configs['cwt']['rgbPlotChList'], data_preparation.dataConfigs.chList, logScale=True, save=False, display=True)
         # Save animation frames
-        if saveAnimation:
-            # Keep track of saved files for animation
-            
+        if not showImageNoSave:
             # Save this frame and add to list
-            fileName = f"{dataumNumber:04d}_run-{run}_subject-{subjectLabel}_timeStart-{timeWindow}.png"
-            #fileName = f"combined_plot_run{run}_window{timeWindow}_label{subjectLabel}.jpg"
+            fileName = f"{dataumNumber:04d}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
             filePath = os.path.join(animDir, fileName)
             plt.savefig(filePath, dpi=250, bbox_inches=None)
-            #plt.savefig(filePath, dpi=300)
-            #plt.savefig(filePath, bbox_inches='tight', dpi=300)
             animation_frames.append(filePath) #List of the files to animate
             print(f"Saved image file: {filePath}")
-            
-
         else:
             plt.show()
 
