@@ -212,7 +212,7 @@ class Trainer:
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
         
             if epoch%1==0:
-                print(f"Training Epoch: {epoch} | Loss: {train_loss_epoch:.3f} | {self.accStr}: {train_acc_epoch:.2f} | Time: {epoch_runTime:.3f}s")
+                print(f"Training Epoch: {epoch+1} | Loss: {train_loss_epoch:.3f} | {self.accStr}: {train_acc_epoch:.2f} | Time: {epoch_runTime:.3f}s")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')

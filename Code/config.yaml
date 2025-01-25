@@ -3,7 +3,7 @@ outputDir: "output"
 debugs:
     debug: True 
     writeValData: True
-    saveModelInfo: False
+    saveModelInfo: True
     runModel: True
 
     showFFTPlots: False
@@ -97,7 +97,7 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    epochs: [50]
+    epochs: [1]
     seed: 4601
 
 model: 

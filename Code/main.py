@@ -17,7 +17,7 @@ from torchinfo import summary
 
 from timeit import default_timer as timer
 
-from Model import multilayerPerceptron, leNetV5
+from Model import *
 from trainer import Trainer
 
 from genPlots import saveMovieFrames
@@ -53,6 +53,7 @@ else:
 
 def saveSumary(outputDir, dateTime_str, model, dataShape):
     sumFile = f'{outputDir}/{dateTime_str}_modelInfo.txt'
+    logger.info(f"Save modelinfo | fileName: {sumFile} | dataShape: {type(dataShape)}, {dataShape}")
     with open(sumFile, 'w', newline='') as sumFile:
         sys.stdout = sumFile
         modelSum = summary(model=model, 
@@ -144,7 +145,7 @@ data_preparation = dataLoader(configs, outputDir, logfile)
 if configs['data']['dataSetDir'] != "" and os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
       data_preparation.loadDataSet()
 else: data_preparation.get_data()
-logger.info(f"data_preparation.data.shape: {data_preparation.data_raw.shape}")
+logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
@@ -189,27 +190,26 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
-def getModel(wavelet_name, model_name, dataShape, config):
+def getModel(wavelet_name, model_name, dataShape):
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
     #Info for the models: x, ch, datapoints, x
     nCh = dataShape[1]
-    if wavelet_base == "None":
+    if wavelet_name == "None":
         nDataPts = dataShape[2]
-        dataShape = (configs['data']['batchSize'], 1, nCh, nDataPts)
-        logger.info(f"nCh: {nCh}, nDataPts: {nDataPts}, dataShape: {dataShape}")
     else:
         nFreqs = dataShape[2]
         nTimePts = dataShape[3]
-        dataShape = (configs['data']['batchSize'], nCh, nFreqs, nTimePts)
-        logger.info(f"nCh: {nCh}, dataShape: {dataShape}")
     #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
 
     if model_name == "multilayerPerceptron":
         model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
     elif model_name == "leNetV5":
         # For now use the ch as the height, and the npoints as the width
-        model = leNetV5(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+        if wavelet_name == "None":
+            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+        else:
+            model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
@@ -229,7 +229,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     #Make sure we start with a fresh dataset
     data_preparation.resetData(wavelet_name=wavelet_name)
-    logger.info(f"data_preparation.data.shape: {data_preparation.data.shape}")
+    logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
@@ -244,22 +244,26 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}"
         saveMovieFrames(data_preparation, cwt_class, showImageNoSave=True, expDir=expDir) 
 
-    #TODO: Get model to function with if statement on CWT or not
+    logger.info(f"Get Model")
     model_name = configs['model']['name']
-    dataShape = data_preparation.data.shape
-    model = getModel(wavelet_name, model_name, dataShape, config)
-
-    
-    if configs['debugs']['saveModelInfo']: saveSumary( outputDir, dateTime_str, model, dataShape)
+    dataShape = data_preparation.data.shape[1:] #Runs, Ch, Freqs, TimePts
+    dataShape = (configs['data']['batchSize'],) + dataShape #Batch, Runs, Ch, Freqs, TimePts
+    model = getModel(wavelet_name, model_name, dataShape)
+    if configs['debugs']['saveModelInfo']: 
+        saveSumary( outputDir, dateTime_str, model, dataShape)
 
 
     exp_StartTime = timer()
     if configs['debugs']['runModel']:
+        logger.info(f"Create Dataloaders")
         data_preparation.createDataloaders(expNum) 
 
+        logger.info(f"Load Trainer")
         trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
                           lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+        logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
+        logger.info(f"Run Validation")
         valLoss, valAcc, classAcc = trainer.validation()
         del trainer
     else:
@@ -300,7 +304,7 @@ expNum = 1
 for wavelet_base in configs['cwt']['wavelet']:
     for center_freq in configs['cwt']['waveLet_center_freq']:
         for bandwidth in configs['cwt']['waveLet_bandwidth']:
-            for logScaleData in [True, False]:
+            for logScaleData in [False]: #not implemented yet
                 for dataScaler in configs['data']['dataScalers']:
                     #TODO: Normalize the cwt data by dividing both the real and image by the magnitude
                     if dataScaler == "std": dataScale_values = [1]
