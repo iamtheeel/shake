@@ -4,14 +4,14 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: False
-    runModel: False
+    runModel: True
 
     showFFTPlots: False
     showWindowPlots: False
 plts:
     pltDir: "../plots"
     animDir: "/Volumes/Data/thesis/animations"
-    saveFilesForAnimation: True
+    saveFilesForAnimation: False
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -52,7 +52,7 @@ data:
     windowLen: 2 #sec
     stepSize: 1 #sec
 
-    batchSize: 256 #Should be power of 2
+    batchSize: 1 #256 #Should be power of 2
 
     dataScalers: ["std"]
     labelScalers: ["std"]

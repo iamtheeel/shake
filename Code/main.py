@@ -189,6 +189,32 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
+def getModel(wavelet_name, model_name, dataShape, config):
+    #      Each model gets a cwt and a non-cwt version
+    #Batch Size, inputch, height, width
+    #Info for the models: x, ch, datapoints, x
+    nCh = dataShape[1]
+    if wavelet_base == "None":
+        nDataPts = dataShape[2]
+        dataShape = (configs['data']['batchSize'], 1, nCh, nDataPts)
+        logger.info(f"nCh: {nCh}, nDataPts: {nDataPts}, dataShape: {dataShape}")
+    else:
+        nFreqs = dataShape[2]
+        nTimePts = dataShape[3]
+        dataShape = (configs['data']['batchSize'], nCh, nFreqs, nTimePts)
+        logger.info(f"nCh: {nCh}, dataShape: {dataShape}")
+    #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
+
+    if model_name == "multilayerPerceptron":
+        model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
+    elif model_name == "leNetV5":
+        # For now use the ch as the height, and the npoints as the width
+        model = leNetV5(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+    else: 
+        print(f"{model_name} is not a model that we have")
+        exit()
+    return model
+
 def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
     logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
 
@@ -202,15 +228,16 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
     #Make sure we start with a fresh dataset
-    data_preparation.resetData()
+    data_preparation.resetData(wavelet_name=wavelet_name)
+    logger.info(f"data_preparation.data.shape: {data_preparation.data.shape}")
 
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
-    logger.info(f"Norm the data")
+    logger.info(f"Norm the data: {dataScaler}, {dataScale}")
     data_preparation.data_norm, data_preparation.dataNormConst = data_preparation.scale_data(data_preparation.data, dataScaler, logfile, dataScale)
     if configs['model']['regression']: 
-        logger.info(f"Norm the labels")
-        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, dataScaler, logfile, labelScale)
+        logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
+        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, labelScaler, logfile, labelScale)
         #print(f"{data_preparation.labNormConst.type}")
 
     if configs['plts']['saveFilesForAnimation']:
@@ -218,22 +245,10 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         saveMovieFrames(data_preparation, cwt_class, showImageNoSave=True, expDir=expDir) 
 
     #TODO: Get model to function with if statement on CWT or not
-    #      Each model gets a cwt and a non-cwt version
-    #Info for the models
-    nCh = data_preparation.data.shape[1]
-    nDataPts = data_preparation.data.shape[2]
-    dataShape = (configs['data']['batchSize'], 1, nCh, nDataPts)
-    logger.info(f"nCh: {nCh}, nDataPts: {nDataPts}, dataShape: {dataShape}")
-    #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
     model_name = configs['model']['name']
-    if model_name == "multilayerPerceptron":
-        model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
-    elif model_name == "leNetV5":
-        # For now use the ch as the height, and the npoints as the width
-        model = leNetV5(numClasses=data_preparation.nClasses,nCh=1, config=configs)
-    else: 
-        print(f"{model_name} is not a model that we have")
-        exit()
+    dataShape = data_preparation.data.shape
+    model = getModel(wavelet_name, model_name, dataShape, config)
+
     
     if configs['debugs']['saveModelInfo']: saveSumary( outputDir, dateTime_str, model, dataShape)
 

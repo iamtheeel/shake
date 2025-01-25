@@ -260,19 +260,21 @@ class dataLoader:
             runNum += 1
 
 
-    def resetData(self):
-        self.data = copy.deepcopy(self.data_raw) #Data is numpy
+    def resetData(self, wavelet_name):
+        if wavelet_name == "None":
+            # Add the "ch"
+            # Data is currently: datapoints, height(sensorch), width(datapoints)
+            self.data = copy.deepcopy(self.data_raw) #Data is numpy
+            self.data = self.data.unsqueeze(1) # datapoints, image channels, height, width 
+        else:
+            # datapoints, image channels, height, width 
+            self.data = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
         self.labels = self.labels_raw.clone().detach() #labels are tensor
-        self.cwtData = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
+        #self.cwtData = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
     
 
     def createDataloaders(self, expNum):
-        # Add the "ch"
-        # Data is currently: datapoints, height(sensorch), width(datapoints)
         self.data_norm = torch.tensor(self.data_norm, dtype=torch.float32) # dataloader wants a torch tensor
-        self.data_norm = self.data_norm.unsqueeze(1) # datapoints, image channels, height, width
-        #logger.info(f"shape data: {self.data_norm.shape}, labels: {type(labels)}, {labels.shape}")
-        #plotLabels(self.labels_norm)
 
         logger.info(f"labels: {self.labels_norm.shape}")
         logger.info(f"subjects: {type(self.subjectList_raw)}, {self.subjectList_raw.shape}")
@@ -685,8 +687,8 @@ class dataLoader:
         timeData = self.data_raw
         logger.info(f"Starting transorm of data_raw: {type(timeData)}, {timeData.shape}")
         timeStart = time.time()
-        self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData)
-        # This is: freqs, windows, ch, timepoints
+        self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
+        self.cwtData_raw = np.transpose(self.cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
         '''
         self.cwtData_raw = None
         self.cwtFrequencies = None
