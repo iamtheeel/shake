@@ -52,6 +52,7 @@ class cwt:
             max_scale = central_freq / (min_freq * self.samplePeriod)
             self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
             #self.scales = np.logspace(0, np.log10(self.numScales/2), self.numScales) # Aprox exponential scale
+            logger.info(f"Scales: {self.scales.shape}")
         else:
             # Use the wavelet's central frequency to create a linear scale
             frequencies = np.linspace(max_freq, min_freq, self.numScales) # No 0 frequency
@@ -109,12 +110,15 @@ class cwt:
 
     def get3ChData(self, plotChList, data_coefficients, dataChList, normTo_max = 0, normTo_min = 0):
         nCh = len(plotChList) #Had better be 3
-        rgb_data = np.zeros((data_coefficients.shape[0], data_coefficients.shape[2], nCh))
+        rgb_data = np.zeros((data_coefficients.shape[1], data_coefficients.shape[2], nCh)) #Height(freq), width(time), ch
+        #logger.info(f"data: {data_coefficients.shape}, rgb_data: {rgb_data.shape}")
 
         # Normalize each channel's data to 0-1 range and assign to RGB channels
         logger.info(f"normTo_max: {normTo_max}, normTo_min: {normTo_min}")
         for i, thisCh in enumerate(plotChList):
-            channel_data = np.abs(data_coefficients[:,dataChList.index(thisCh),:]) # Convertets real/imag to mag
+            #Data comming in as (ch, freq, time)
+            channel_data = np.abs(data_coefficients[dataChList.index(thisCh),:,:]) # Convertets real/imag to mag
+            #channel_data = np.abs(data_coefficients[:,dataChList.index(thisCh),:]) # Convertets real/imag to mag
             if normTo_max == 0: 
                 norm_max = np.max(channel_data)
                 norm_min = np.min(channel_data)
@@ -128,6 +132,7 @@ class cwt:
             #logger.info(f"channel {thisCh} channel_data: {channel_data.shape}, {channel_data.max()}, {channel_data.min()}")
             #logger.info(f"channel {thisCh} normalized_data: {normalized_data.shape}, {normalized_data.max()}, {normalized_data.min()}")
 
+            #freqs, times, ch?
             rgb_data[:,:,i] = normalized_data
         if normTo_max == 0:
             logger.info(f"channel_max: {self.maxData}, channel_min: {self.minData}")
@@ -172,7 +177,6 @@ class cwt:
     def getYAxis(self, data_frequencies, yTicks):
         # Get the y-axis ticks and labels
         valid_ticks = yTicks.astype(int)[(yTicks >= 0) & (yTicks < len(data_frequencies))]
-        #print(f"valid_ticks: {valid_ticks}")
         freq_labels = data_frequencies[valid_ticks]
         return valid_ticks, freq_labels
 
@@ -195,45 +199,3 @@ class cwt:
         plt.legend()
         plt.grid(True)
         plt.show()
-
-'''
-    def trackWavelet(self, dataPrep, dataumNumber, ch):
-        logger.info(f"Tracking wavelet transform")
-        #Get a data for the wavelet transform
-        dataPrep.resetData() # The data is windows, channels, dataPoints
-        data, run, timeWindow, subjectLabel = dataPrep.getThisWindowData(dataumNumber, ch)
-        #data, run, timeWindow, subjectLabel = self.getDataForWaveletTracking(dataPrep, dataumNumber, ch)
-        logScales = [True]
-        #logScales = [True, False]
-
-        #Setup the wavelet
-        for wavelet_name_base in self.configs['cwt']['wavelet']:
-            if wavelet_name_base == 'cmor': 
-                f0_list = self.configs['cwt']['waveLet_center_freq']
-                bw_list = self.configs['cwt']['waveLet_bandwidth']
-            else:
-                f0_list = [0.0]
-                bw_list = [0.0]
-
-            for center_freq in f0_list:
-                for bandwidth in bw_list:
-                    if wavelet_name_base == 'cmor': 
-                        wavelet_name = f"{wavelet_name_base}-{center_freq}-{bandwidth}"
-                    else:
-                        wavelet_name = f"{wavelet_name_base}"
-
-                    for logScale in logScales:
-                        logger.info(f"Wavelet name: {wavelet_name}")
-                        self.setupWavelet(wavelet_name)
-                        self.setScale(logScale=logScale)
-                        print(f"data: {data.shape}")
-                        cwtData, cwtFrequencies = self.cwtTransform(data) #frequency, ch, time
-                        if self.configs['cwt']['rgbPlotChList'] == 0:
-                            chList = dataPrep.dataConfigs.chList
-                        else:
-                            chList = self.configs['cwt']['rgbPlotChList']
-                        self.plotCWTransformed_data_3CH(cwtData, cwtFrequencies, run, timeWindow, subjectLabel, chList, dataPrep.dataConfigs.chList, logScale=logScale, save=True, display=True)
-                        #for thisCh in dataPrep.dataConfigs.chList:
-                        #    self.plotCWTransformed_data_1ch(cwtData[:,dataPrep.dataConfigs.chList.index(thisCh),:], cwtFrequencies, run, timeWindow, subjectLabel, thisCh, logScale=logScale, save=True, display=True)
-
-'''

@@ -242,7 +242,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     if configs['plts']['saveFilesForAnimation']:
         expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}"
-        saveMovieFrames(data_preparation, cwt_class, showImageNoSave=True, expDir=expDir) 
+        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=True, expDir=expDir) 
 
     logger.info(f"Get Model")
     model_name = configs['model']['name']
@@ -304,7 +304,8 @@ expNum = 1
 for wavelet_base in configs['cwt']['wavelet']:
     for center_freq in configs['cwt']['waveLet_center_freq']:
         for bandwidth in configs['cwt']['waveLet_bandwidth']:
-            for logScaleData in [False]: #not implemented yet
+            for logScaleData in [True]: #not implemented yet
+
                 for dataScaler in configs['data']['dataScalers']:
                     #TODO: Normalize the cwt data by dividing both the real and image by the magnitude
                     if dataScaler == "std": dataScale_values = [1]

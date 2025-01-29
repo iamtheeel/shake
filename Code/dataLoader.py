@@ -230,8 +230,6 @@ class dataLoader:
 
         logger.info(f"Plotting FFT of Each windowed block")
         for i, windowBlockData in enumerate(self.data_raw): #each window
-            fileN = f"subject-{self.subjectList_raw[i]}_run{self.runList_raw[i]+1}_time-{self.startTimes_raw[i]}"
-            title = f"subject:{self.subjectList_raw[i]}, run: {self.runList_raw[i]+1}, time: {self.startTimes_raw[i]}"
             plotFFT(windowBlockData, self.dataConfigs.sampleRate_hz, self.subjectList_raw[i], self.runList_raw[i], self.startTimes_raw[i], "ByWindow", show=show)
 
     def plotWindowdData(self):
@@ -639,20 +637,20 @@ class dataLoader:
     
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
-        #logger.info(f"Getting data for wavelet tracking")
+        #logger.info(f"Getting data for wavelet tracking: {self.data_raw.shape}")
 
         if ch == 0:
-            thisData = self.data[dataumNumber]
+            thisData = self.data_raw[dataumNumber]
         else:
             logger.info(f"dataConfigs.chList: {self.dataConfigs.chList}, ch: {ch}")
             chNumInList = self.dataConfigs.chList.index(ch)
-            thisData = self.data[dataumNumber][chNumInList]
+            thisData = self.data_raw[dataumNumber][chNumInList]
         run = self.runList_raw[dataumNumber]
         timeWindow = self.startTimes_raw[dataumNumber]
         subjectLabel = self.subjectList_raw[dataumNumber]
 
         if ch == 0: ch = self.dataConfigs.chList
-        logger.info(f"subjectLabel: {subjectLabel}, run: {run}, timeWindow: {timeWindow}, channel: {ch}")
+        #logger.info(f"thisData:{type(thisData)} {thisData.shape}, subjectLabel: {subjectLabel}, run: {run}, timeWindow: {timeWindow}, channel: {ch}")
 
         return thisData, run, timeWindow, subjectLabel
     

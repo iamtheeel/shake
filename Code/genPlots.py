@@ -314,9 +314,8 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 
-def saveMovieFrames(data_preparation, cwt_class, showImageNoSave, expDir):
-    data_preparation.resetData() #makes a fresh copy of the data and labels from _raw
-    print(f"saveMovieFrames: data: {data_preparation.data.shape} ")
+def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, expDir):
+    logger.info(f"saveMovieFrames: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
     if not showImageNoSave:
@@ -384,11 +383,14 @@ def saveMovieFrames(data_preparation, cwt_class, showImageNoSave, expDir):
             #plotInLine(data, "foobar", "barfoo", data_preparation.dataConfigs.sampleRate_hz, show=True)
 
             # Plot the Frequency domain data
-            # Set x-axis to log scale for frequency plot
-            #axs[1, 0].set_xscale('log')
-            axs[1, 0].set_yscale('log')
-            axs[1, 0].set_xlim([0, 0.5])
+            if asLogScale: #Is the mag log scale?
+                # Set x-axis to log scale for frequency plot
+                axs[1, 0].set_xscale('log')
+                axs[1, 0].set_xlim([0.01, 1])
+            else:
+                axs[1, 0].set_xlim([0, 0.5])
             axs[1, 0].invert_xaxis()
+            axs[1, 0].set_yscale('log')
               # Add minor grid lines
             axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
             axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
@@ -411,25 +413,29 @@ def saveMovieFrames(data_preparation, cwt_class, showImageNoSave, expDir):
         axs[0, 0].legend()
 
         # Plot the wavelet transformed data
-        #cwtData, cwtFrequencies = cwt_class.cwtTransform(data) #frequency, ch, time
         normTo_max = configs['cwt']['normTo_max'] #If 0, then norm each channel to its max 
         normTo_min = configs['cwt']['normTo_min'] #If 0, then norm each channel to its min 
-        logger.info(f"cwtData: {type(data_preparation.cwtData)}, {data_preparation.cwtData.shape}")
-        #rgb_data = cwt_class.get3ChData(chList, data_preparation.cwtData[dataumNumber, :, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
-        rgb_data = cwt_class.get3ChData(chList, data_preparation.cwtData[:, dataumNumber, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
+        # Data is cwt: time window number, ch, freq, time
+        #logger.info(f"cwtData: {type(data_preparation.data)}, {data_preparation.data.shape}, {type(data_preparation.data[0,0,0,0])}")
+        rgb_data = cwt_class.get3ChData(chList, data_preparation.data[dataumNumber, :, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
+        #rgb_data = cwt_class.get3ChData(chList, data_preparation.data[:, dataumNumber, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
+        #logger.info(f"rgb_data: {type(rgb_data)}, {rgb_data.shape}")
+        #rgb_data is: Numpy Array (Height, width, ch)
         axs[1, 1].imshow(rgb_data, aspect='auto')
 
+        #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
         valid_ticks, freq_labels = cwt_class.getYAxis(data_preparation.cwtFrequencies, plt.gca().get_yticks())
+        #logger.info(f"freq_labels: {freq_labels}")
         plt.gca().set_yticks(valid_ticks)
         plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
 
         plt.xlabel('Time (s)')
-        valid_ticks, time_labels = cwt_class.getXAxis(data_preparation.cwtData[0], plt.gca().get_xticks())
+        valid_ticks, time_labels = cwt_class.getXAxis(data_preparation.data[0], plt.gca().get_xticks())
         plt.gca().set_xticks(valid_ticks)
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
 
         # Uncomment to show the plot
-        #cwt_class.plotCWTransformed_data_3CH(cwtData, cwtFrequencies, run, timeWindow, subjectLabel, configs['cwt']['rgbPlotChList'], data_preparation.dataConfigs.chList, logScale=True, save=False, display=True)
+        #cwt_class.plotCWTransformed_data_3CH(data, cwtFrequencies, run, timeWindow, subjectLabel, configs['cwt']['rgbPlotChList'], data_preparation.dataConfigs.chList, logScale=True, save=False, display=True)
         # Save animation frames
         if not showImageNoSave:
             # Save this frame and add to list

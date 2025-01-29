@@ -11,7 +11,7 @@ debugs:
 plts:
     pltDir: "../plots"
     animDir: "/Volumes/Data/thesis/animations"
-    saveFilesForAnimation: False
+    saveFilesForAnimation: True
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -77,7 +77,7 @@ cwt:
     rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
-    normTo_max: 0 #0.008
+    normTo_max: 0.008 #0 for none
     normTo_min: 0
     #normTo_max: 8.7 #Max for log scale
     #normTo_min: 3.0 #0.008
