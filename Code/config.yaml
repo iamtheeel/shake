@@ -4,14 +4,14 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
 
     showFFTPlots: False
     showWindowPlots: False
 plts:
     pltDir: "../plots"
     animDir: "/Volumes/Data/thesis/animations"
-    saveFilesForAnimation: True
+    saveFilesForAnimation: False
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -69,18 +69,18 @@ cwt:
     # cmor give diagnal lines, no good
     # PUt this in exp track, and save the plots
     doCWT: True
-    wavelet: ["cmor"] #"None" for no CWT
-    #wavelet: ["cmor", "mexh"]
-    waveLet_center_freq: [10]
-    waveLet_bandwidth: [0.8]
+    #wavelet: ["cmor"] #"None" for no CWT
+    wavelet: ["cmor", "mexh"]
+    waveLet_center_freq:  [10]
+    waveLet_bandwidth: [0.8] #[0.8]
     #waveLet_bandwidth: [0.7]
     rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
-    normTo_max: 0.008 #0 for none
-    normTo_min: 0
-    #normTo_max: 8.7 #Max for log scale
-    #normTo_min: 3.0 #0.008
+    #normTo_max: 0.008 #0 for none
+    #normTo_min: 0
+    normTo_max: 10 #11.15 #Max for log scale
+    normTo_min: 1.81
     #normTo_max: 8.708692765932984 #Max for log scale
     #normTo_max: 8.92159461776423 #Max for log scale
     logScale: False

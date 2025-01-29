@@ -9,6 +9,7 @@
 import numpy as np
 import pywt
 import matplotlib.pyplot as plt
+from jFFT import jFFT_cl
 import logging
 import os
 import time
@@ -29,7 +30,7 @@ class cwt:
         self.minData = 1000000.0
         self.maxData = 0.0
 
-    def setupWavelet(self, wavelet_name ):
+    def setupWavelet(self, wavelet_name, useLogForFreq ):
         # The wavelet
         self.wavelet_name = wavelet_name
 
@@ -37,10 +38,12 @@ class cwt:
 
         self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         self.level = 8 #Number of iterations, for descrete wavelets
-        self.length = 256
+        self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
 
         # Our wave function
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
+
+        self.setFreqScale(freqLogScale=useLogForFreq)
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
@@ -109,16 +112,20 @@ class cwt:
             plt.show()
 
     def get3ChData(self, plotChList, data_coefficients, dataChList, normTo_max = 0, normTo_min = 0):
+        """
+        Input is complex
+        Returns as mag
+        """
         nCh = len(plotChList) #Had better be 3
+        #data comming in as ch, freq, time
         rgb_data = np.zeros((data_coefficients.shape[1], data_coefficients.shape[2], nCh)) #Height(freq), width(time), ch
         #logger.info(f"data: {data_coefficients.shape}, rgb_data: {rgb_data.shape}")
 
         # Normalize each channel's data to 0-1 range and assign to RGB channels
-        logger.info(f"normTo_max: {normTo_max}, normTo_min: {normTo_min}")
+        logger.info(f"get3ChData | normTo_max: {normTo_max}, normTo_min: {normTo_min}")
         for i, thisCh in enumerate(plotChList):
             #Data comming in as (ch, freq, time)
-            channel_data = np.abs(data_coefficients[dataChList.index(thisCh),:,:]) # Convertets real/imag to mag
-            #channel_data = np.abs(data_coefficients[:,dataChList.index(thisCh),:]) # Convertets real/imag to mag
+            channel_data = np.abs(data_coefficients[dataChList.index(thisCh),:,:]) # Converts real/imag to mag
             if normTo_max == 0: 
                 norm_max = np.max(channel_data)
                 norm_min = np.min(channel_data)
@@ -187,9 +194,10 @@ class cwt:
         time_labels = valid_ticks * self.samplePeriod
         return valid_ticks, time_labels
 
-    def plotWavelet(self ):
+    def plotWavelet(self, sRate=0, saveDir="", show = False, save = True):
         # Get the wavelet function values
 
+        # Plot the time Domain
         plt.figure(figsize=(10, 8))
         plt.title(f'{self.wavelet_name} wavelet')
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
@@ -198,4 +206,52 @@ class cwt:
         plt.ylabel('Amplitude')
         plt.legend()
         plt.grid(True)
-        plt.show()
+        if save:
+            timeDFileName = f"{self.wavelet_name}_timeD.jpg"
+            timeDFileNamePath = f"{saveDir}/{timeDFileName}"
+            logger.info(f"Saving Wavelet Plots: {timeDFileNamePath}")
+            plt.savefig(timeDFileNamePath)
+
+        # Bode plot
+        fftClass = jFFT_cl()
+        #ch, datapoint
+        nSamp = len(self.wavelet_Time)
+        logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
+        #logger.info(f"{self.wavelet_Time}")
+        waveletDt = self.wavelet_Time[1] - self.wavelet_Time[0]
+        if sRate == 0:
+            sRate = 1/waveletDt
+        freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp)
+        fftData = fftClass.calcFFT(self.wavelet_fun) #mag, phase
+        logger.info(f"Freq D | shape : {fftData.shape}")
+
+        fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
+        fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
+        #plt.figure(figsize=(10, 8))
+        fig.suptitle(f'{self.wavelet_name} wavelet, Data Sample Rate: {sRate}Hz')
+        axs[0].plot(freqList, fftData[0])
+        axs[0].set_yscale('log')
+        axs[0].set_ylabel(f"Magnigude (dB)")
+        #axs[0].set_ylim(bottom=1e-7, top=None)
+        #axs[0].set_xlim([0,15])
+        #axs[0].grid(which="both")
+        axs[0].minorticks_on()
+        axs[0].grid(True, which='minor', linestyle=':', alpha=0.2)
+        axs[0].grid(True, which='major', linestyle='-', alpha=0.6)
+
+        axs[1].plot(freqList, np.degrees(fftData[1]))
+        axs[1].set_ylabel(f"Phase (deg)")
+        axs[1].set_xlabel(f"Frequency (Hz, 1/f0)")
+        axs[1].minorticks_on()
+        axs[1].grid(True, which='minor', linestyle=':', alpha=0.2)
+        axs[1].grid(True, which='major', linestyle='-', alpha=0.6)
+        axs[1].set_ylim([-180, 180])
+
+        if save:
+            timeDFileName = f"{self.wavelet_name}_freqD.jpg"
+            timeDFileNamePath = f"{saveDir}/{timeDFileName}"
+            logger.info(f"Saving Wavelet Plots: {timeDFileNamePath}")
+            plt.savefig(timeDFileNamePath)
+
+        if show:
+            plt.show()

@@ -421,6 +421,7 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
         #rgb_data = cwt_class.get3ChData(chList, data_preparation.data[:, dataumNumber, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
         #logger.info(f"rgb_data: {type(rgb_data)}, {rgb_data.shape}")
         #rgb_data is: Numpy Array (Height, width, ch)
+        #rgb_data = np.log10(rgb_data)
         axs[1, 1].imshow(rgb_data, aspect='auto')
 
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")

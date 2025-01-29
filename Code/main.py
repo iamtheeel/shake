@@ -12,6 +12,7 @@
 import os, sys
 import datetime
 import csv
+import numpy as np
 
 from torchinfo import summary
 
@@ -221,20 +222,34 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     # TODO: Set to save the transformed data
     if wavelet_base != "None":
-        if wavelet_base != "mexh":
+        if wavelet_base == "mexh": #No arguments
+            wavelet_name = wavelet_base
+        else: 
             wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
-        cwt_class.setupWavelet(wavelet_name)
-        cwt_class.setFreqScale(freqLogScale=True)
+        cwt_class.setupWavelet(wavelet_name, useLogForFreq=True)
+        #cwt_class.setFreqScale(freqLogScale=True)
+        cwt_class.plotWavelet(saveDir=outputDir, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
+        logger.info(f"Load the cwt data, or generate if it does not exist")
         data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
     #Make sure we start with a fresh dataset
-    data_preparation.resetData(wavelet_name=wavelet_name)
+    data_preparation.resetData(wavelet_name=wavelet_name) #Will copy the cwt data to data
     logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
+    #Log scale the data
+    if(logScaleData):
+        logger.info(f"data type: {type(data_preparation.data)}, shape: {data_preparation.data.shape}")
+        logdata = np.log10(data_preparation.data)
+        #unwrap the phase, this is computationaly expensive
+        data_preparation.data = logdata + 2j * np.pi * np.floor(np.angle(data_preparation.data) / (2 * np.pi)) 
+        max = np.max(np.abs(data_preparation.data))
+        min = np.min(np.abs(data_preparation.data))
+        logger.info(f"log scale | max: {max}, min: {min}")
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
     logger.info(f"Norm the data: {dataScaler}, {dataScale}")
     data_preparation.data_norm, data_preparation.dataNormConst = data_preparation.scale_data(data_preparation.data, dataScaler, logfile, dataScale)
+
     if configs['model']['regression']: 
         logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
         data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, labelScaler, logfile, labelScale)
@@ -242,7 +257,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     if configs['plts']['saveFilesForAnimation']:
         expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}"
-        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=True, expDir=expDir) 
+        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=False, expDir=expDir) 
 
     logger.info(f"Get Model")
     model_name = configs['model']['name']
@@ -304,7 +319,7 @@ expNum = 1
 for wavelet_base in configs['cwt']['wavelet']:
     for center_freq in configs['cwt']['waveLet_center_freq']:
         for bandwidth in configs['cwt']['waveLet_bandwidth']:
-            for logScaleData in [True]: #not implemented yet
+            for logScaleData in [False]: #Probably not interesting
 
                 for dataScaler in configs['data']['dataScalers']:
                     #TODO: Normalize the cwt data by dividing both the real and image by the magnitude

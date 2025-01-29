@@ -52,6 +52,7 @@ class jFFT_cl:
 
         #print("data mag = {} phase = {}".format(data_mag, data_pha))
         #print("data mag/phase {}{} = {} ".format(type(data_mf), data_mf.shape, data_mf))
+        #print("data mag/phase {}{} ".format(type(data_mf), data_mf.shape))
         #thisVal = 1
         #print("riToMF: mag/phase mag = {} phase = {} ".format(data_mag[thisVal], data_pha[thisVal]))
         #print("riToMF: data mag/phase mag = {} phase = {} ".format(data_mf[0][thisVal], data_mf[1][thisVal]))

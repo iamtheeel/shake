@@ -603,7 +603,7 @@ class dataLoader:
         normData = (data - norm.mean)/norm.std # standardise
 
         self.logScaler(logFile, norm)
-        logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        logger.info(f"newmin: {np.abs(np.min(normData))},  newmax: {np.abs(np.max(normData))}")
         return normData, norm
 
     def norm_data(self, data, logFile, scaler, scale):
@@ -633,7 +633,7 @@ class dataLoader:
             writer.writerow(['min', 'max', 'mean', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
             writer.writerow(['---------'])
-        logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {scaler.mean}, scale: {scaler.scale}")
+        logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, scale: {scaler.scale}")
     
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
