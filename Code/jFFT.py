@@ -28,16 +28,23 @@ class jFFT_cl:
     #def __del__(self):
         #print("jFFT_cl.__del__")
 
-    def getFreqs(self, sRate, tBlockLen):
-        freqs = numpy.fft.rfftfreq(tBlockLen, d=1.0/sRate)
+    def getFreqs(self, sRate, tBlockLen, complex = False):
+        if complex:
+            freqs = numpy.fft.fftfreq(tBlockLen, d=1.0/sRate)
+        else:
+            freqs = numpy.fft.rfftfreq(tBlockLen, d=1.0/sRate)
         self.deltaF = freqs[1]
         self.fMax =freqs[len(freqs)-1]
         #print("jFFT.getFreqs: deltaF = {}Hz, fMax = {}Hz".format(self.deltaF, self.fMax) )
         return freqs
 
-    def calcFFT(self, timeData, debug=False):
+    def calcFFT(self, timeData, complex= False, debug=False):
         # run FFT
-        fftDataBlock_ri = numpy.fft.rfft(timeData)
+        if complex == False:
+            fftDataBlock_ri = numpy.fft.rfft(timeData)
+        else: 
+            fftDataBlock_ri = numpy.fft.fft(timeData)
+            fftDataBlock_ri = numpy.fft.fftshift(fftDataBlock_ri) #Re-center so neg is before pos
 
         # for debuging
         #print("jFFT_cl.calcFFT: yDataFreq:{} = {}".format(fftDataBlock_ri.shape, fftDataBlock_ri)) 

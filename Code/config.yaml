@@ -71,9 +71,9 @@ cwt:
     doCWT: True
     #wavelet: ["cmor"] #"None" for no CWT
     wavelet: ["cmor", "mexh"]
-    waveLet_center_freq:  [10]
-    waveLet_bandwidth: [0.8] #[0.8]
-    #waveLet_bandwidth: [0.7]
+    waveLet_center_freq:  [1, 10]
+    #waveLet_bandwidth: [0.8] 
+    waveLet_bandwidth: [1, 2] 
     rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high

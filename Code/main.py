@@ -90,6 +90,10 @@ def writeLogHdr(logfile, dataConfigs):
         writer.writerow(['stepSize', configs['data']['stepSize']])
         writer.writerow(['batchSize', configs['data']['batchSize']])
 
+        writer.writerow(['wavelets', configs['cwt']['wavelet']])
+        writer.writerow(['centerFreqs', configs['cwt']['waveLet_center_freq']])
+        writer.writerow(['bandwidths', configs['cwt']['waveLet_bandwidth']])
+
         writer.writerow(['dataScalers', configs['data']['dataScalers']])
         writer.writerow(['labelScalers', configs['data']['labelScalers']])
         writer.writerow(['dataScale_values', configs['data']['dataScale_values']])
@@ -225,7 +229,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         if wavelet_base == "mexh": #No arguments
             wavelet_name = wavelet_base
         else: 
-            wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
+            wavelet_name = f"{wavelet_base}-{wavelet_center_freq}-{wavelet_bandwidth}"
         cwt_class.setupWavelet(wavelet_name, useLogForFreq=True)
         #cwt_class.setFreqScale(freqLogScale=True)
         cwt_class.plotWavelet(saveDir=outputDir, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
@@ -317,8 +321,13 @@ expNum = 1
 # Bandwidth
 # logData
 for wavelet_base in configs['cwt']['wavelet']:
-    for center_freq in configs['cwt']['waveLet_center_freq']:
-        for bandwidth in configs['cwt']['waveLet_bandwidth']:
+    centerFreqs = configs['cwt']['waveLet_center_freq']
+    bandwidths = configs['cwt']['waveLet_bandwidth']
+    if wavelet_base == 'mexh':
+        centerFreqs = [1]
+        bandwidths = [1]
+    for center_freq in centerFreqs:
+        for bandwidth in bandwidths:
             for logScaleData in [False]: #Probably not interesting
 
                 for dataScaler in configs['data']['dataScalers']:
@@ -353,4 +362,5 @@ for wavelet_base in configs['cwt']['wavelet']:
                                                             wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData,
                                                             dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
                                                             lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+
                                                     expNum += 1

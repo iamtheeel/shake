@@ -196,10 +196,12 @@ class cwt:
 
     def plotWavelet(self, sRate=0, saveDir="", show = False, save = True):
         # Get the wavelet function values
+        complexInput = True
+        if self.wavelet_name == "mexh" : complexInput = False
 
         # Plot the time Domain
         plt.figure(figsize=(10, 8))
-        plt.title(f'{self.wavelet_name} wavelet')
+        plt.title(f'{self.wavelet_name} [f0, bw] wavelet')
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
         plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
         plt.xlabel('Time')
@@ -209,26 +211,31 @@ class cwt:
         if save:
             timeDFileName = f"{self.wavelet_name}_timeD.jpg"
             timeDFileNamePath = f"{saveDir}/{timeDFileName}"
-            logger.info(f"Saving Wavelet Plots: {timeDFileNamePath}")
+            logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
             plt.savefig(timeDFileNamePath)
 
         # Bode plot
         fftClass = jFFT_cl()
         #ch, datapoint
         nSamp = len(self.wavelet_Time)
-        logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
+        #logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
         #logger.info(f"{self.wavelet_Time}")
         waveletDt = self.wavelet_Time[1] - self.wavelet_Time[0]
         if sRate == 0:
             sRate = 1/waveletDt
-        freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp)
-        fftData = fftClass.calcFFT(self.wavelet_fun) #mag, phase
-        logger.info(f"Freq D | shape : {fftData.shape}")
+        freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp, complex=complexInput)
+        #logger.info(f"Freq D | shape : {fftData.shape}")
+        #logger.info(f"{freqList}")
+        fftData = fftClass.calcFFT(self.wavelet_fun, complex=complexInput) #mag, phase
+
+        if complexInput: #Re-center so neg is before positive
+            freqList = np.fft.fftshift(freqList)
+
 
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
-        fig.suptitle(f'{self.wavelet_name} wavelet, Data Sample Rate: {sRate}Hz')
+        fig.suptitle(f'{self.wavelet_name} [f_0, bw] wavelet, Data Sample Rate: {sRate}Hz')
         axs[0].plot(freqList, fftData[0])
         axs[0].set_yscale('log')
         axs[0].set_ylabel(f"Magnigude (dB)")
@@ -239,13 +246,16 @@ class cwt:
         axs[0].grid(True, which='minor', linestyle=':', alpha=0.2)
         axs[0].grid(True, which='major', linestyle='-', alpha=0.6)
 
-        axs[1].plot(freqList, np.degrees(fftData[1]))
+        phase = fftData[1]
+        #phase[fftData[0] < 1e-12] = np.nan #If the mag is tiny, no phase
+        unwrapped_phase = np.unwrap(phase)
+        axs[1].plot(freqList, np.degrees(unwrapped_phase))
         axs[1].set_ylabel(f"Phase (deg)")
-        axs[1].set_xlabel(f"Frequency (Hz, 1/f0)")
+        axs[1].set_xlabel(f"Frequency (Hz, for Sam Rate)")
         axs[1].minorticks_on()
         axs[1].grid(True, which='minor', linestyle=':', alpha=0.2)
         axs[1].grid(True, which='major', linestyle='-', alpha=0.6)
-        axs[1].set_ylim([-180, 180])
+        #axs[1].set_ylim([-180, 180])
 
         if save:
             timeDFileName = f"{self.wavelet_name}_freqD.jpg"
