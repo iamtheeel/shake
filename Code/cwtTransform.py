@@ -120,22 +120,21 @@ class cwt:
         #data comming in as ch, freq, time
         rgb_data = np.zeros((data_coefficients.shape[1], data_coefficients.shape[2], nCh)) #Height(freq), width(time), ch
         #logger.info(f"data: {data_coefficients.shape}, rgb_data: {rgb_data.shape}")
+        if normTo_max == 0: 
+            normTo_min = np.min(np.abs(data_coefficients))
+            normTo_max = np.max(np.abs(data_coefficients))
+            # Normalize each channel's data to 0-1 range and assign to RGB channels
+            logger.info(f"get3ChData | normTo_max: {normTo_max}, normTo_min: {normTo_min}")
 
-        # Normalize each channel's data to 0-1 range and assign to RGB channels
-        logger.info(f"get3ChData | normTo_max: {normTo_max}, normTo_min: {normTo_min}")
         for i, thisCh in enumerate(plotChList):
             #Data comming in as (ch, freq, time)
             channel_data = np.abs(data_coefficients[dataChList.index(thisCh),:,:]) # Converts real/imag to mag
-            if normTo_max == 0: 
-                norm_max = np.max(channel_data)
-                norm_min = np.min(channel_data)
-                if norm_max > self.maxData: self.maxData = norm_max
-                if norm_min < self.minData: self.minData = norm_min
-            else:
-                norm_min = normTo_min
-                norm_max = normTo_max
+
+            norm_min = normTo_min
+            norm_max = normTo_max
 
             normalized_data = (channel_data - norm_min) / (norm_max - norm_min)
+            #normalized_data = channel_data
             #logger.info(f"channel {thisCh} channel_data: {channel_data.shape}, {channel_data.max()}, {channel_data.min()}")
             #logger.info(f"channel {thisCh} normalized_data: {normalized_data.shape}, {normalized_data.max()}, {normalized_data.min()}")
 
@@ -194,14 +193,15 @@ class cwt:
         time_labels = valid_ticks * self.samplePeriod
         return valid_ticks, time_labels
 
-    def plotWavelet(self, sRate=0, saveDir="", show = False, save = True):
+    def plotWavelet(self, expNum, sRate=0, saveDir="", show = False, save = True):
         # Get the wavelet function values
         complexInput = True
         if self.wavelet_name == "mexh" : complexInput = False
 
         # Plot the time Domain
+        titleStr = f"Exp: {expNum}, {self.wavelet_name} [a=f0, b=bw]"
         plt.figure(figsize=(10, 8))
-        plt.title(f'{self.wavelet_name} [f0, bw] wavelet')
+        plt.title(f'{titleStr}')
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
         plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
         plt.xlabel('Time')
@@ -213,6 +213,9 @@ class cwt:
             timeDFileNamePath = f"{saveDir}/{timeDFileName}"
             logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
             plt.savefig(timeDFileNamePath)
+        if show:
+            plt.show()
+        plt.close()
 
         # Bode plot
         fftClass = jFFT_cl()
@@ -235,7 +238,7 @@ class cwt:
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
-        fig.suptitle(f'{self.wavelet_name} [f_0, bw] wavelet, Data Sample Rate: {sRate}Hz')
+        fig.suptitle(f'{titleStr}, Data Sample Rate: {sRate}Hz')
         axs[0].plot(freqList, fftData[0])
         axs[0].set_yscale('log')
         axs[0].set_ylabel(f"Magnigude (dB)")
@@ -265,3 +268,4 @@ class cwt:
 
         if show:
             plt.show()
+        plt.close()

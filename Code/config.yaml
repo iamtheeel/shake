@@ -11,7 +11,7 @@ debugs:
 plts:
     pltDir: "../plots"
     animDir: "/Volumes/Data/thesis/animations"
-    saveFilesForAnimation: False
+    saveFilesForAnimation: True
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -54,12 +54,13 @@ data:
 
     batchSize: 1 #256 #Should be power of 2
 
-    dataScalers: ["std"]
+    dataScalers: ["meanNorm"]
+    #dataScalers: ["std", "meanNorm"]
     labelScalers: ["std"]
     #dataScalers: ["meanNorm", "minMaxNorm", "std"]
     #labelScalers: ["meanNorm", "minMaxNorm", "std"]
     #scalers: ["meanNorm", "std", "minMaxNorm"]
-    dataScale_values: [1] 
+    dataScale_values: [1]   #
     labelScale_values: [1] 
     #scale: 100 # Classification
 
@@ -71,16 +72,16 @@ cwt:
     doCWT: True
     #wavelet: ["cmor"] #"None" for no CWT
     wavelet: ["cmor", "mexh"]
-    waveLet_center_freq:  [1, 10]
-    #waveLet_bandwidth: [0.8] 
-    waveLet_bandwidth: [1, 2] 
+    waveLet_center_freq:  [10]
+    waveLet_bandwidth: [0.8] 
+    #waveLet_bandwidth: [1, 2] 
     rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
     #normTo_max: 0.008 #0 for none
     #normTo_min: 0
-    normTo_max: 10 #11.15 #Max for log scale
-    normTo_min: 1.81
+    normTo_max: 0 #10 #11.15 #Max for log scale
+    normTo_min: 0 #1.81
     #normTo_max: 8.708692765932984 #Max for log scale
     #normTo_max: 8.92159461776423 #Max for log scale
     logScale: False
@@ -97,7 +98,7 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    epochs: [1]
+    epochs: [3]
     seed: 4601
 
 model: 

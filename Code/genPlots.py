@@ -324,8 +324,17 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
         animDir = os.path.join(configs['plts']['animDir'], expDir)
         os.makedirs(animDir, exist_ok=True)
 
+    #For the cwt data
+    normTo_max = configs['cwt']['normTo_max'] 
+    normTo_min = configs['cwt']['normTo_min'] 
+    if normTo_max == 0: 
+        fudge = 4
+        normTo_max = np.max(np.abs(data_preparation.data))/fudge
+    if normTo_min == 0:
+        normTo_min = np.min(np.abs(data_preparation.data))#*fudge
+    logger.info(f"plot cwt data | normTo_max: {normTo_max}, normTo_min: {normTo_min}")
+
     dataEnd = data_preparation.data.shape[0]
-    #dataEnd = 10
     for dataumNumber in range(0, dataEnd):
         #This will get moved out of the loop when we animate
         fig, axs = plt.subplots(2, 2, figsize=(16,12)) #w, h figsize in inches?
@@ -379,8 +388,6 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
             axs[0, 1].plot(time, chData, color=thisColor) #Col, row
             axs[0, 1].set_ylabel(f'Amplitude (accl)', fontsize=8)
 
-            # Plot the Time domain data
-            #plotInLine(data, "foobar", "barfoo", data_preparation.dataConfigs.sampleRate_hz, show=True)
 
             # Plot the Frequency domain data
             if asLogScale: #Is the mag log scale?
@@ -413,15 +420,12 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
         axs[0, 0].legend()
 
         # Plot the wavelet transformed data
-        normTo_max = configs['cwt']['normTo_max'] #If 0, then norm each channel to its max 
-        normTo_min = configs['cwt']['normTo_min'] #If 0, then norm each channel to its min 
         # Data is cwt: time window number, ch, freq, time
         #logger.info(f"cwtData: {type(data_preparation.data)}, {data_preparation.data.shape}, {type(data_preparation.data[0,0,0,0])}")
         rgb_data = cwt_class.get3ChData(chList, data_preparation.data[dataumNumber, :, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
         #rgb_data = cwt_class.get3ChData(chList, data_preparation.data[:, dataumNumber, :], data_preparation.dataConfigs.chList, normTo_max, normTo_min)
         #logger.info(f"rgb_data: {type(rgb_data)}, {rgb_data.shape}")
         #rgb_data is: Numpy Array (Height, width, ch)
-        #rgb_data = np.log10(rgb_data)
         axs[1, 1].imshow(rgb_data, aspect='auto')
 
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")

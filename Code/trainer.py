@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep,  configs, logFile, logDir, expNum, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    def __init__(self,model, device, dataPrep,  configs, logFile, logDir, expNum, waveletName, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
         self.device = device
 
         self.dataPrep = dataPrep
@@ -60,7 +60,8 @@ class Trainer:
         torch.backends.cudnn.benchmark = False
 
         self.set_training_config()
-        self.hyperPeramStr = f"exp:{self.expNum}, loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}, epochs:{self.epochs}"  
+        self.hyperPeramStr = f"exp:{self.expNum}, wavelet: {waveletName}, scale: {scaleStr}\n" \
+                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}, epochs:{self.epochs}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
     def set_training_config(self):
@@ -240,7 +241,7 @@ class Trainer:
         #print(f"Loss shape: {len(lossArr)}")
         nPlots = 2
         fig, axis = plt.subplots(nPlots, 1)
-        fig.subplots_adjust(top = 0.92, hspace = .05, left= 0.125, right = 0.99)
+        fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
         axis[0].plot(range(len(lossArr)), lossArr)    
         axis[0].set_title(f"{self.hyperPeramStr}")
         axis[0].set_ylabel("Training Loss")

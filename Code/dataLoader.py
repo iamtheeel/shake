@@ -32,6 +32,8 @@ class normClass:
     max: Optional[float] = None 
     mean: Optional[float] = None
     std: Optional[float] = None
+    immean: Optional[float] = None
+    imstd: Optional[float] = None
     scale: Optional[float] = None
 
 class dataConfigs:
@@ -546,8 +548,12 @@ class dataLoader:
             data = data.numpy()
             isTensor = True
 
-        if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile)
-        else:               dataScaled, scalerClass = self.norm_data(data, logFile, scaler, scale)
+        if np.iscomplexobj(data):
+            if scaler == "std": dataScaled, scalerClass = self.std_complexData(data, logFile)
+            else:               dataScaled, scalerClass = self.norm_complexData(data, logFile)
+        else:
+            if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile)
+            else:               dataScaled, scalerClass = self.norm_data(data, logFile, scaler, scale)
 
         scalerClass.type = scaler
 
@@ -591,6 +597,21 @@ class dataLoader:
 
         return data
 
+    def std_complexData(self, data, logFile):
+        real = np.real(data)
+        imag = np.imag(data)
+        norm = normClass(type="std", mean=np.mean(real),   std=np.std(real)
+                                   , immean=np.mean(imag), imstd=np.std(imag))
+
+        stdised_real = (real - norm.mean)/norm.std
+        stdised_imag = (imag - norm.immean)/norm.imstd
+
+        normData = stdised_real + 1j * stdised_imag
+
+        self.logScaler(logFile, norm, complex=True)
+        logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
+        return normData, norm
+
     def std_data(self, data, logFile):
         # Normalize the data
         # float: from 0 to 1
@@ -603,7 +624,16 @@ class dataLoader:
         normData = (data - norm.mean)/norm.std # standardise
 
         self.logScaler(logFile, norm)
-        logger.info(f"newmin: {np.abs(np.min(normData))},  newmax: {np.abs(np.max(normData))}")
+        logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
+        return normData, norm
+
+    def norm_complexData(self, data, logFile):
+        #L2 norm is frobenious_norm, saved as mean
+        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.linalg.norm(data))
+        normData = data/norm.mean
+
+        self.logScaler(logFile, norm)
+        logger.info(f"l2 norm: {norm.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
     def norm_data(self, data, logFile, scaler, scale):
@@ -618,20 +648,40 @@ class dataLoader:
             normTo = norm.min
             adjustMin = newMin
 
-        normData = adjustMin + (newMax - newMin)*(data-normTo)/(norm.max - norm.min) 
+        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(norm.max - norm.min) 
 
         self.logScaler(logFile, norm)
         logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
+    def logScale_Data(self, data, logFile):
+        logger.info(f"Convert data to log scale | type: {type(data)}, shape: {data.shape}")
+
+        logdata = np.log10(data)
+        #unwrap the phase, this is computationaly expensive
+        data = logdata + 2j * np.pi * np.floor(np.angle(data) / (2 * np.pi)) 
+
+        max = np.max(np.abs(data))
+        min = np.min(np.abs(data))
+
+        logger.info(f"log scale | max: {max}, min: {min}")
+        with open(logFile, 'a', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow([f'--------- Convert Datq to log  -------'])
+            writer.writerow(['min', 'max'])
+
     #def logScaler(self, logFile, scaler, name_a, name_b, data_a, data_b, scale=1):
-    def logScaler(self, logFile, scaler ):
+    def logScaler(self, logFile, scaler:normClass, complex=False):
         # TODO:write min, man, std, mean, scail for everybody
         with open(logFile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow([f'--------- {scaler.type}  -------'])
-            writer.writerow(['min', 'max', 'mean', 'scale'])
-            writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
+            writer.writerow([f'--------- {scaler.type}, complex: {complex} -------'])
+            if complex:
+                writer.writerow(['min', 'max', 'real mean', 'imag mean', 'scale'])
+                writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.immean,scaler.scale])
+            else:
+                writer.writerow(['min', 'max', 'mean', 'scale'])
+                writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
             writer.writerow(['---------'])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, scale: {scaler.scale}")
     

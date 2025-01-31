@@ -232,7 +232,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
             wavelet_name = f"{wavelet_base}-{wavelet_center_freq}-{wavelet_bandwidth}"
         cwt_class.setupWavelet(wavelet_name, useLogForFreq=True)
         #cwt_class.setFreqScale(freqLogScale=True)
-        cwt_class.plotWavelet(saveDir=outputDir, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
+        cwt_class.plotWavelet(saveDir=outputDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
         logger.info(f"Load the cwt data, or generate if it does not exist")
         data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
@@ -241,14 +241,10 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
     logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
     #Log scale the data
+    scaleStr = f"d: {dataScaler} {dataScale}, l: {labelScaler} {labelScale}"
     if(logScaleData):
-        logger.info(f"data type: {type(data_preparation.data)}, shape: {data_preparation.data.shape}")
-        logdata = np.log10(data_preparation.data)
-        #unwrap the phase, this is computationaly expensive
-        data_preparation.data = logdata + 2j * np.pi * np.floor(np.angle(data_preparation.data) / (2 * np.pi)) 
-        max = np.max(np.abs(data_preparation.data))
-        min = np.min(np.abs(data_preparation.data))
-        logger.info(f"log scale | max: {max}, min: {min}")
+        data_preparation.data = data_preparation.logScale_Data(data_preparation.data, logFile=logfile)
+        scaleStr = f"{scaleStr}, Log"
 
     #logger.info(f"data: {type(data)}, labels: {type(labels)}")
     logger.info(f"Norm the data: {dataScaler}, {dataScale}")
@@ -260,7 +256,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         #print(f"{data_preparation.labNormConst.type}")
 
     if configs['plts']['saveFilesForAnimation']:
-        expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}"
+        expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
         saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=False, expDir=expDir) 
 
     logger.info(f"Get Model")
@@ -278,8 +274,9 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         data_preparation.createDataloaders(expNum) 
 
         logger.info(f"Load Trainer")
+        # Data scaling info?
         trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
-                          lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                           waveletName=wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
         logger.info(f"Run Validation")
