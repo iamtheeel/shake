@@ -442,48 +442,48 @@ def get_scales(wavelet, min_freq, max_freq, fs, nscales=300):
 #-------------------------------------------------------------------------------
 # --------------------------Example usage#%% ----------------------------------
 #-------------------------------------------------------------------------------
+def fstWvt_ex()
+    import os
+    import h5py
 
-import os
-import h5py
-
-data_folder = 'data'
-with h5py.File(os.path.join(data_folder, 'one_step_plate_test.hdf5'), 'r') as hdf:
+    data_folder = 'data'
+    with h5py.File(os.path.join(data_folder, 'one_step_plate_test.hdf5'), 'r') as hdf:
     
-    experiment_group = hdf['/experiment']
+        experiment_group = hdf['/experiment']
 
-    dataset = experiment_group['data']
-    print(dataset.shape[0])
-    all_data =[]
-    for i in range(dataset.shape[0]):
-        data_i = []
-        for j in range(dataset.shape[1]):
-            data_i.append(dataset[i][j])
-        all_data.append(data_i)
+        dataset = experiment_group['data']
+        print(dataset.shape[0])
+        all_data =[]
+        for i in range(dataset.shape[0]):
+            data_i = []
+            for j in range(dataset.shape[1]):
+                data_i.append(dataset[i][j])
+            all_data.append(data_i)
     
 
-# Access the Steps Data
-trial_i , sensor_i = 0, 0
-signal =  all_data[trial_i][sensor_i]
+    # Access the Steps Data
+    trial_i , sensor_i = 0, 0
+    signal =  all_data[trial_i][sensor_i]
 
-fs = 2048
-record_length = int(len(signal)/fs)
-time = np.linspace(0, record_length,len(signal)) # Time vector for 10 seconds of data
+    fs = 2048
+    record_length = int(len(signal)/fs)
+    time = np.linspace(0, record_length,len(signal)) # Time vector for 10 seconds of data
 
-nscales = 300
-scales_hstep, frequencies_hstep= get_scales(wavelet= 'fstep_wavelet', 
+    nscales = 300
+    scales_hstep, frequencies_hstep= get_scales(wavelet= 'fstep_wavelet', 
                                             min_freq=0.5, max_freq=50, fs=fs, 
                                             nscales=nscales)
-coefficients_hstep, frequencies_hstep = foot_step_cwt(signal, scales_hstep, 
+    coefficients_hstep, frequencies_hstep = foot_step_cwt(signal, scales_hstep, 
                                                       sampling_period=1/(fs))
 
 
-fig, ax = plt.subplots(1,1, figsize=(15, 10), sharey=True, sharex=True)
-cwt_image_hstep = ax.imshow(np.abs(coefficients_hstep), aspect='auto', 
+    fig, ax = plt.subplots(1,1, figsize=(15, 10), sharey=True, sharex=True)
+    cwt_image_hstep = ax.imshow(np.abs(coefficients_hstep), aspect='auto', 
                             cmap='viridis',extent=[time[0], time[-1], 
                                                    frequencies_hstep[0], 
                                                    frequencies_hstep[-1]])
-ax.set_title(' Foot-Step CWT Scalogram')
-ax.set_ylabel('Frequency [Hz]')
-fig.colorbar(cwt_image_hstep, ax=ax, label='Coefficients')
+    ax.set_title(' Foot-Step CWT Scalogram')
+    ax.set_ylabel('Frequency [Hz]')
+    fig.colorbar(cwt_image_hstep, ax=ax, label='Coefficients')
 
 
