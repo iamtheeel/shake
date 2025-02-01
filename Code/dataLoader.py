@@ -733,7 +733,7 @@ class dataLoader:
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
-        logger.info(f"Starting transorm of data_raw: {type(timeData)}, {timeData.shape}")
+        logger.info(f"Starting transorm of data_raw (will apply norm later): {type(timeData)}, {timeData.shape}")
         timeStart = time.time()
         self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
         self.cwtData_raw = np.transpose(self.cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints

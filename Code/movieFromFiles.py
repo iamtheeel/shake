@@ -31,10 +31,15 @@ import glob
 fps = 5 #Frames per second, 2 fps corrupts the video
 
 subject  = 2
-runs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+#runs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+runs = [1, 2]
 #thisDir = 'plots_CH765'
 #thisDir = 'plots_765_chFrameNorm'
-thisDir = 'plots_765_maxNorm_0.008'
+#thisDir = 'plots_765_maxNorm_0.008'
+#thisDir = 'run-1_cmor-10-0.8_logScaleData-False_dataScaler-meanNorm_dataScale-1'
+#thisDir = 'exp-1_cmor-10-0.8_logScaleData-False_dataScaler-meanNorm_dataScale-1'
+#thisDir = 'exp-1_cmor-10-0.8_logScaleData-False_dataScaler-meanNorm_dataScale-1_ch654'
+thisDir = 'exp-2_mexh_logScaleData-False_dataScaler-meanNorm_dataScale-1_ch654'
 
 fileDir = f"{configs['plts']['animDir']}"
 #fourcc = cv2.VideoWriter_fourcc(*'mp4v') #This makes green, and only green
@@ -44,9 +49,9 @@ fourcc = cv2.VideoWriter_fourcc(*'avc1')
 
 for run in runs:
     outFile = None
-    outFileName = f"{fileDir}/{thisDir}_subject-{subject}_run-{run}_fps-{fps}.mp4"
-    #fileStr = f"{fileDir}/{thisDir}/*_subject-{subject}_run-{run}*.png" # Newer files
-    fileStr = f"{fileDir}/{thisDir}/*_run-{run}_subject-{subject}*.png" # earlyer files
+    outFileName = f"{fileDir}/{thisDir}/subject-{subject}_run-{run}_fps-{fps}.mp4"
+    #fileStr = f"{fileDir}/{thisDir}/*_run-{run}_subject-{subject}*.png" # earlyer files
+    fileStr = f"{fileDir}/{thisDir}/images/*_subject-{subject}_run-{run}*.png" # Newer files
     logger.info(f"Processing: {fileStr}")
 
     try:            

@@ -166,16 +166,6 @@ from cwtTransform import cwt
 # The hyperperamiters setup for expTracking
 cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
 
-'''
-wavelet_base = configs['cwt']['wavelet'][0]
-wavelet_name = f"{wavelet_base}-{configs['cwt']['waveLet_center_freq'][0]}-{configs['cwt']['waveLet_bandwidth'][0]}"
-cwt_class.setupWavelet(wavelet_name)
-cwt_class.setFreqScale(freqLogScale=True)
-data_preparation.resetData() #makes a fresh copy of the data and labels from _raw
-#cwt_class.plotWavelet()
-saveMovieFrames(data_preparation, cwt_class)
-#exit()
-'''
 
 
 #Get the data for the wavelet transform
@@ -226,18 +216,13 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     # TODO: Set to save the transformed data
     if wavelet_base != "None":
-        if wavelet_base == "mexh": #No arguments
-            wavelet_name = wavelet_base
-        else: 
-            wavelet_name = f"{wavelet_base}-{wavelet_center_freq}-{wavelet_bandwidth}"
-        cwt_class.setupWavelet(wavelet_name, useLogForFreq=True)
-        #cwt_class.setFreqScale(freqLogScale=True)
+        cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=True)
         cwt_class.plotWavelet(saveDir=outputDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
         logger.info(f"Load the cwt data, or generate if it does not exist")
         data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
     #Make sure we start with a fresh dataset
-    data_preparation.resetData(wavelet_name=wavelet_name) #Will copy the cwt data to data
+    data_preparation.resetData(wavelet_name=cwt_class.wavelet_name) #Will copy the cwt data to data
     logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
     #Log scale the data
@@ -256,14 +241,14 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         #print(f"{data_preparation.labNormConst.type}")
 
     if configs['plts']['saveFilesForAnimation']:
-        expDir = f"run-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
+        expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
         saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=False, expDir=expDir) 
 
     logger.info(f"Get Model")
     model_name = configs['model']['name']
     dataShape = data_preparation.data.shape[1:] #Runs, Ch, Freqs, TimePts
     dataShape = (configs['data']['batchSize'],) + dataShape #Batch, Runs, Ch, Freqs, TimePts
-    model = getModel(wavelet_name, model_name, dataShape)
+    model = getModel(cwt_class.wavelet_name, model_name, dataShape)
     if configs['debugs']['saveModelInfo']: 
         saveSumary( outputDir, dateTime_str, model, dataShape)
 
@@ -276,7 +261,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         logger.info(f"Load Trainer")
         # Data scaling info?
         trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
-                           waveletName=wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                           waveletName=cwt_class.wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
         logger.info(f"Run Validation")

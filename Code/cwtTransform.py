@@ -8,6 +8,9 @@
 ###
 import numpy as np
 import pywt
+from foot_step_wavelet import FootStepWavelet
+
+
 import matplotlib.pyplot as plt
 from jFFT import jFFT_cl
 import logging
@@ -30,13 +33,21 @@ class cwt:
         self.minData = 1000000.0
         self.maxData = 0.0
 
-    def setupWavelet(self, wavelet_name, useLogForFreq ):
+    def setupWavelet(self, wavelet_name, f0=1.0, bw=1.0, useLogForFreq=False):
+        if wavelet_name == "mexh" or wavelet_name == "fstep": #No arguments, arguments handled seperately
+            wavelet_name = wavelet_name
+        else: 
+            wavelet_name = f"{wavelet_name}-{f0}-{bw}"
         # The wavelet
         self.wavelet_name = wavelet_name
 
         self.numScales = 240#480 #This is the height of the image
 
-        self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
+        if self.wavelet_name == 'fstep':
+            self.wavelet = FootStepWavelet(central_frequency=f0)
+        else:
+            #Center freq and bw are imbedded in the name
+            self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         self.level = 8 #Number of iterations, for descrete wavelets
         self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
 
@@ -45,25 +56,28 @@ class cwt:
 
         self.setFreqScale(freqLogScale=useLogForFreq)
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
+
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
         min_freq = 5 #Hz
         max_freq = self.sampleRate_hz/2 #Nyquist
-        if freqLogScale:
-            central_freq = pywt.central_frequency(self.wavelet)
-            min_scale = central_freq / (max_freq * self.samplePeriod)
-            max_scale = central_freq / (min_freq * self.samplePeriod)
-            self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
-            #self.scales = np.logspace(0, np.log10(self.numScales/2), self.numScales) # Aprox exponential scale
-            logger.info(f"Scales: {self.scales.shape}")
-        else:
-            # Use the wavelet's central frequency to create a linear scale
-            frequencies = np.linspace(max_freq, min_freq, self.numScales) # No 0 frequency
-            #frequencies = np.linspace(0, self.sampleRate_hz/2, self.numScales)
+
+        if self.wavelet_name != 'fstep':
             center_freq = pywt.central_frequency(self.wavelet)
-            self.scales = center_freq / (frequencies * self.samplePeriod)
+        else: 
+            center_freq = self.wavelet.central_frequency
+
+        min_scale = center_freq / (max_freq * self.samplePeriod)
+        max_scale = center_freq / (min_freq * self.samplePeriod)
+
+        if freqLogScale:
+            self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
+        else:
+            self.scales = np.linspace(min_scale, max_scale, self.numScales) 
+
+        self.frequencies = center_freq / (self.scales * self.samplePeriod) #not used
+        logger.info(f"Scales: {self.scales.shape}")
         #logger.info(f"Scales: {self.scales}")
-        #logger.info(f"Scales: {self.scales.shape}")
 
     def cwtTransform(self, data):
         # Perform continuous wavelet transform using the defined wavelet

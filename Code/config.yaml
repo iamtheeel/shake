@@ -32,7 +32,9 @@ data:
     #classes: [0, 1, 2, 3]
     classes: ['No Step', '001', '002', '003']
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    chList: [7, 6, 5] # Try for 3 color plot
+    chList: [6, 5, 4] # Try for 3 color plot
+    #chList: [10, 9, 8] # Try for 3 color plot
+    #chList: [7, 6, 5] # Try for 3 color plot
     #chList: [7, 8, 9, 10] # Test 2, Note: looking at 8Z. seems dead
     #chList: [7, 6, 5, 4, 3, 2, 16, 1] # Test 2, Note: Sensor 8Z seems dead
     #chList: [6, 5, 4, 3, 2, 1, 10, 9, 11, 12, 13] # test 3
@@ -43,7 +45,7 @@ data:
     limitWindowLen: 20 # Limit the number of windows to load
 
 
-    stompSens: [7, 8]
+    stompSens: [7, 6]
     #stompSens: [5, 6, 7]
     stompThresh: 0 #1.5 #If 0, then no stomp detection
     dataThresh: 0 #1.5 # If 0, then no, non-walking detection
@@ -70,8 +72,8 @@ cwt:
     # cmor give diagnal lines, no good
     # PUt this in exp track, and save the plots
     doCWT: True
-    #wavelet: ["cmor"] #"None" for no CWT
-    wavelet: ["cmor", "mexh"]
+    wavelet: ["fstep"] #"None" for no CWT
+    #wavelet: ["cmor", "mexh"]
     waveLet_center_freq:  [10]
     waveLet_bandwidth: [0.8] 
     #waveLet_bandwidth: [1, 2] 
