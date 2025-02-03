@@ -10,6 +10,7 @@
 import h5py, csv
 import numpy as np
 import copy
+import os
 
 import torch
 import torch.nn.functional as tFun
@@ -600,59 +601,59 @@ class dataLoader:
     def std_complexData(self, data, logFile):
         real = np.real(data)
         imag = np.imag(data)
-        norm = normClass(type="std", mean=np.mean(real),   std=np.std(real)
+        self.norm = normClass(type="std", mean=np.mean(real),   std=np.std(real)
                                    , immean=np.mean(imag), imstd=np.std(imag))
 
-        stdised_real = (real - norm.mean)/norm.std
-        stdised_imag = (imag - norm.immean)/norm.imstd
+        stdised_real = (real - self.norm.mean)/self.norm.std
+        stdised_imag = (imag - self.norm.immean)/self.norm.imstd
 
         normData = stdised_real + 1j * stdised_imag
 
-        self.logScaler(logFile, norm, complex=True)
+        self.logScaler(logFile, self.norm, complex=True)
         logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
-        return normData, norm
+        return normData, self.norm
 
     def std_data(self, data, logFile):
         # Normalize the data
         # float: from 0 to 1
         # 0.5 = center
 
-        norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
+        self.norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
         #logger.info(f"Orig: {data[0:3, 0:5, 0:2]}")
 
         # scale the data
-        normData = (data - norm.mean)/norm.std # standardise
+        normData = (data - self.norm.mean)/self.norm.std # standardise
 
-        self.logScaler(logFile, norm)
+        self.logScaler(logFile, self.norm)
         logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
-        return normData, norm
+        return normData, self.norm
 
     def norm_complexData(self, data, logFile):
         #L2 norm is frobenious_norm, saved as mean
-        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.linalg.norm(data))
-        normData = data/norm.mean
+        self.norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.linalg.norm(data))
+        normData = data/self.norm.mean
 
-        self.logScaler(logFile, norm)
-        logger.info(f"l2 norm: {norm.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
-        return normData, norm
+        self.logScaler(logFile, self.norm)
+        logger.info(f"l2 norm: {self.norm.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        return normData, self.norm
 
     def norm_data(self, data, logFile, scaler, scale):
-        norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
-        newMin = -norm.scale
-        newMax = norm.scale
+        self.norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
+        newMin = -self.norm.scale
+        newMax = self.norm.scale
 
         if scaler == 'meanNorm': 
-            normTo = norm.mean
+            normTo = self.norm.mean
             adjustMin = 0
         elif scaler == 'minMaxNorm': 
-            normTo = norm.min
+            normTo = self.norm.min
             adjustMin = newMin
 
-        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(norm.max - norm.min) 
+        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(self.norm.max - self.norm.min) 
 
-        self.logScaler(logFile, norm)
+        self.logScaler(logFile, self.norm)
         logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
-        return normData, norm
+        return normData, self.norm
 
     def logScale_Data(self, data, logFile):
         logger.info(f"Convert data to log scale | type: {type(data)}, shape: {data.shape}")
@@ -717,12 +718,14 @@ class dataLoader:
             fftData[ch] = freqData[0]
 
         return freqList, fftData
-    def getCWTData(self, cwt_class):
+    def getCWTData(self, cwt_class:cwt):
         cwtFile = f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy"
+        logger.info(f"Looking for: {cwtFile}")
         if self.dataSaveDir != "" and os.path.exists(cwtFile):
             logger.info(f"loading: {self.dataSaveDir}, cwtFile: {cwtFile}")
             self.loadCWTData(cwt_class)
         else: 
+            logger.info(f"Did not find, transrom with: {cwt_class.wavelet_name}")
             self.cwtTransofrmData(cwt_class)
 
     def loadCWTData(self, cwt_class):

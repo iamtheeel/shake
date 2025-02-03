@@ -8,7 +8,7 @@
 ###
 import numpy as np
 import pywt
-from foot_step_wavelet import FootStepWavelet
+from foot_step_wavelet import FootStepWavelet, foot_step_cwt
 
 
 import matplotlib.pyplot as plt
@@ -33,20 +33,30 @@ class cwt:
         self.minData = 1000000.0
         self.maxData = 0.0
 
-    def setupWavelet(self, wavelet_name, f0=1.0, bw=1.0, useLogForFreq=False):
-        if wavelet_name == "mexh" or wavelet_name == "fstep": #No arguments, arguments handled seperately
-            wavelet_name = wavelet_name
+        # List of wavelets
+        #wavelets = pywt.wavelist()
+        #print(wavelets)
+        self.wavelet_name=None
+
+    def setupWavelet(self, wavelet_base, f0=1.0, bw=1.0, useLogForFreq=False):
+        self.f0= f0
+        self.bw = bw
+        if wavelet_base == "mexh" or wavelet_base == "morl":
+            wavelet_name = wavelet_base
+        elif wavelet_base == "fstep": #No arguments, arguments handled seperately
+            wavelet_name = f"{wavelet_base}-{f0}"
         else: 
-            wavelet_name = f"{wavelet_name}-{f0}-{bw}"
+            wavelet_name = f"{wavelet_base}-{f0}-{bw}"
         # The wavelet
+        self.wavelet_base = wavelet_base
         self.wavelet_name = wavelet_name
 
         self.numScales = 240#480 #This is the height of the image
 
-        if self.wavelet_name == 'fstep':
+        if self.wavelet_base == 'fstep':
             self.wavelet = FootStepWavelet(central_frequency=f0)
         else:
-            #Center freq and bw are imbedded in the name
+            #Center freq and bw are imbedded in the name, or not used
             self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         self.level = 8 #Number of iterations, for descrete wavelets
         self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
@@ -62,7 +72,7 @@ class cwt:
         min_freq = 5 #Hz
         max_freq = self.sampleRate_hz/2 #Nyquist
 
-        if self.wavelet_name != 'fstep':
+        if self.wavelet_base != 'fstep':
             center_freq = pywt.central_frequency(self.wavelet)
         else: 
             center_freq = self.wavelet.central_frequency
@@ -84,13 +94,18 @@ class cwt:
         #logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
-        [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
+        if self.wavelet_base == 'fstep':
+            [transformedData, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
+                                                                sampling_period=self.samplePeriod, f_0=self.f0)
+        else:
+            [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
         logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
-        # Keep only every nth column (time point) from the results
         data_coefficients = transformedData
+
+        # Keep only every nth column (time point) from the results?
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
         #self.data_coefficients = data[:, ::step_size]
         #logger.info(f"Coefficients: type: {type(transformedData[0][0])}, shape: {transformedData.shape},  shape: {data_coefficients.shape}") #each dataum is a numpy.complex128
@@ -209,15 +224,23 @@ class cwt:
 
     def plotWavelet(self, expNum, sRate=0, saveDir="", show = False, save = True):
         # Get the wavelet function values
-        complexInput = True
-        if self.wavelet_name == "mexh" : complexInput = False
+        complexInput = False
+        if np.iscomplexobj(self.wavelet_fun): complexInput = True
+        #if self.wavelet_name == "mexh" : complexInput = False
 
         # Plot the time Domain
-        titleStr = f"Exp: {expNum}, {self.wavelet_name} [a=f0, b=bw]"
+        titleStr = f"Exp: {expNum}, {self.wavelet_base}"
+        if self.f0 != 0 or self.bw !=0:
+            if self.wavelet_base != 'mexh' or self.wavelet_base != 'morl':
+                if self.wavelet_base == 'fstep':
+                    titleStr = f"{titleStr}, f0={self.f0}"
+                else:
+                    titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
         plt.figure(figsize=(10, 8))
         plt.title(f'{titleStr}')
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
-        plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
+        if np.iscomplexobj(self.wavelet_fun):
+            plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
         plt.xlabel('Time')
         plt.ylabel('Amplitude')
         plt.legend()
@@ -264,7 +287,6 @@ class cwt:
         axs[0].grid(True, which='major', linestyle='-', alpha=0.6)
 
         phase = fftData[1]
-        #phase[fftData[0] < 1e-12] = np.nan #If the mag is tiny, no phase
         unwrapped_phase = np.unwrap(phase)
         axs[1].plot(freqList, np.degrees(unwrapped_phase))
         axs[1].set_ylabel(f"Phase (deg)")

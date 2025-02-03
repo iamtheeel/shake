@@ -222,12 +222,14 @@ def step_scale2frequency(wavelet, scale):
 
 
 # Instantiate your custom wavelet
-footstep_wavelet = FootStepWavelet()
-plt.plot(footstep_wavelet.wavefun()[1],footstep_wavelet.wavefun()[0])
+#footstep_wavelet = FootStepWavelet(2.14)
+#plt.plot(footstep_wavelet.wavefun()[1],footstep_wavelet.wavefun()[0])
+#plt.show()
 
 
 #%%
-def foot_step_cwt(data, scales, sampling_period=1., method='conv', axis=-1):
+#def foot_step_cwt(data, scales, sampling_period=1., method='conv', axis=-1):
+def foot_step_cwt(data, scales, sampling_period=1., f_0=2.14, method='conv', axis=-1): #MJB: need the f0 as an argument
     """
     Compute the Continuous Wavelet Transform (CWT) using the custom Foot-Step wavelet, 
     tailored for walking-induced vibrations. This implementation adapts and extends 
@@ -242,6 +244,7 @@ def foot_step_cwt(data, scales, sampling_period=1., method='conv', axis=-1):
         Array of scales at which to compute the wavelet transform.
     sampling_period : float, optional
         The sampling period of the signal, by default 1.
+    f_0 : Centeral freqquency
     method : str, optional
         Convolution method to use ('conv' or 'fft'). Default is 'conv'.
     axis : int, optional
@@ -278,7 +281,8 @@ def foot_step_cwt(data, scales, sampling_period=1., method='conv', axis=-1):
     from numpy import AxisError
     fftmodule = scipy.fft
     
-    wavelet = FootStepWavelet(central_frequency=2.14)
+    wavelet = FootStepWavelet(central_frequency=f_0) # MJB
+    #wavelet = FootStepWavelet(central_frequency=2.14)
     
     
     # wavelet = 'morl'
@@ -442,7 +446,7 @@ def get_scales(wavelet, min_freq, max_freq, fs, nscales=300):
 #-------------------------------------------------------------------------------
 # --------------------------Example usage#%% ----------------------------------
 #-------------------------------------------------------------------------------
-def fstWvt_ex()
+def fstWvt_ex(): #MJB, made function so I can import foot_step_wavelet.py
     import os
     import h5py
 

@@ -14,6 +14,9 @@ import numpy as np
 
 from jFFT import jFFT_cl
 
+from cwtTransform import cwt
+from dataLoader import dataLoader
+
 #ICE default IO error handler doing an exit(), pid = 12090, errno = 32
 #import matplotlib
 #matplotlib.use('qt5agg')
@@ -314,7 +317,7 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 
-def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, expDir):
+def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, showImageNoSave, expDir):
     logger.info(f"saveMovieFrames: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
@@ -370,16 +373,20 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
             # Add text box with run info
             textstr = f'Run: {run}\n' \
                       f'Time Window: {timeWindow}\n' \
-                      f'Subject: {subjectLabel}'
+                      f'Subject: {subjectLabel}\n' \
+                      f'cwt: {cwt_class.wavelet_name}\n' \
+                      f'norm: {data_preparation.norm.type}, {data_preparation.norm.scale}'
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             axs[0, 0].text(0.05, 0.95, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
 
+            '''
             textstr = f'Note:\n' \
                       f'The stomp has very high frequency\n' \
                       f'but steps are lower\n' \
-                      f'CWT Normalized to 1'
+                      f'CWT Normalized to 1' 
             props = dict(boxstyle='round', facecolor='white', alpha=0.5)
             axs[0, 0].text(0.05, 0.50, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
+            '''
 
             #Plot the time domain data
             # Flip x-axis direction
@@ -417,7 +424,7 @@ def saveMovieFrames(data_preparation, cwt_class, asLogScale, showImageNoSave, ex
             axs[1, 0].set_ylabel('Frequency (Hz)')
             #End Ch
 
-        axs[0, 0].legend()
+        axs[0, 0].legend(loc="lower center") #Display the ch list on our info window
 
         # Plot the wavelet transformed data
         # Data is cwt: time window number, ch, freq, time

@@ -308,6 +308,13 @@ for wavelet_base in configs['cwt']['wavelet']:
     if wavelet_base == 'mexh':
         centerFreqs = [1]
         bandwidths = [1]
+    if wavelet_base == 'fstep': #what is the bw?
+        bandwidths = [1]
+    if wavelet_base == 'morl':
+        centerFreqs = [0.8125]
+        bandwidths = [6.0]
+
+
     for center_freq in centerFreqs:
         for bandwidth in bandwidths:
             for logScaleData in [False]: #Probably not interesting
