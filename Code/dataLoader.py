@@ -769,8 +769,8 @@ class dataLoader:
 
         cwtTransformTime = time.time() - timeStart
 
-        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime}s")
-        logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
-        np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", self.cwtData_raw)
-        np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", self.cwtFrequencies)
-        #torch.save(labels, f"{self.dataSaveDir}/labels.pt")
+        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
+        if self.configs['cwt']['saveCWT']:
+            logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
+            np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", self.cwtData_raw)
+            np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", self.cwtFrequencies)

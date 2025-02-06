@@ -74,13 +74,6 @@ def getLogFileNames(dateTime_str, expNum):
     return logfile, outputDir
 
 def writeLogHdr(logfile, dataConfigs):
-#def writeLogHdr(dateTime_str, expNum):
-    #dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
-    #outputDir = f"{configs['outputDir']}/{dateTime_str}"
-    #if expNum > 0: outputDir = f"{outputDir}/run-{expNum}"
-    #if not os.path.isdir(outputDir): os.makedirs(outputDir)
-    #logfile = f'{outputDir}/{dateTime_str}_log.csv'
-
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
@@ -109,7 +102,6 @@ def writeLogHdr(logfile, dataConfigs):
         writer.writerow(['model', configs['model']['name']])
 
         writer.writerow(['---------'])
-    #return logfile, dateTime_str, outputDir
 
 def writeThisLogHdr(logDir, expNum, wavelet_name, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
     outputDir = f"{logDir}/run-{expNum}"
@@ -216,7 +208,8 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     # TODO: Set to save the transformed data
     if wavelet_base != "None":
-        cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=True)
+        logScaleFreq = configs['cwt']['logScaleFreq']
+        cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=logScaleFreq)
         cwt_class.plotWavelet(saveDir=outputDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
         logger.info(f"Load the cwt data, or generate if it does not exist")
         data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
@@ -240,9 +233,9 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, labelScaler, logfile, labelScale)
         #print(f"{data_preparation.labNormConst.type}")
 
-    if configs['plts']['saveFilesForAnimation']:
+    if wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
         expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
-        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=False, expDir=expDir) 
+        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
 
     logger.info(f"Get Model")
     model_name = configs['model']['name']
@@ -297,11 +290,23 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     del model
 
-expNum = 1
+
+# Experiments:
 # Wavelet
 # Center Frequency
 # Bandwidth
-# logData
+# logData: logscale the data or not
+# Loss function
+# Optimiser
+# Learning rate
+# Weight decay
+# Number of epochs
+# TODO:
+# Sliding window size
+# Sliding window overlap
+# Model
+# Model Peramiters: 
+expNum = 1
 for wavelet_base in configs['cwt']['wavelet']:
     centerFreqs = configs['cwt']['waveLet_center_freq']
     bandwidths = configs['cwt']['waveLet_bandwidth']

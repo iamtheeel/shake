@@ -404,24 +404,31 @@ def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, show
             else:
                 axs[1, 0].set_xlim([0, 0.5])
             axs[1, 0].invert_xaxis()
-            axs[1, 0].set_yscale('log')
-              # Add minor grid lines
+
+            # Set minimum frequency to 10 Hz
+            bottom = cwt_class.min_freq
+            top = cwt_class.max_freq
+            if cwt_class.useLogScaleFreq:
+                axs[1, 0].set_yscale('log')
+            axs[1, 0].set_ylim(bottom=bottom, top=top)
+            axs[1, 0].plot(fftData[i], freqList, color=thisColor)
+            axs[1, 0].set_ylabel('Frequency (Hz)')
+
+            # Add minor grid lines
             axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
             axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
 
+            '''
             #Set the position of the frequency plot to match the CWT plot
-            shift = 0.033  # Amount to shift up
+            shift = 0.0 # 0.033  # Amount to shift up
             pos = axs[1,0].get_position()
             new_height = pos.height - shift  # Reduce height by shift amount
             axs[1,0].set_position([pos.x0, pos.y0 + shift, pos.width, new_height])
-            textstr = f'Bottom of plot shifted up by {shift*100:.1f}% to match-ish CWT plot'
+            #textstr = f'Bottom of plot shifted up by {shift*100:.1f}% to match-ish CWT plot'
             props = dict(boxstyle='square', alpha=0.5, facecolor='white')
             axs[1, 0].text(0.05, -0.15, textstr, transform=axs[1, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
+            '''
 
-            # Set minimum frequency to 10 Hz
-            axs[1, 0].set_ylim(bottom=10, top=1000)
-            axs[1, 0].plot(fftData[i], freqList, color=thisColor)
-            axs[1, 0].set_ylabel('Frequency (Hz)')
             #End Ch
 
         axs[0, 0].legend(loc="lower center") #Display the ch list on our info window

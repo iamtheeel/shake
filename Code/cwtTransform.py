@@ -64,30 +64,38 @@ class cwt:
         # Our wave function
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
 
-        self.setFreqScale(freqLogScale=useLogForFreq)
+        self.useLogScaleFreq  = useLogForFreq
+        self.setFreqScale(freqLogScale=self.useLogScaleFreq)
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
 
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
-        min_freq = 5 #Hz
-        max_freq = self.sampleRate_hz/2 #Nyquist
+        
+        self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
+        self.max_freq = self.configs['cwt']['fMax']
+        if self.max_freq == 0: self.max_freq = self.sampleRate_hz/2 #Nyquist
 
         if self.wavelet_base != 'fstep':
             center_freq = pywt.central_frequency(self.wavelet)
         else: 
             center_freq = self.wavelet.central_frequency
 
-        min_scale = center_freq / (max_freq * self.samplePeriod)
-        max_scale = center_freq / (min_freq * self.samplePeriod)
+        #min_scale = center_freq / (self.max_freq * self.samplePeriod)
+        #max_scale = center_freq / (self.min_freq * self.samplePeriod)
 
         if freqLogScale:
-            self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
+            self.frequencies = np.logspace(np.log10(self.max_freq), np.log10(self.min_freq), self.numScales)
+            #self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
         else:
-            self.scales = np.linspace(min_scale, max_scale, self.numScales) 
+            self.frequencies = np.linspace(self.max_freq, self.min_freq, self.numScales) 
 
-        self.frequencies = center_freq / (self.scales * self.samplePeriod) #not used
-        logger.info(f"Scales: {self.scales.shape}")
+        #self.frequencies = center_freq / (self.scales * self.samplePeriod) #not used
+        self.scales = center_freq / (self.frequencies * self.samplePeriod)
+
+        #TODO: write to log file
+        #logger.info(f"Scales: {self.scales.shape}")
         #logger.info(f"Scales: {self.scales}")
+        #logger.info(f"Frequencies: {self.frequencies}")
 
     def cwtTransform(self, data):
         # Perform continuous wavelet transform using the defined wavelet
@@ -287,8 +295,8 @@ class cwt:
         axs[0].grid(True, which='major', linestyle='-', alpha=0.6)
 
         phase = fftData[1]
-        unwrapped_phase = np.unwrap(phase)
-        axs[1].plot(freqList, np.degrees(unwrapped_phase))
+        unwrapped_phase = np.unwrap(phase) 
+        axs[1].plot(freqList, np.degrees(unwrapped_phase)) #Rad --> deg
         axs[1].set_ylabel(f"Phase (deg)")
         axs[1].set_xlabel(f"Frequency (Hz, for Sam Rate)")
         axs[1].minorticks_on()
