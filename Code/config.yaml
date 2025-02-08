@@ -10,7 +10,8 @@ debugs:
     showWindowPlots: False
 plts:
     pltDir: "../plots"
-    animDir: "/Volumes/Data/thesis/animations"
+    #animDir: "/Volumes/Data/thesis/animations"
+    animDir: "../animations"
     saveFilesForAnimation: True
     showFilesForAnimation: False #Show instead of save
 
@@ -43,8 +44,8 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
-    limitRuns: 2 # Limit the number of runs to load
-    limitWindowLen: 20 # Limit the number of windows to load
+    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 20 # Limit the number of windows to load: 0 to load all
 
 
     stompSens: [7, 6]
