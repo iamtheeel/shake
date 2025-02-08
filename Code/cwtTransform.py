@@ -11,11 +11,13 @@ import pywt #pip install pywavelets
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt
 
 
+
 import matplotlib.pyplot as plt
 from jFFT import jFFT_cl
 import logging
 import os
 import time
+from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,10 @@ class cwt:
 
         self.useLogScaleFreq  = useLogForFreq
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
+
+        logScFreq_st = ""
+        if useLogForFreq: logScFreq_st = "_logScaleFreq"
+        self.normPeramsFileName = f"normPerams_{wavelet_name}{logScFreq_st}"
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
 
     def setFreqScale(self, freqLogScale=True):
@@ -254,6 +260,8 @@ class cwt:
         plt.legend()
         plt.grid(True)
         if save:
+            dir_path = Path(saveDir)  # Change to your desired path
+            dir_path.mkdir(parents=True, exist_ok=True)
             timeDFileName = f"{self.wavelet_name}_timeD.jpg"
             timeDFileNamePath = f"{saveDir}/{timeDFileName}"
             logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")

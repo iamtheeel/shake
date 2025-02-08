@@ -14,7 +14,7 @@ import datetime
 import csv
 import numpy as np #conda install numpy=1.26.4
 
-import time
+#import time
 from utils import timeTaken
 
 from torchinfo import summary
@@ -210,6 +210,19 @@ def getModel(wavelet_name, model_name, dataShape):
         exit()
     return model
 
+def getNormPerams(wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData):
+    logger.info(f"Get the norm/std peramiters | , wavelet_base: {wavelet_base}, wavelet_center_freq: {wavelet_center_freq}, wavelet_bandwidth: {wavelet_bandwidth}, logScaleData: {logScaleData}")
+    logger.info(f"Data dir: {data_preparation.dataSaveDir}")
+
+    logScaleFreq = configs['cwt']['logScaleFreq']
+    cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=logScaleFreq)
+    if logScaleData :cwt_class.normPeramsFileName = f"{cwt_class.normPeramsFileName}_logData"
+
+    waveletPlotsDir = f"{data_preparation.dataSaveDir}/waveletPlots"
+    cwt_class.plotWavelet(saveDir=waveletPlotsDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
+    
+
+
 def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
     logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
 
@@ -359,24 +372,28 @@ for wavelet_base in configs['cwt']['wavelet']:
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
 
-                                for lossFunction in lossFunctions:
+                                if configs['data']['getNormPerams']:
+                                    getNormPerams(wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData)
 
-                                    for optimizer in configs['trainer']['optimizer']:
+                                else:
+                                    for lossFunction in lossFunctions:
 
-                                        for learning_rate in configs['trainer']['learning_rate']:
+                                        for optimizer in configs['trainer']['optimizer']:
 
-                                            for weight_decay in configs['trainer']['weight_decay']:
+                                            for learning_rate in configs['trainer']['learning_rate']:
 
-                                                for epochs in configs['trainer']['epochs']:
+                                                for weight_decay in configs['trainer']['weight_decay']:
 
-                                                    logger.info(f"==============================")
-                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+                                                    for epochs in configs['trainer']['epochs']:
 
-                                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
-                                                            wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData,
-                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                                                        logger.info(f"==============================")
+                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                        logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+    
+                                                        runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
+                                                                wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData,
+                                                                dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
 
-                                                    expNum += 1
+                                                        expNum += 1

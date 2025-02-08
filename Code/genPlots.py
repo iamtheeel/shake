@@ -16,7 +16,9 @@ from jFFT import jFFT_cl
 from utils import timeTaken
 
 from cwtTransform import cwt
-from dataLoader import dataLoader
+import typing
+if typing.TYPE_CHECKING: #Fix circular import
+    from dataLoader import dataLoader
 
 #ICE default IO error handler doing an exit(), pid = 12090, errno = 32
 #import matplotlib
@@ -318,7 +320,7 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 
-def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, showImageNoSave, expDir):
+def saveMovieFrames(data_preparation:"dataLoader", cwt_class:"cwt", asLogScale, showImageNoSave, expDir):
     procTime = timeTaken(2) 
     logger.info(f"saveMovieFrames: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']

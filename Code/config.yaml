@@ -59,6 +59,8 @@ data:
 
     batchSize: 16 #256 #Should be power of 2
 
+    getNormPerams: True #False to run the program, True to run the cwt of the data set and save the norm peramiters
+
     dataScalers: ["meanNorm"]
     #dataScalers: ["std", "meanNorm"]
     labelScalers: ["std"]
