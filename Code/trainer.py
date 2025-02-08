@@ -131,6 +131,7 @@ class Trainer:
 
                 # Turn the crank 
                 out_pred = self.model(data)
+                #logger.info(f"out_pred: {out_pred.shape}, labels: {labels.shape}")
                 loss = self.criterion(out_pred, labels)
                 loss.backward()
                 self.optimizer.step()
@@ -300,25 +301,25 @@ class Trainer:
                     val_loss = self.criterion(val_pred, labels_argMax)
 
                     val_pred_argMax = torch.argmax(val_pred, 1) # Convert to argMax
-                    #labels_argMax = torch.argmax(labels,1) #convert to argMax
                     correct += val_pred_argMax.eq(labels_argMax).sum().item()
-                    #print(f"This pred: {val_pred}, lab: {labels}, {labels_argMax}")
-                    # Convert to torch tensor
-                    y_preds.append(val_pred) 
-                    y_targs.append(labels) 
-                    y_preds = torch.stack(y_preds) # datums, batch, classes
-                    y_targs = torch.stack(y_targs)
+                    #print(f"This pred: {val_pred}, {val_pred_argMax}, lab: {labels}, {labels_argMax}")
+
+                    ## For confusion and logging
+                    # We don't want to argmax yet cuz we want to log hotmax... er, do we?
+                    y_preds.append(val_pred.detach().cpu()) 
+                    y_targs.append(labels.detach().cpu()) 
+                    #print(f"This pred: {type(y_preds)}, lab: {type(y_targs)} ")
+                    #print(f"This pred: {len(y_preds)}, lab: {len(y_targs)} ")
 
                 test_loss += val_loss.item()
                 if not self.regression:
                     test_acc = 100 * correct / (nData)
 
-
                 # This gets written to a csv
                 #print(f"This pred: {val_pred.detach().cpu().numpy()}, lab: {labels_argMax.detach().cpu().numpy()}")
                 #print(f"Correct running: {correct}, loss: {test_loss/(thisRun+1):.3f}, accu: {test_acc:.1f}%")
 
-
+                # End training for loop
             finalValLoss = test_loss/nData
             #print(f"Final Val Predicted: {y_preds}")
             #print(f"Labels: {y_targs}")
@@ -328,10 +329,15 @@ class Trainer:
                 for i in range(len(self.classes)):
                     if classAcc[i] > 0:  # Only calculate if we have samples for this class
                         classAcc[i] = np.sqrt(classAcc[i]/classNum[i])# Per-class RMS error
+                print(f"Class Acc {self.accStr}: {classAcc}")
+            else: 
+                y_preds= torch.stack(y_preds, dim=0) # datums, batch, classes
+                y_targs= torch.stack(y_targs, dim=0)
+                y_preds = y_preds.view(y_preds.shape[0], -1)  # [datusm*batch, classes]Keeps batch size, removes extra dimension
+                y_targs = y_targs.view(y_targs.shape[0], -1)  # Keeps batch size, removes extra dimension
+                print(f"Final pred: {y_preds.shape}, lab: {y_targs.shape} ")
 
             print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.2f}")
-            if self.regression:
-                print(f"Class Acc {self.accStr}: {classAcc}")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.writer(csvFile, dialect='unix')
@@ -363,11 +369,8 @@ class Trainer:
                 writer.writerow([pred, label])
 
     def logClassification(self, y_preds, y_targs):
-        nClasses = len(self.classes)
-        y_preds_flt = y_preds.view(-1,nClasses)
-        y_targs_flt = y_targs.view(-1,nClasses)
-        y_preds_targets = torch.cat((y_preds_flt, y_targs_flt), dim=1)
-        print(f"pred: {y_preds_flt.shape}, targ: {y_targs_flt.shape}, combined: {y_preds_targets.shape}")
+        y_preds_targets = torch.cat((y_preds, y_targs), dim=1)
+        print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
         with open(f"{self.logDir}/validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['Predictions', '', '', 'Labels'])
@@ -394,14 +397,17 @@ class Trainer:
         import matplotlib.pyplot as plt
         import seaborn  as sns
         # Move back to the CPU befor making numpy
-        predicted_classes = torch.argmax(y_preds, dim=2)  # Shape: [datums, batches]
-        true_classes = torch.argmax(y_targs, dim=2) #
+        #predicted_classes = torch.argmax(y_preds, dim=2)  # Shape: [datums, batches]
+        #true_classes = torch.argmax(y_targs, dim=2) #
+        predicted_classes = torch.argmax(y_preds, dim=1)  # Shape: [datums* batches]
+        true_classes = torch.argmax(y_targs, dim=1) #
 
-        pred_flat = predicted_classes.flatten().cpu().numpy() # Shape: [datums*batches]
-        clas_flat = true_classes.flatten().cpu().numpy()
-        print(f"flat pred: {pred_flat.shape}, class: {clas_flat.shape}")
+        #pred_flat = predicted_classes.flatten().cpu().numpy() # Shape: [datums*batches]
+        #clas_flat = true_classes.flatten().cpu().numpy()
+        print(f"flat pred: {predicted_classes.shape}, class: {true_classes.shape}")
 
-        cm = confusion_matrix(clas_flat, pred_flat)
+        cm = confusion_matrix(predicted_classes, true_classes)
+        logger.info(f"Confusion Matrix:\n{cm}")
 
         # save to log
         with open(self.logfile, 'a', newline='') as csvFile:
@@ -409,7 +415,6 @@ class Trainer:
             writer.writerow(["-------", "Confusion Matrix"])
             for row in cm: writer.writerow(row)
 
-        logger.info(f"Confusion Matrix:\n{cm}")
 
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.classes, yticklabels=self.classes)

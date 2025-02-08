@@ -7,7 +7,7 @@
 # CWT Transform
 ###
 import numpy as np
-import pywt
+import pywt #pip install pywavelets
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt
 
 

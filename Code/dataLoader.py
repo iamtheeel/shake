@@ -103,7 +103,17 @@ class dataLoader:
         self.dataNormConst = None
         self.labNormConst = None
 
-        self.dataSaveDir = f"{self.dataPath}/{config['data']['dataSetDir']}"
+        #Set up a string for saving the dataset so we can see if we have already loaded this set
+        chList_str = "_".join(map(str, self.dataConfigs.chList))
+        #TODO: add more info:
+        # windows limit, runs limit
+        if self.regression: regClas = "regression"
+        else:               regClas = "classification"
+        self.dataSaveDir = f"{self.dataPath}/{config['data']['dataSetDir']}_{regClas}_chList-{chList_str}"
+        runLimit = config['data']['limitRuns']
+        if runLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_runLim-{runLimit}"
+        winLimit = config['data']['limitWindowLen']
+        if winLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_winCountLim-{winLimit}"
 
         self.configs = config
 
@@ -189,7 +199,7 @@ class dataLoader:
 
 
         logger.info(f"Labels: {type(labels)}, {labels.shape}, Data: {type(data)}, {data.shape}")
-        if not configs['data']['dataSetDir'] == "":
+        if not self.configs['data']['dataSetDir'] == "":
             # Create dataset directory if it doesn't exist
             if not os.path.exists(self.dataSaveDir): os.makedirs(self.dataSaveDir)
 
@@ -262,6 +272,7 @@ class dataLoader:
 
 
     def resetData(self, wavelet_name):
+        logger.info(f"Copy the data so we don't overwrite the loaded data")
         if wavelet_name == "None":
             # Add the "ch"
             # Data is currently: datapoints, height(sensorch), width(datapoints)
@@ -277,6 +288,7 @@ class dataLoader:
     def createDataloaders(self, expNum):
         self.data_norm = torch.tensor(self.data_norm, dtype=torch.float32) # dataloader wants a torch tensor
 
+        logger.info(f"data_norm: {self.data_norm.shape}")
         logger.info(f"labels: {self.labels_norm.shape}")
         logger.info(f"subjects: {type(self.subjectList_raw)}, {self.subjectList_raw.shape}")
         dataSet = TensorDataset(self.data_norm, self.labels_norm, self.subjectList_raw)
@@ -321,7 +333,6 @@ class dataLoader:
             for i in range(data.shape[1]):
                 thisCh = self.dataConfigs.chList[i]
                 csvFile.write(f", sensor {thisCh} rms")
-            csvFile.write(f", startTime(s)")
             csvFile.write("\n")
 
             # do while endPoint <= thisPoint + data len
@@ -376,28 +387,33 @@ class dataLoader:
     
                     # append the data
                     if hasStomp >= nSkips:
-                        thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
-                        try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-                        except NameError: windowedData = thisDataBlock
-
-
-                        if thisSubjectId >=0: # Negitives reservered 
-                            thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
-                            if self.regression: thisLabel = speed[run]
-                            else:               thisLabel = thisSubjectId
-
-                        # Append the data, labes, and all that junk
-                        try:              labels = np.append(labels, thisLabel)
-                        except NameError: labels = thisLabel
-                        thisSubjectNumber = self.getSubjectID(subject) #Keep track of the subject number appart from the label
-                        try:              subjects = np.append(subjects, thisSubjectNumber)
-                        except NameError: subjects = thisSubjectNumber
-                        try:              runs = np.append(runs, run+1)
-                        except NameError: runs = run+1
+                        # TODO: make this one data structure
                         thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
-                        try:              startTimes = np.append(startTimes, thisStartTime)
-                        except NameError: startTimes = thisStartTime
-    
+                        thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
+                        #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
+                        if not self.regression or thisSubjectId > 0:
+                            #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
+                            # Are the lables speeds, or subject Id
+                            if thisSubjectId >=0: # Negitives reservered 
+                                if self.regression: thisLabel = speed[run]
+                                else:               thisLabel = thisSubjectId
+
+                            thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
+
+                            # Append the data, labels, and all that junk
+                            try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
+                            except NameError: windowedData = thisDataBlock
+                            try:              labels = np.append(labels, thisLabel)
+                            except NameError: labels = thisLabel
+                            thisSubjectNumber = self.getSubjectID(subject) #Keep track of the subject number appart from the label
+                            try:              subjects = np.append(subjects, thisSubjectNumber)
+                            except NameError: subjects = thisSubjectNumber
+                            try:              runs = np.append(runs, run+1)
+                            except NameError: runs = run+1
+                            try:              startTimes = np.append(startTimes, thisStartTime)
+                            except NameError: startTimes = thisStartTime
+
+                        # Do we want to log the 0 vel data for regresion too? 
                         csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}")
                         for i in range(len(rms_allCh)): # Each ch
                             csvFile.write(f", {rms_allCh[i]}")
@@ -726,13 +742,13 @@ class dataLoader:
             self.loadCWTData(cwt_class)
         else: 
             logger.info(f"Did not find, transrom with: {cwt_class.wavelet_name}")
-            self.cwtTransofrmData(cwt_class)
+            self.cwtTransformData(cwt_class)
 
     def loadCWTData(self, cwt_class):
         self.cwtData_raw = np.load(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy")
         self.cwtFrequencies = np.load(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
 
-    def cwtTransofrmData(self, cwt_class):
+    def cwtTransformData(self, cwt_class):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
