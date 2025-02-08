@@ -4,15 +4,15 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
 
     showFFTPlots: False
     showWindowPlots: False
 plts:
     pltDir: "../plots"
     animDir: "/Volumes/Data/thesis/animations"
-    saveFilesForAnimation: True
-    showFilesForAnimation: False #Show instead of save
+    saveFilesForAnimation: False
+    showFilesForAnimation: True #Show instead of save
 
     #saveCombined: True
     #saveOverlay: False
@@ -25,7 +25,7 @@ plts:
 data:
     valSplitPercen: .2 #20% of the data for validation
     dataPath: "../TestData"
-    dataSetDir: "savedDataSet_test2"
+    dataSetDir: "savedDataSet"
 
     test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
@@ -50,7 +50,7 @@ data:
     stompSens: [7, 6]
     #stompSens: [5, 6, 7]
     stompThresh: 0 #1.5 #If 0, then no stomp detection
-    dataThresh: 0 #1.5 # If 0, then no, non-walking detection
+    dataThresh: 1.5 # If 0, then no, non-walking detection
 
 
     windowLen: 2 #sec
@@ -118,8 +118,7 @@ trainer:
     #criterion_regresh: "MAE" # for regresion
     loss_regresh: ["MSE"] # for regresion
     #loss_regresh: ["MSE", "MAE", "Huber"] # for regresion
-
-    loss_class: "CrossEntropyLoss" #For classification
+    loss_class: ["CrossEntropyLoss"] #For classification
 
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
@@ -129,9 +128,10 @@ trainer:
     seed: 4601
 
 model: 
-    regression: True
-    name: "leNetV5"
+    regression: True #Or Clasification
     #name: "multilayerPerceptron"
+    #name: "leNetV5"
+    name: "MobileNet_v2"
 
     multilayerPerceptron:
         hidden_neurons: 100

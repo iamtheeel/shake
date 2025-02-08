@@ -8,6 +8,7 @@
 ###
 import torch
 from torch import nn
+from torchvision import models
 
 #
     # Start with a supoer simple multi layer perseptron
@@ -35,6 +36,52 @@ class multilayerPerceptron(nn.Module):
 
         return x 
     
+class MobileNet_v2(nn.Module):
+    def __init__(self, numClasses:int, nCh:int, config=None):
+        super().__init__() 
+        '''
+        MobileNet
+        '''
+        self.seed = config['trainer']['seed']
+        self.isRegresh = config['model']['regression']
+        if self.isRegresh:
+            numOutputs = 1
+        else:
+            numOutputs = numClasses
+
+
+        # Load the model from the zoo
+        base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
+
+        #TODO: add a layer, or modify the first to change 2D to 3D
+        #if timeDData:
+
+        startFeature = 0 #Change to 1 to replace the first layer
+        self.features  = base_model.features[startFeature:]
+
+        self.global_pool = nn.AdaptiveAvgPool2d(1)
+
+        # For classification
+        lastLayerFeatureMap_size = 1280
+        self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
+
+    def forward(self, x: torch.Tensor):
+        #TODO: 
+        # run the new layers if timed
+        # pass the first layer
+        # Reshape the data
+
+        # Run mobilenet
+        x = self.features(x)
+
+        #Clasifyer
+        x = self.global_pool(x)
+        x = torch.flatten(x, 1)  # Flatten before FC
+        x = self.fc(x)  # Final classification
+
+        return x
+
+
 class leNetV5_timeDomain(nn.Module):
     def __init__(self, numClasses: int, nCh, config):
         super().__init__() 

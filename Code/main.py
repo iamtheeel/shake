@@ -28,8 +28,6 @@ config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
 
 
-if configs['model']['regression']: critName = configs['trainer']['loss_regresh']
-else:                             critName = configs['trainer']['criterion_class']
 
 ## Logging
 import logging
@@ -92,7 +90,8 @@ def writeLogHdr(logfile, dataConfigs):
         writer.writerow(['dataScale_values', configs['data']['dataScale_values']])
         writer.writerow(['labelScale_values', configs['data']['labelScale_values']])
     
-        writer.writerow(['loss', critName])
+        writer.writerow(['Regression loss', configs['trainer']['loss_regresh']])
+        writer.writerow(['Clasification loss', configs['trainer']['loss_class']])
         writer.writerow(['optimizer', configs['trainer']['optimizer']])
         writer.writerow(['learning_rate', configs['trainer']['learning_rate']])
         writer.writerow(['weight_decay', configs['trainer']['weight_decay']])
@@ -184,7 +183,9 @@ def getModel(wavelet_name, model_name, dataShape):
     nCh = dataShape[1]
     if wavelet_name == "None":
         nDataPts = dataShape[2]
+        timeD = True
     else:
+        timeD = False
         nFreqs = dataShape[2]
         nTimePts = dataShape[3]
     #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
@@ -193,10 +194,13 @@ def getModel(wavelet_name, model_name, dataShape):
         model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
     elif model_name == "leNetV5":
         # For now use the ch as the height, and the npoints as the width
-        if wavelet_name == "None":
+        if timeD:
+            #TODO: rewrite lenet to take timeD as an argument
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
         else:
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+    elif model_name == "MobileNet_v2":
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, nCh=nCh, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
@@ -232,11 +236,14 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
         data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, labelScaler, logfile, labelScale)
         #print(f"{data_preparation.labNormConst.type}")
+    else: 
+        data_preparation.labels_norm = data_preparation.labels
 
     if wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
         expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
         saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
 
+    #TODO: Move to experTrack
     logger.info(f"Get Model")
     model_name = configs['model']['name']
     dataShape = data_preparation.data.shape[1:] #Runs, Ch, Freqs, TimePts
@@ -319,6 +326,10 @@ for wavelet_base in configs['cwt']['wavelet']:
         centerFreqs = [0.8125]
         bandwidths = [6.0]
 
+    if configs['model']['regression']:
+        lossFunctions = configs['trainer']['loss_regresh']
+    else:
+        lossFunctions = configs['trainer']['loss_class']
 
     for center_freq in centerFreqs:
         for bandwidth in bandwidths:
@@ -337,7 +348,7 @@ for wavelet_base in configs['cwt']['wavelet']:
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
 
-                                for lossFunction in configs['trainer']['loss_regresh']:
+                                for lossFunction in lossFunctions:
 
                                     for optimizer in configs['trainer']['optimizer']:
 
