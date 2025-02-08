@@ -14,6 +14,9 @@ import datetime
 import csv
 import numpy as np #conda install numpy=1.26.4
 
+import time
+from utils import timeTaken
+
 from torchinfo import summary
 
 from timeit import default_timer as timer
@@ -242,7 +245,14 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
 
     if wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
         expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
+
+        #timeStart = time.time()
+        saveMoveTime = timeTaken()
         saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
+        saveMovieTime.endTime(echo=True, echoStr=f"Save Movie Frames")
+        #timeTaken = timeStart - time.time()
+        #logger.info(f"Movie Frames saved: {timeTaken:.2f}s")
+
 
     #TODO: Move to experTrack
     logger.info(f"Get Model")

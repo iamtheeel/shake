@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from jFFT import jFFT_cl
+from utils import timeTaken
 
 from cwtTransform import cwt
 from dataLoader import dataLoader
@@ -318,27 +319,37 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 
 def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, showImageNoSave, expDir):
+    procTime = timeTaken(2) 
     logger.info(f"saveMovieFrames: data: {data_preparation.data.shape} ")
     colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
+    procTime.endTime(echo=True, echoStr=f"Finished color list")
     if not showImageNoSave:
         animation_frames = []
         # Create animation directory if it doesn't exist
         animDir = os.path.join(configs['plts']['animDir'], expDir)
         os.makedirs(animDir, exist_ok=True)
+    procTime.endTime(echo=True, echoStr=f"Finished Dir setup")
 
     #For the cwt data
     normTo_max = configs['cwt']['normTo_max'] 
     normTo_min = configs['cwt']['normTo_min'] 
+    procTime.endTime(echo=True, echoStr=f"Finished min/max config read")
     if normTo_max == 0: 
         fudge = 4
         normTo_max = np.max(np.abs(data_preparation.data))/fudge
+        procTime.endTime(echo=True, echoStr=f"finished max, shape={data_preparation.data.shape}")
     if normTo_min == 0:
         normTo_min = np.min(np.abs(data_preparation.data))#*fudge
+        procTime.endTime(echo=True, echoStr=f"finished min, shape={data_preparation.data.shape}")
     logger.info(f"plot cwt data | normTo_max: {normTo_max}, normTo_min: {normTo_min}")
+    procTime.endTime(echo=True, echoStr=f"Finished Get Norm data")
 
     dataEnd = data_preparation.data.shape[0]
+    procTime.endTime(echo=True, echoStr=f"Preliminary Done")
     for dataumNumber in range(0, dataEnd):
+        procTime.startTime()
+
         #This will get moved out of the loop when we animate
         fig, axs = plt.subplots(2, 2, figsize=(16,12)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.05, left = 0.10, right=0.99) 
@@ -360,6 +371,7 @@ def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, show
         freqList, fftData = data_preparation.getFFTData(data)
         #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
 
+        procTime.endTime(echo=True, echoStr=f"Done getting data and lables")
         for i, chData in enumerate(data):
             if configs['cwt']['rgbPlotChList'] == 0:
                 chList = data_preparation.dataConfigs.chList
@@ -430,6 +442,7 @@ def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, show
             '''
 
             #End Ch
+        procTime.endTime(echo=True, echoStr=f"Done with each ch")
 
         axs[0, 0].legend(loc="lower center") #Display the ch list on our info window
 
@@ -456,14 +469,16 @@ def saveMovieFrames(data_preparation:dataLoader, cwt_class:cwt, asLogScale, show
         # Uncomment to show the plot
         #cwt_class.plotCWTransformed_data_3CH(data, cwtFrequencies, run, timeWindow, subjectLabel, configs['cwt']['rgbPlotChList'], data_preparation.dataConfigs.chList, logScale=True, save=False, display=True)
         # Save animation frames
+        procTime.endTime(echo=True, echoStr=f"Done plotting cwt")
         if not showImageNoSave:
             # Save this frame and add to list
             fileName = f"{dataumNumber:04d}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
             filePath = os.path.join(animDir, fileName)
             plt.savefig(filePath, dpi=250, bbox_inches=None)
             animation_frames.append(filePath) #List of the files to animate
-            print(f"Saved image file: {filePath}")
+            print(f"Saved image file: {filePath}, {procTime.endTime(echo=True, echoStr=f"FileSaveTime")}")
         else:
             plt.show()
 
+        procTime.endTime(echo=True, echoStr=f"Finished with dataNum: {dataumNumber}")
         #End Data
