@@ -28,16 +28,15 @@ from dataclasses import dataclass
 from typing import Optional
 @dataclass
 class normClass:
-    type: str
+    type: Optional[str] = None
     min: Optional[float] = None
     max: Optional[float] = None 
     mean: Optional[float] = None
     std: Optional[float] = None
-    immean: Optional[float] = None
-    imstd: Optional[float] = None
     scale: Optional[float] = None
 
 class dataConfigs:
+    cwtDataShape: Optional[list] = None
     sampleRate_hz: Optional[int] = None
     units: Optional[str] = None
     dataLen_pts: Optional[int] = None
@@ -617,11 +616,12 @@ class dataLoader:
     def std_complexData(self, data, logFile):
         real = np.real(data)
         imag = np.imag(data)
-        self.norm = normClass(type="std", mean=np.mean(real),   std=np.std(real)
-                                   , immean=np.mean(imag), imstd=np.std(imag))
+        mean = np.mean(real) + 1j * np.mean(imag) 
+        std = np.std(real) + 1j * np.std(imag) 
+        self.norm = normClass(type="std", mean=mean, std=std)
 
-        stdised_real = (real - self.norm.mean)/self.norm.std
-        stdised_imag = (imag - self.norm.immean)/self.norm.imstd
+        stdised_real = (real - self.norm.mean.real)/self.norm.std.real
+        stdised_imag = (imag - self.norm.mean.imag)/self.norm.std.imag
 
         normData = stdised_real + 1j * stdised_imag
 
@@ -693,12 +693,8 @@ class dataLoader:
         with open(logFile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow([f'--------- {scaler.type}, complex: {complex} -------'])
-            if complex:
-                writer.writerow(['min', 'max', 'real mean', 'imag mean', 'scale'])
-                writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.immean,scaler.scale])
-            else:
-                writer.writerow(['min', 'max', 'mean', 'scale'])
-                writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
+            writer.writerow(['min', 'max', 'mean', 'scale'])
+            writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
             writer.writerow(['---------'])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, scale: {scaler.scale}")
     
@@ -748,42 +744,104 @@ class dataLoader:
         self.cwtData_raw = np.load(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy")
         self.cwtFrequencies = np.load(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
 
-    def cwtTransformData(self, cwt_class):
+    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
         logger.info(f"Starting transorm of data_raw (will apply norm later): {type(timeData)}, {timeData.shape}")
         timeStart = time.time()
-        self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
+
+        if saveNormPerams: 
+            self.norm = normClass()
+            self.norm.min = 10000
+            self.norm.max = 0
+
+        if oneShot:
+            self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
+        else:
+            self.cwtData_raw = None
+            self.cwtFrequencies = None
+            sum = 0
+            mean = 0
+            variance = 0
+            mean_Real = 0
+            mean_Imag = 0
+            variance_Real = 0
+            variance_Imag = 0
+            nElements = 0
+
+            for i, data in enumerate(timeData):
+                #logger.info(f"Transforming data: {i}, {data.shape}")
+                cwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
+                #Everybody is the same freq list, so just do once
+                if self.cwtFrequencies is None: 
+                    self.cwtFrequencies = cwtFrequencies
+                    logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
+
+                if saveNormPerams:
+                    nElements += cwtData_raw.size
+                    min = np.min(cwtData_raw)
+                    max = np.max(cwtData_raw)
+                    sum += np.sum(cwtData_raw)/cwtData_raw.size
+
+                    if np.iscomplexobj(cwtData_raw):
+                        real = np.real(cwtData_raw)
+                        imag = np.imag(cwtData_raw)
+
+                        #Each cwt mean
+                        this_mean_real = np.mean(real)
+                        this_mean_imag = np.mean(imag)
+
+                        #The diff from the current mean
+                        delta_real = this_mean_real - mean_Real
+                        delta_imag = this_mean_imag - mean_Imag
+
+                        # running mean
+                        mean_Real += delta_real / (i+1)
+                        mean_Imag += delta_imag / (i+1)
+
+                        # Running variance
+                        variance_Real += np.sum((real - mean_Real) **2)
+                        variance_Imag += np.sum((imag - mean_Imag) **2)
+
+                    else:
+                        this_mean = np.mean(cwtData_raw)
+                        delta = this_mean - mean
+                        mean += delta/(i+1)
+                        variance += np.sum((cwtData_raw - mean) **2)
+                    #   mean
+                    #   std dev
+
+                    if min < self.norm.min: self.norm.min = min
+                    if max > self.norm.max: self.norm.max = max
+                    # std real
+                    # std imag
+                    logger.info(f"#{i}: {self.norm.min}, max: {self.norm.max}, running Sum: {sum}")
+                #else:
+                cwtData_raw = np.expand_dims(cwtData_raw, axis=0) # add the run dim back to append
+                #logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}")
+                if self.cwtData_raw is None: self.cwtData_raw = cwtData_raw.copy()
+                else:                        self.cwtData_raw = np.append(self.cwtData_raw, cwtData_raw, axis=0)
+
+                    #logger.info(f"Data Number {i}: self.cwtData_raw: {self.cwtData_raw.shape}, self.cwtFrequencies: {self.cwtFrequencies.shape}")
+
         self.cwtData_raw = np.transpose(self.cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
-        '''
-        self.cwtData_raw = None
-        self.cwtFrequencies = None
-
-        #TODO: This is a for loop, but we can do it in one shot
-        for i, data in enumerate(timeData):
-            #logger.info(f"Transforming data: {i}, {data.shape}")
-            cwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
-            logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
-
-            cwtData_raw = np.expand_dims(cwtData_raw, axis=0) # add the run dim back to append
-            print(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}")
-            if self.cwtData_raw is None:
-                self.cwtData_raw = cwtData_raw.copy()
-                #logger.info(f"created self.cwtData_rawf.: {self.cwtData_raw.shape}")
-            else:
-                self.cwtData_raw = np.append(self.cwtData_raw, cwtData_raw, axis=0)
-                #logger.info(f"appended: {self.cwtData_raw.shape}")
-
-            #Everybody is the same freq list
-            if self.cwtFrequencies is None: self.cwtFrequencies = cwtFrequencies
-
-
-            logger.info(f"Data Number {i}: self.cwtData_raw: {self.cwtData_raw.shape}, self.cwtFrequencies: {self.cwtFrequencies.shape}")
-        '''
-
-
         cwtTransformTime = time.time() - timeStart
+
+        if saveNormPerams:
+            if np.iscomplexobj(cwtData_raw):
+                mean = mean_Real + 1j * mean_Imag
+                std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
+            else:
+                std = np.sqrt(variance/nElements)
+            self.norm.mean = mean
+            self.norm.std = std
+
+            #self.norm.mean = sum/(i+1)
+            logger.info(f"Norm stats | min: {self.norm.min}, max: {self.norm.max}, mean: {self.norm.mean} ")
+            logger.info(f"           | min: {np.min(self.cwtData_raw)}, max: {np.max(self.cwtData_raw)}, mean: {np.mean(self.cwtData_raw)}")
+            logger.info(f"std dev | {self.norm.std}")
+            logger.info(f"        | {np.std(np.real(self.cwtData_raw))}, + {np.std(np.imag(self.cwtData_raw))}i")
 
         logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
         if self.configs['cwt']['saveCWT']:

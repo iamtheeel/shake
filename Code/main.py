@@ -220,6 +220,7 @@ def getNormPerams(wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScale
 
     waveletPlotsDir = f"{data_preparation.dataSaveDir}/waveletPlots"
     cwt_class.plotWavelet(saveDir=waveletPlotsDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
+    data_preparation.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True) # Will load the files if they exist, otherwise will transform the data
     
 
 
