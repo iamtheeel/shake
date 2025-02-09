@@ -17,6 +17,7 @@ import torch.nn.functional as tFun
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import pickle
 import time
+from tqdm import tqdm  #progress bar
 
 from genPlots import *
 
@@ -56,7 +57,7 @@ class dataLoader:
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
         self.batchSize = config['data']['batchSize']
-        self.dataDir = dir
+        self.inputDataDir = dir
 
         #TODO: Get from file
         self.logfile = logfile
@@ -326,7 +327,7 @@ class dataLoader:
         logger.info(f"Window length: {self.windowLen}, step: {self.stepSize}, data len: {data.shape}")
         # Strip the head/tails
 
-        dataFile= f"{self.dataDir}/data.csv"
+        dataFile= f"{self.inputDataDir}/data.csv"
         with open(dataFile , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
             for i in range(data.shape[1]):
@@ -770,13 +771,15 @@ class dataLoader:
             variance_Imag = 0
             nElements = 0
 
-            for i, data in enumerate(timeData):
+            logger.info(f"Prossessing timeData: {len(timeData)} datapoints {timeData.shape}")
+            for i, data in tqdm(enumerate(timeData), total=len(timeData), desc="Calculating CWT", unti="Transform"):
+
                 #logger.info(f"Transforming data: {i}, {data.shape}")
                 cwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
                 #Everybody is the same freq list, so just do once
                 if self.cwtFrequencies is None: 
                     self.cwtFrequencies = cwtFrequencies
-                    logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
+                    logger.info(f"Get freqs | cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
 
                 if saveNormPerams:
                     nElements += cwtData_raw.size
@@ -816,7 +819,7 @@ class dataLoader:
                     if max > self.norm.max: self.norm.max = max
                     # std real
                     # std imag
-                    logger.info(f"#{i}: {self.norm.min}, max: {self.norm.max}, running Sum: {sum}")
+                    #logger.info(f"#{i}: {self.norm.min}, max: {self.norm.max}, running Sum: {sum}")
                 #else:
                 cwtData_raw = np.expand_dims(cwtData_raw, axis=0) # add the run dim back to append
                 #logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}")
@@ -842,6 +845,10 @@ class dataLoader:
             logger.info(f"           | min: {np.min(self.cwtData_raw)}, max: {np.max(self.cwtData_raw)}, mean: {np.mean(self.cwtData_raw)}")
             logger.info(f"std dev | {self.norm.std}")
             logger.info(f"        | {np.std(np.real(self.cwtData_raw))}, + {np.std(np.imag(self.cwtData_raw))}i")
+
+            fileName = f"{self.dataSaveDir}/normPerams_{cwt_class.wavelet_name}.pkl"
+            with open(fileName, 'wb') as f: pickle.dump(self.dataConfigs, f)
+            logger.info(f"Saved norm/std peramiters to {fileName}")
 
         logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
         if self.configs['cwt']['saveCWT']:

@@ -103,7 +103,7 @@ class cwt:
         #logger.info(f"Scales: {self.scales}")
         #logger.info(f"Frequencies: {self.frequencies}")
 
-    def cwtTransform(self, data):
+    def cwtTransform(self, data, echoOut=False):
         # Perform continuous wavelet transform using the defined wavelet
         #logger.info(f"Transforming data: {type(data)}")
 
@@ -115,7 +115,8 @@ class cwt:
             [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
-        logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
+        if echoOut:
+            logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
         data_coefficients = transformedData
 
@@ -313,10 +314,10 @@ class cwt:
         #axs[1].set_ylim([-180, 180])
 
         if save:
-            timeDFileName = f"{self.wavelet_name}_freqD.jpg"
-            timeDFileNamePath = f"{saveDir}/{timeDFileName}"
-            logger.info(f"Saving Wavelet Plots: {timeDFileNamePath}")
-            plt.savefig(timeDFileNamePath)
+            freqDFilename = f"{self.wavelet_name}_freqD.jpg"
+            freqDFilePathName = f"{saveDir}/{freqDFilename}"
+            logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
+            plt.savefig(freqDFilePathName)
 
         if show:
             plt.show()

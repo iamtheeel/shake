@@ -11,6 +11,7 @@ from timeit import default_timer as timer
 import torch
 from torch import nn
 import numpy as np
+from tqdm import tqdm  #progress bar
 
 import matplotlib.pyplot as plt
 import csv
@@ -110,15 +111,17 @@ class Trainer:
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
             writer.writeheader()
-        
-        for epoch in range(self.epochs):
+
+        #for epoch in range(self.epochs):
+        for epoch in tqdm(range(self.epochs), desc="Training", unit="epoch"):
             batchNumber = 0
             correct_epoch = 0
             train_loss_epoch, train_acc_epoch = 0, 0
             epoch_StartTime = timer()
             epoch_squared_diff = []
 
-            for data, labels, subjects  in self.train_data_loader:
+            #for data, labels, subjects  in self.train_data_loader: # Batch
+            for data, labels, subjects in tqdm(self.train_data_loader, desc="Batch Progress", unit="batch", leave=False):
                 data = data.to(self.device)
                 labels = labels.to(self.device)
 
