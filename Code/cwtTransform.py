@@ -7,16 +7,16 @@
 # CWT Transform
 ###
 import numpy as np
-import pywt #pip install pywavelets
-from foot_step_wavelet import FootStepWavelet, foot_step_cwt
-
-
-
 import matplotlib.pyplot as plt
-from jFFT import jFFT_cl
 import logging
 import os
 import time
+import torch
+
+import pywt #pip install pywavelets
+from foot_step_wavelet import FootStepWavelet, foot_step_cwt
+
+from jFFT import jFFT_cl
 from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +39,9 @@ class cwt:
         #wavelets = pywt.wavelist()
         #print(wavelets)
         self.wavelet_name=None
+        self.wavelet_base = None
+        self.f0 = None
+        self.bw = None
 
     def setupWavelet(self, wavelet_base, f0=1.0, bw=1.0, useLogForFreq=False):
         self.f0= f0
@@ -53,7 +56,7 @@ class cwt:
         self.wavelet_base = wavelet_base
         self.wavelet_name = wavelet_name
 
-        self.numScales = 240#480 #This is the height of the image
+        self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
         if self.wavelet_base == 'fstep':
             self.wavelet = FootStepWavelet(central_frequency=f0)
@@ -72,6 +75,7 @@ class cwt:
         logScFreq_st = ""
         if useLogForFreq: logScFreq_st = "_logScaleFreq"
         self.normPeramsFileName = f"normPerams_{wavelet_name}{logScFreq_st}"
+        logger.info(f"New Wavelet: {wavelet_name}")
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
 
     def setFreqScale(self, freqLogScale=True):
@@ -237,14 +241,16 @@ class cwt:
         time_labels = valid_ticks * self.samplePeriod
         return valid_ticks, time_labels
 
-    def plotWavelet(self, expNum, sRate=0, saveDir="", show = False, save = True):
+    def plotWavelet(self, expNum=-1, sRate=0, saveDir="", show = False, save = True):
         # Get the wavelet function values
         complexInput = False
         if np.iscomplexobj(self.wavelet_fun): complexInput = True
         #if self.wavelet_name == "mexh" : complexInput = False
 
         # Plot the time Domain
-        titleStr = f"Exp: {expNum}, {self.wavelet_base}"
+        expStr = ""
+        if expNum >= 0: expStr = f"Exp: {expNum}, "
+        titleStr = f"{expStr}{self.wavelet_base}"
         if self.f0 != 0 or self.bw !=0:
             if self.wavelet_base != 'mexh' or self.wavelet_base != 'morl':
                 if self.wavelet_base == 'fstep':
@@ -322,3 +328,13 @@ class cwt:
         if show:
             plt.show()
         plt.close()
+    
+    def cwtTransformBatch(self, data):
+        #logger.info(f"before cwt: {data.shape}")
+        data, freqs = self.cwtTransform(data=data.numpy())
+        #logger.info(f"after cwt: {data.shape}")
+        data = np.transpose(data, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
+        #logger.info(f"after transpose: {data.shape}")
+        data = torch.from_numpy(data)
+
+        return data

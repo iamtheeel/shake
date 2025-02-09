@@ -20,6 +20,7 @@ import time
 from tqdm import tqdm  #progress bar
 
 from genPlots import *
+from cwtTransform import cwt
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -95,13 +96,14 @@ class dataLoader:
 
         self.data = None
         self.labels = None
-        self.data_norm = None
         self.labels_norm = None
         self.dataLoader_t = None
         self.dataLoader_v = None
 
         self.dataNormConst = None
         self.labNormConst = None
+
+        self.dataNormConst = normClass()
 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
         chList_str = "_".join(map(str, self.dataConfigs.chList))
@@ -114,6 +116,8 @@ class dataLoader:
         if runLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_runLim-{runLimit}"
         winLimit = config['data']['limitWindowLen']
         if winLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_winCountLim-{winLimit}"
+        self.dataSaveDir = f"{self.dataSaveDir}_StompThresh-{config['data']['stompThresh']}"
+        self.dataSaveDir = f"{self.dataSaveDir}_DataThresh-{config['data']['dataThresh']}"
 
         self.configs = config
 
@@ -271,28 +275,21 @@ class dataLoader:
             runNum += 1
 
 
-    def resetData(self, wavelet_name):
-        logger.info(f"Copy the data so we don't overwrite the loaded data")
-        if wavelet_name == "None":
-            # Add the "ch"
-            # Data is currently: datapoints, height(sensorch), width(datapoints)
-            self.data = copy.deepcopy(self.data_raw) #Data is numpy
-            self.data = self.data.unsqueeze(1) # datapoints, image channels, height, width 
-        else:
-            # datapoints, image channels, height, width 
-            self.data = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
+    def resetData(self):
+        logger.info(f"Copy the data so we don't overwrite the loaded data: {self.data_raw.shape}")
+        # Add the "ch"
+        # Data is currently: datapoints, height(sensorch), width(datapoints)
+        self.data = copy.deepcopy(self.data_raw) #Data is numpy
+        #self.data = np.expand_dims(self.data, axis=1)  # Equivalent to unsqueeze(1)
         self.labels = self.labels_raw.clone().detach() #labels are tensor
-        #self.cwtData = copy.deepcopy(self.cwtData_raw) #cwtData is numpy
-    
 
     def createDataloaders(self, expNum):
-        self.data_norm = torch.tensor(self.data_norm, dtype=torch.float32) # dataloader wants a torch tensor
+        self.data = torch.tensor(self.data, dtype=torch.float32) # dataloader wants a torch tensor
 
-        logger.info(f"data_norm: {self.data_norm.shape}")
+        logger.info(f"data: {self.data.shape}")
         logger.info(f"labels: {self.labels_norm.shape}")
         logger.info(f"subjects: {type(self.subjectList_raw)}, {self.subjectList_raw.shape}")
-        dataSet = TensorDataset(self.data_norm, self.labels_norm, self.subjectList_raw)
-        #dataSet = TensorDataset(self.data_norm, self.labels_norm, self.subjects)
+        dataSet = TensorDataset(self.data, self.labels_norm, self.subjectList_raw)
         #plotRegreshDataSetLab(dataSet, "total set")
 
         # Split sizes
@@ -559,44 +556,51 @@ class dataLoader:
         #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
 
 
-    def scale_data(self, data, scaler, logFile, scale):
+    # If you don't send the normClass, it will calculate based on the data
+    def scale_data(self, data, logFile, norm:normClass=None, scaler=None, scale=None, debug=False):
         isTensor = False
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
             isTensor = True
 
-        if np.iscomplexobj(data):
-            if scaler == "std": dataScaled, scalerClass = self.std_complexData(data, logFile)
-            else:               dataScaled, scalerClass = self.norm_complexData(data, logFile)
-        else:
-            if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile)
-            else:               dataScaled, scalerClass = self.norm_data(data, logFile, scaler, scale)
+        if scaler==None: scaler= norm.type
+        if debug: logger.info(f"{norm}")
 
-        scalerClass.type = scaler
+        if np.iscomplexobj(data):
+            if scaler == "std": dataScaled, scalerClass = self.std_complexData(data, logFile, norm)
+            else:               dataScaled, scalerClass = self.norm_complexData(data, logFile, norm)
+        else:
+            if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile, norm, debug)
+            else:               dataScaled, scalerClass = self.norm_data(data, logFile, norm, scale, debug)
 
         if isTensor: # and back to tensor
             dataScaled = torch.from_numpy(dataScaled)
 
         return dataScaled, scalerClass
 
-    def unScale_data(self, data, scalerClass):
+    def unScale_data(self, data, scalerClass, debug=False):
         #print(f"data: {type(data)}, {type(data[0])}, {len(data)}")
         #print(f" scalerClass: mean: {type(scalerClass.mean)}")
         data = np.array(data) # make numpy so we can work with it
 
         if scalerClass.type == "std":
-            data = self.unScale_std(data, scalerClass)
+            data = self.unScale_std(data, scalerClass, debug)
         else:
-            data = self.unScale_norm(data, scalerClass)
+            data = self.unScale_norm(data, scalerClass, debug)
 
         return data
 
-    def unScale_std(self, data, scalerClass):
+    def unScale_std(self, data, scalerClass:normClass, debug):
+        if debug:
+            print(f"{scalerClass}")
+            print(f"before: {data}")
         data = data * scalerClass.std + scalerClass.mean
+        if debug:
+            print(f"After{data}")
 
         return data
 
-    def unScale_norm(self, data, scalerClass:normClass):
+    def unScale_norm(self, data, scalerClass:normClass, debug):
         if   scalerClass.type == 'meanNorm'  : 
             normTo = scalerClass.mean
             adjustMin = 0
@@ -614,63 +618,74 @@ class dataLoader:
 
         return data
 
-    def std_complexData(self, data, logFile):
+    def std_complexData(self, data, logFile, norm:normClass):
         real = np.real(data)
         imag = np.imag(data)
         mean = np.mean(real) + 1j * np.mean(imag) 
         std = np.std(real) + 1j * np.std(imag) 
-        self.norm = normClass(type="std", mean=mean, std=std)
+        self.dataNormConst = normClass(type="std", mean=mean, std=std)
 
-        stdised_real = (real - self.norm.mean.real)/self.norm.std.real
-        stdised_imag = (imag - self.norm.mean.imag)/self.norm.std.imag
+        stdised_real = (real - norm.mean.real)/norm.std.real
+        stdised_imag = (imag - norm.mean.imag)/norm.std.imag
 
         normData = stdised_real + 1j * stdised_imag
 
-        self.logScaler(logFile, self.norm, complex=True)
-        logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
-        return normData, self.norm
+        self.logScaler(logFile, self.dataNormConst, complex=True)
+        #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
+        return normData, norm
 
-    def std_data(self, data, logFile):
+    def std_data(self, data, logFile, norm:normClass, debug):
         # Normalize the data
         # float: from 0 to 1
         # 0.5 = center
-
-        self.norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
-        #logger.info(f"Orig: {data[0:3, 0:5, 0:2]}")
+        if norm == None:
+            norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
 
         # scale the data
-        normData = (data - self.norm.mean)/self.norm.std # standardise
+        normData = (data - norm.mean)/norm.std # standardise
 
-        self.logScaler(logFile, self.norm)
-        logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
-        return normData, self.norm
+        if debug:
+            logger.info(norm)
+            logger.info(f"Orig: \n{data[0:8]}")
+            logger.info(f"Orig: \n{normData[0:8]}")
 
-    def norm_complexData(self, data, logFile):
+        self.logScaler(logFile, norm)
+        #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
+        return normData, norm
+
+    def norm_complexData(self, data, logFile, norm:normClass):
         #L2 norm is frobenious_norm, saved as mean
-        self.norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.linalg.norm(data))
-        normData = data/self.norm.mean
 
-        self.logScaler(logFile, self.norm)
-        logger.info(f"l2 norm: {self.norm.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
-        return normData, self.norm
+        if norm == None:
+            norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.linalg.norm(data) )
 
-    def norm_data(self, data, logFile, scaler, scale):
-        self.norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
-        newMin = -self.norm.scale
-        newMax = self.norm.scale
+        normData = data/norm.mean
 
-        if scaler == 'meanNorm': 
-            normTo = self.norm.mean
+        self.logScaler(logFile, norm)
+        #logger.info(f"l2 norm: {self.dataNormConst.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        return normData, norm
+
+    def norm_data(self, data, logFile, norm:normClass, scale, debug):
+        if norm == None:
+            norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
+
+        if debug: 
+            logger.info(f"{norm}")
+        newMin = -norm.scale
+        newMax = norm.scale
+
+        if norm.type == 'meanNorm': 
+            normTo = norm.mean
             adjustMin = 0
-        elif scaler == 'minMaxNorm': 
-            normTo = self.norm.min
+        elif norm.type == 'minMaxNorm': 
+            normTo = norm.min
             adjustMin = newMin
 
-        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(self.norm.max - self.norm.min) 
+        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(norm.max - norm.min) 
 
-        self.logScaler(logFile, self.norm)
-        logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
-        return normData, self.norm
+        self.logScaler(logFile, norm)
+        #logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
+        return normData, norm
 
     def logScale_Data(self, data, logFile):
         logger.info(f"Convert data to log scale | type: {type(data)}, shape: {data.shape}")
@@ -697,7 +712,7 @@ class dataLoader:
             writer.writerow(['min', 'max', 'mean', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.scale])
             writer.writerow(['---------'])
-        logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, scale: {scaler.scale}")
+        #logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, scale: {scaler.scale}")
     
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
@@ -731,21 +746,8 @@ class dataLoader:
             fftData[ch] = freqData[0]
 
         return freqList, fftData
-    def getCWTData(self, cwt_class:cwt):
-        cwtFile = f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy"
-        logger.info(f"Looking for: {cwtFile}")
-        if self.dataSaveDir != "" and os.path.exists(cwtFile):
-            logger.info(f"loading: {self.dataSaveDir}, cwtFile: {cwtFile}")
-            self.loadCWTData(cwt_class)
-        else: 
-            logger.info(f"Did not find, transrom with: {cwt_class.wavelet_name}")
-            self.cwtTransformData(cwt_class)
 
-    def loadCWTData(self, cwt_class):
-        self.cwtData_raw = np.load(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy")
-        self.cwtFrequencies = np.load(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
-
-    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False):
+    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False, testCorrectness=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
@@ -753,15 +755,15 @@ class dataLoader:
         timeStart = time.time()
 
         if saveNormPerams: 
-            self.norm = normClass()
-            self.norm.min = 10000
-            self.norm.max = 0
+            self.dataNormConst = normClass()
+            self.dataNormConst.min = 10000
+            self.dataNormConst.max = 0
 
         if oneShot:
-            self.cwtData_raw , self.cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
+            cwtData_raw , cwtFrequencies = cwt_class.cwtTransform(timeData) # This is: freqs, windows, ch, timepoints
         else:
-            self.cwtData_raw = None
-            self.cwtFrequencies = None
+            cwtData_raw = None
+            cwtFrequencies = None
             sum = 0
             mean = 0
             variance = 0
@@ -772,24 +774,20 @@ class dataLoader:
             nElements = 0
 
             logger.info(f"Prossessing timeData: {len(timeData)} datapoints {timeData.shape}")
-            for i, data in tqdm(enumerate(timeData), total=len(timeData), desc="Calculating CWT", unti="Transform"):
+            for i, data in tqdm(enumerate(timeData), total=len(timeData), desc="Calculating CWT", unit="Transform"):
 
                 #logger.info(f"Transforming data: {i}, {data.shape}")
-                cwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
-                #Everybody is the same freq list, so just do once
-                if self.cwtFrequencies is None: 
-                    self.cwtFrequencies = cwtFrequencies
-                    logger.info(f"Get freqs | cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}")
+                thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data)
 
                 if saveNormPerams:
-                    nElements += cwtData_raw.size
-                    min = np.min(cwtData_raw)
-                    max = np.max(cwtData_raw)
-                    sum += np.sum(cwtData_raw)/cwtData_raw.size
+                    nElements += thisCwtData_raw.size
+                    min = np.min(thisCwtData_raw)
+                    max = np.max(thisCwtData_raw)
+                    sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
 
-                    if np.iscomplexobj(cwtData_raw):
-                        real = np.real(cwtData_raw)
-                        imag = np.imag(cwtData_raw)
+                    if np.iscomplexobj(thisCwtData_raw):
+                        real = np.real(thisCwtData_raw)
+                        imag = np.imag(thisCwtData_raw)
 
                         #Each cwt mean
                         this_mean_real = np.mean(real)
@@ -808,28 +806,29 @@ class dataLoader:
                         variance_Imag += np.sum((imag - mean_Imag) **2)
 
                     else:
-                        this_mean = np.mean(cwtData_raw)
+                        this_mean = np.mean(thisCwtData_raw)
                         delta = this_mean - mean
                         mean += delta/(i+1)
-                        variance += np.sum((cwtData_raw - mean) **2)
+                        variance += np.sum((thisCwtData_raw - mean) **2)
                     #   mean
                     #   std dev
 
-                    if min < self.norm.min: self.norm.min = min
-                    if max > self.norm.max: self.norm.max = max
+                    if min < self.dataNormConst.min: self.dataNormConst.min = min
+                    if max > self.dataNormConst.max: self.dataNormConst.max = max
                     # std real
                     # std imag
-                    #logger.info(f"#{i}: {self.norm.min}, max: {self.norm.max}, running Sum: {sum}")
-                #else:
-                cwtData_raw = np.expand_dims(cwtData_raw, axis=0) # add the run dim back to append
-                #logger.info(f"cwtData_raw: {type(cwtData_raw)}, {cwtData_raw.shape}")
-                if self.cwtData_raw is None: self.cwtData_raw = cwtData_raw.copy()
-                else:                        self.cwtData_raw = np.append(self.cwtData_raw, cwtData_raw, axis=0)
+                    #logger.info(f"#{i}: {self.dataNormConst.min}, max: {self.dataNormConst.max}, running Sum: {sum}")
+                if testCorrectness:
+                    thisCwtData_raw = np.expand_dims(thisCwtData_raw, axis=0) # add the run dim back to append
+                    #logger.info(f"thisCwtData_raw: {type(thisCwtData_raw)}, {thisCwtData_raw.shape}")
+                    if cwtData_raw is None: cwtData_raw = thisCwtData_raw.copy()
+                    else:                        cwtData_raw = np.append(cwtData_raw, thisCwtData_raw, axis=0)
 
-                    #logger.info(f"Data Number {i}: self.cwtData_raw: {self.cwtData_raw.shape}, self.cwtFrequencies: {self.cwtFrequencies.shape}")
 
-        self.cwtData_raw = np.transpose(self.cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
-        cwtTransformTime = time.time() - timeStart
+        #For testing to make sure we have the right thing
+        if testCorrectness:
+            cwtData_raw = np.transpose(cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
+            cwtTransformTime = time.time() - timeStart
 
         if saveNormPerams:
             if np.iscomplexobj(cwtData_raw):
@@ -837,21 +836,46 @@ class dataLoader:
                 std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
             else:
                 std = np.sqrt(variance/nElements)
-            self.norm.mean = mean
-            self.norm.std = std
+            self.dataNormConst.mean = mean
+            self.dataNormConst.std = std
 
-            #self.norm.mean = sum/(i+1)
-            logger.info(f"Norm stats | min: {self.norm.min}, max: {self.norm.max}, mean: {self.norm.mean} ")
-            logger.info(f"           | min: {np.min(self.cwtData_raw)}, max: {np.max(self.cwtData_raw)}, mean: {np.mean(self.cwtData_raw)}")
-            logger.info(f"std dev | {self.norm.std}")
-            logger.info(f"        | {np.std(np.real(self.cwtData_raw))}, + {np.std(np.imag(self.cwtData_raw))}i")
+            #self.dataNormConst.mean = sum/(i+1)
+            logger.info(f"Norm stats | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean} ")
+            logger.info(f"std dev | {self.dataNormConst.std}")
+            if testCorrectness:
+                logger.info(f"           | min: {np.min(cwtData_raw)}, max: {np.max(cwtData_raw)}, mean: {np.mean(cwtData_raw)}")
+                logger.info(f"        | {np.std(np.real(cwtData_raw))}, + {np.std(np.imag(cwtData_raw))}i")
 
-            fileName = f"{self.dataSaveDir}/normPerams_{cwt_class.wavelet_name}.pkl"
-            with open(fileName, 'wb') as f: pickle.dump(self.dataConfigs, f)
+
+        if testCorrectness:
+            logger.info(f"cwtData: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
+        #if self.configs['cwt']['saveCWT']:
+        #    logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
+        #    np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", cwtData_raw)
+        #    np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", cwtFrequencies)
+
+
+    def getNormPerams(self, cwt_class:cwt, logScaleData):
+        logger.info(f"Get the norm/std peramiters | , wavelet_base: {cwt_class.wavelet_base}, wavelet_center_freq: {cwt_class.f0}, wavelet_bandwidth: {cwt_class.bw}, logScaleData: {logScaleData}")
+        logger.info(f"Data dir: {self.dataSaveDir}")
+
+        #logScaleFreq = configs['cwt']['logScaleFreq']
+        #cwt_class.setupWavelet(cwt_class.wavelet_base, f0=cwt_class.f0, bw=cwt_class.bw, useLogForFreq=logScaleFreq)
+        if logScaleData :cwt_class.normPeramsFileName = f"{cwt_class.normPeramsFileName}_logData"
+
+        fileName = f"{self.dataSaveDir}/normPerams_{cwt_class.wavelet_name}.pkl"
+        if os.path.isfile(fileName):
+            logger.info(f"Loading norm/std perams from: {fileName}")
+            with open(fileName, 'rb') as f:
+                self.dataNormConst = pickle.load(f)
+            logger.info(f"Loaded Norm stats from file | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean} ")
+        else: # Calculate the terms
+            logger.info(f"Calculating norm/std perams")
+            waveletPlotsDir = f"{self.dataSaveDir}/waveletPlots"
+            cwt_class.plotWavelet(saveDir=waveletPlotsDir, sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
+    
+            # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
+            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True, testCorrectness=True) 
+
+            with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")
-
-        logger.info(f"cwtData: {type(self.cwtData_raw)}, {self.cwtData_raw.shape}, cwtFrequencies: {type(self.cwtFrequencies)}, {self.cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
-        if self.configs['cwt']['saveCWT']:
-            logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
-            np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", self.cwtData_raw)
-            np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", self.cwtFrequencies)

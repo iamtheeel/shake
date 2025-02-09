@@ -17,19 +17,20 @@ import matplotlib.pyplot as plt
 import csv
 
 #from dataLoader import dataSetWithSubjects
+from cwtTransform import cwt
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep,  configs, logFile, logDir, expNum, waveletName, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    def __init__(self,model, device, dataPrep,  configs, logFile, logDir, expNum, cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
         self.device = device
 
         self.dataPrep = dataPrep
         self.model = model.to(self.device)
-        self.train_data_loader = self.dataPrep.dataLoader_t 
-        self.val_data_loader   = self.dataPrep.dataLoader_v
+        #self.train_data_loader = self.dataPrep.dataLoader_t 
+        #self.val_data_loader   = self.dataPrep.dataLoader_v
 
         self.expNum = expNum
 
@@ -61,8 +62,16 @@ class Trainer:
         torch.backends.cudnn.benchmark = False
 
         self.set_training_config()
-        self.hyperPeramStr = f"exp:{self.expNum}, wavelet: {waveletName}, scale: {scaleStr}\n" \
-                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}, epochs:{self.epochs}"  
+        self.cwtClass = cwtClass
+        self.doCWT = False
+        waveletStr = ""
+        if cwtClass.wavelet_name != "":
+            self.doCWT = True
+            waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
+
+        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}\n" \
+                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}, " \
+                             f"epochs:{self.epochs}, batchSize:{self.configs['data']['batchSize']}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
     def set_training_config(self):
@@ -121,7 +130,19 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
-            for data, labels, subjects in tqdm(self.train_data_loader, desc="Batch Progress", unit="batch", leave=False):
+            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_t, desc="Batch Progress", unit="batch", leave=False):
+                if self.doCWT:
+                    data = self.cwtClass.cwtTransformBatch(data)
+                    '''
+                    #logger.info(f"before cwt: {data.shape}")
+                    data, freqs = self.cwtClass.cwtTransform(data=data.numpy())
+                    #logger.info(f"after cwt: {data.shape}")
+                    data = np.transpose(data, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
+                    #logger.info(f"after transpose: {data.shape}")
+                    data = torch.from_numpy(data)
+                    '''
+                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
+
                 data = data.to(self.device)
                 labels = labels.to(self.device)
 
@@ -148,11 +169,10 @@ class Trainer:
                 if self.regression:
                     #print(f"Regression: {out_pred.shape}, {labels.shape}")
                     # Calculate RMS accuracy between predictions and labels
+                    # Output of unScale is numpy
                     preds_unSc = self.dataPrep.unScale_data(out_pred.squeeze().detach().cpu().numpy(), self.dataPrep.labNormConst)
                     targs_unSc = self.dataPrep.unScale_data(labels.squeeze().detach().cpu().numpy(), self.dataPrep.labNormConst)
-                    #preds_unSc = out_pred.squeeze().detach().cpu().numpy()
-                    #targs_unSc = labels.squeeze().detach().cpu().numpy()
-                    # Calculate RMS difference between predictions and targets
+
                     diff_sq = np.square(preds_unSc - targs_unSc)
                     rms_diff_sq = np.mean(diff_sq)
                     rms_diff = np.sqrt(rms_diff_sq)
@@ -271,10 +291,16 @@ class Trainer:
 
         with torch.no_grad():
         #with torch.inference_mode():
-            nData = len(self.val_data_loader)
+            nData = len(self.dataPrep.dataLoader_v)
             print(f"Test Data len: {nData}")
 
-            for data, labels, subjects  in self.val_data_loader:
+            for data, labels, subjects  in self.dataPrep.dataLoader_v:
+                if self.doCWT:
+                    data = self.cwtClass.cwtTransformBatch(data)
+                #TODO: log scale
+                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=True)
+                #TODO: norm
+
                 data = data.to(self.device)
                 labels = labels.to(self.device)
 
@@ -285,8 +311,9 @@ class Trainer:
                 if self.regression:
                     val_loss = self.criterion(val_pred, labels)
                     # Unscale the data
-                    preds_unSc = self.dataPrep.unScale_data(val_pred.item(), self.dataPrep.labNormConst)
-                    targs_unSc = self.dataPrep.unScale_data(labels.item(), self.dataPrep.labNormConst)
+                    print(f"Preds:")
+                    preds_unSc = self.dataPrep.unScale_data(val_pred.item(), self.dataPrep.labNormConst, debug=False)
+                    targs_unSc = self.dataPrep.unScale_data(labels.item(), self.dataPrep.labNormConst, debug=False)
                     #logger.info(f"val_pred: {type(val_pred)}, {val_pred.shape}, labels: {type(labels)}, {labels.shape}")
                     #logger.info(f"val_pred: {val_pred}, labels: {labels}")
                     diff_sq = np.square(preds_unSc - targs_unSc)

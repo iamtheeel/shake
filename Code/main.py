@@ -210,72 +210,78 @@ def getModel(wavelet_name, model_name, dataShape):
         exit()
     return model
 
-def getNormPerams(wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData):
-    logger.info(f"Get the norm/std peramiters | , wavelet_base: {wavelet_base}, wavelet_center_freq: {wavelet_center_freq}, wavelet_bandwidth: {wavelet_bandwidth}, logScaleData: {logScaleData}")
-    logger.info(f"Data dir: {data_preparation.dataSaveDir}")
 
-    logScaleFreq = configs['cwt']['logScaleFreq']
-    cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=logScaleFreq)
-    if logScaleData :cwt_class.normPeramsFileName = f"{cwt_class.normPeramsFileName}_logData"
-
-    waveletPlotsDir = f"{data_preparation.dataSaveDir}/waveletPlots"
-    cwt_class.plotWavelet(saveDir=waveletPlotsDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
-
-    # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-    data_preparation.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True) 
     
 
 
-def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-    logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+#def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, cwt_class.f0, cwt_class.bw, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+    dataAsCWT = True
+    if cwt_class.wavelet_base == "None": dataAsCWT = False
 
 
     # TODO: Set to save the transformed data
-    if wavelet_base != "None":
-        logScaleFreq = configs['cwt']['logScaleFreq']
-        cwt_class.setupWavelet(wavelet_base, f0=wavelet_center_freq, bw=wavelet_bandwidth, useLogForFreq=logScaleFreq)
+    if not dataAsCWT:
         cwt_class.plotWavelet(saveDir=outputDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
-        logger.info(f"Load the cwt data, or generate if it does not exist")
-        data_preparation.getCWTData(cwt_class) # Will load the files if they exist, otherwise will transform the data
 
-    #Make sure we start with a fresh dataset
-    data_preparation.resetData(wavelet_name=cwt_class.wavelet_name) #Will copy the cwt data to data
-    logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
+    #Make sure we start with a fresh time d dataset
+    data_preparation.resetData() 
+    #logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
-    #Log scale the data
+    #Log scale the lin data
     scaleStr = f"d: {dataScaler} {dataScale}, l: {labelScaler} {labelScale}"
-    if(logScaleData):
-        data_preparation.data = data_preparation.logScale_Data(data_preparation.data, logFile=logfile)
-        scaleStr = f"{scaleStr}, Log"
-
-    #logger.info(f"data: {type(data)}, labels: {type(labels)}")
-    logger.info(f"Norm the data: {dataScaler}, {dataScale}")
-    data_preparation.data_norm, data_preparation.dataNormConst = data_preparation.scale_data(data_preparation.data, dataScaler, logfile, dataScale)
+    if(logScaleData): scaleStr = f"{scaleStr}, Log"
+    data_preparation.dataNormConst.type = dataScaler
+    data_preparation.dataNormConst.scale = dataScale
 
     if configs['model']['regression']: 
         logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
-        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data_preparation.labels, labelScaler, logfile, labelScale)
+        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data=data_preparation.labels, logFile=logfile, scaler=labelScaler , scale=labelScale, debug=False)
         #print(f"{data_preparation.labNormConst.type}")
     else: 
         data_preparation.labels_norm = data_preparation.labels
 
-    if wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
-        expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
+    # Save movie goes to cwtTransform data
+    #if cwt_class.wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
+    #    expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
 
-        #timeStart = time.time()
-        saveMoveTime = timeTaken()
-        saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
-        saveMovieTime.endTime(echo=True, echoStr=f"Save Movie Frames")
-        #timeTaken = timeStart - time.time()
-        #logger.info(f"Movie Frames saved: {timeTaken:.2f}s")
+    #    #timeStart = time.time()
+    #    saveMovieTime = timeTaken()
+    #    saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
+    #    saveMovieTime.endTime(echo=True, echoStr=f"Save Movie Frames")
+    #    #timeTaken = timeStart - time.time()
+    #    #logger.info(f"Movie Frames saved: {timeTaken:.2f}s")
 
 
     #TODO: Move to experTrack
     logger.info(f"Get Model")
     model_name = configs['model']['name']
-    dataShape = data_preparation.data.shape[1:] #Runs, Ch, Freqs, TimePts
-    dataShape = (configs['data']['batchSize'],) + dataShape #Batch, Runs, Ch, Freqs, TimePts
+    # Data is currently: datapoints, height(sensorch), width(datapoints)
+    print(f"Data Shape of Time D raw: {data_preparation.data.shape}")
+    batchSize = configs['data']['batchSize'] 
+    runs = data_preparation.data.shape[0]
+    timePts = data_preparation.data.shape[2]
+    if dataAsCWT:
+        nCh = data_preparation.data.shape[1]
+        height = cwt_class.numScales
+
+    else:
+        # Note, for timeD, height = data ch
+        nCh = 1
+        height = data_preparation.data.shape[1]
+        # We want: datapoints, image channels, height, width 
+        data_preparation.data = np.expand_dims(data_preparation.data, axis=1)  # Equivalent to unsqueeze(1)
+    dataShape = (batchSize, nCh, height, timePts) #Batch, Ch, Freqs, TimePts
+    #dataShape = (batchSize, runs, nCh, height, timePts) #Batch, Runs, Ch, Freqs, TimePts
+    print(f"DataShape Now: {dataShape}")
+
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
+    if np.iscomplexobj(cwt_class.wavelet_fun):
+        # This is only partialy implemented
+        # and conv2d is not implemented :(
+        model = model.to(torch.complex128)
+        #model = model.to(torch.complex64)
     if configs['debugs']['saveModelInfo']: 
         saveSumary( outputDir, dateTime_str, model, dataShape)
 
@@ -288,7 +294,7 @@ def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, w
         logger.info(f"Load Trainer")
         # Data scaling info?
         trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
-                           waveletName=cwt_class.wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                           cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
         logger.info(f"Run Validation")
@@ -374,29 +380,31 @@ for wavelet_base in configs['cwt']['wavelet']:
                                 labelScale_values = [1]
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
+                                # Load the CWT Here
+                                logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
+                                cwt_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
 
-                                if configs['data']['getNormPerams']:
-                                    getNormPerams(wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData)
+                                #Load the norm perams, or calculate if the file is not there
+                                data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData)
 
-                                else:
-                                    for lossFunction in lossFunctions:
+                                for lossFunction in lossFunctions:
 
-                                        for optimizer in configs['trainer']['optimizer']:
+                                    for optimizer in configs['trainer']['optimizer']:
 
-                                            for learning_rate in configs['trainer']['learning_rate']:
+                                        for learning_rate in configs['trainer']['learning_rate']:
 
-                                                for weight_decay in configs['trainer']['weight_decay']:
+                                            for weight_decay in configs['trainer']['weight_decay']:
 
-                                                    for epochs in configs['trainer']['epochs']:
+                                                for epochs in configs['trainer']['epochs']:
 
-                                                        logger.info(f"==============================")
-                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                        logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
-    
-                                                        runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, 
-                                                                wavelet_base=wavelet_base, wavelet_center_freq=center_freq, wavelet_bandwidth=bandwidth, logScaleData=logScaleData,
-                                                                dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                                                    logger.info(f"==============================")
+                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
 
-                                                        expNum += 1
+                                                    #TODO: just send the cwtClass 
+                                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, logScaleData=logScaleData,
+                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+
+                                                    expNum += 1
