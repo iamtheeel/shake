@@ -181,24 +181,18 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer.writeheader()
 
 def getModel(wavelet_name, model_name, dataShape):
+    logger.info(f"Loading model: {model_name}")
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
     #Info for the models: x, ch, datapoints, x
     nCh = dataShape[1]
-    if wavelet_name == "None":
-        nDataPts = dataShape[2]
-        timeD = True
-    else:
-        timeD = False
-        nFreqs = dataShape[2]
-        nTimePts = dataShape[3]
-    #logger.info(f"dataset size: {len(data)},  Data: {tuple(data.shape)}, labels:  {tuple(label.shape)[0]}")
 
     if model_name == "multilayerPerceptron":
+        nDataPts = dataShape[2]
         model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
     elif model_name == "leNetV5":
         # For now use the ch as the height, and the npoints as the width
-        if timeD:
+        if wavelet_name == "None":
             #TODO: rewrite lenet to take timeD as an argument
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
         else:

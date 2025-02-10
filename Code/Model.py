@@ -53,6 +53,10 @@ class MobileNet_v2(nn.Module):
         # Load the model from the zoo
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 
+        # Modify the first convolution layer to accept nCh channels instead of the default 3
+        base_model.features[0][0] = nn.Conv2d(nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
+
+
         #TODO: add a layer, or modify the first to change 2D to 3D
         #if timeDData:
 
