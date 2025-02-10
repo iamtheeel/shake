@@ -298,7 +298,7 @@ class Trainer:
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
                 #TODO: log scale
-                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=True)
+                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
                 #TODO: norm
 
                 data = data.to(self.device)
@@ -311,7 +311,6 @@ class Trainer:
                 if self.regression:
                     val_loss = self.criterion(val_pred, labels)
                     # Unscale the data
-                    print(f"Preds:")
                     preds_unSc = self.dataPrep.unScale_data(val_pred.item(), self.dataPrep.labNormConst, debug=False)
                     targs_unSc = self.dataPrep.unScale_data(labels.item(), self.dataPrep.labNormConst, debug=False)
                     #logger.info(f"val_pred: {type(val_pred)}, {val_pred.shape}, labels: {type(labels)}, {labels.shape}")
