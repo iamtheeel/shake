@@ -875,7 +875,8 @@ class dataLoader:
             cwt_class.plotWavelet(saveDir=waveletPlotsDir, sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
     
             # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True, testCorrectness=True) 
+            testCorrect = self.configs['debugs']['testNormCorr']
+            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True, testCorrectness=testCorrect) 
 
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")

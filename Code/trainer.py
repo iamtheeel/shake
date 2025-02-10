@@ -298,7 +298,7 @@ class Trainer:
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
                 #TODO: log scale
-                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=True)
+                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
                 #TODO: norm
 
                 data = data.to(self.device)
