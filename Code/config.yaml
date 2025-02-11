@@ -11,11 +11,13 @@ debugs:
     showWindowPlots: False
 plts:
     pltDir: "../plots"
-    #animDir: "/Volumes/Data/thesis/animations"
-    animDir: "../animations"
-    saveFilesForAnimation: True
+    animDir: "/Volumes/Data/thesis/animations"
+    #animDir: "../animations"
+    generatePlots: True
     showFilesForAnimation: False #Show instead of save
 
+    rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList
+    #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
@@ -49,6 +51,7 @@ data:
 
 
     #stompSens: [5, 6]
+    #stompSens: [5, 6, 7]
     stompSens: [5, 6, 7]
     stompThresh: 1.5 #If 0, then no stomp detection
     dataThresh: 1.5 # If 0, then no, non-walking detection
@@ -60,8 +63,6 @@ data:
     # 16 too big on Mac, or at least with firefox running
     #batchSize: 16 #256 #Should be power of 2
     batchSize: 1 #256 #Should be power of 2
-
-    #getNormPerams: True #False to run the program, True to run the cwt of the data set and save the norm peramiters
 
     dataScalers: ["meanNorm"]
     #dataScalers: ["std", "meanNorm"]
@@ -108,7 +109,6 @@ cwt:
     #Bandwidth nopt used for fstep
     waveLet_bandwidth: [0.8] 
     #waveLet_bandwidth: [6.0] 
-    rgbPlotChList: 0 #[7, 6, 5] # For 3 channel plot, 0 to use the chList
     # Norms to each ch/data if normTo_max is 0
     #normTo_max: 0.016 #Max for linear scale, but only a few outliers are this high
     #normTo_max: 0.008 #0 for none

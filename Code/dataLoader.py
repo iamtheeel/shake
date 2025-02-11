@@ -100,10 +100,9 @@ class dataLoader:
         self.dataLoader_t = None
         self.dataLoader_v = None
 
-        self.dataNormConst = None
+        self.dataNormConst = normClass()
         self.labNormConst = None
 
-        self.dataNormConst = normClass()
 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
         chList_str = "_".join(map(str, self.dataConfigs.chList))
@@ -111,13 +110,15 @@ class dataLoader:
         # windows limit, runs limit
         if self.regression: regClas = "regression"
         else:               regClas = "classification"
-        self.dataSaveDir = f"{self.dataPath}/{config['data']['dataSetDir']}_{regClas}_chList-{chList_str}"
+        self.dataFolder = f"{config['data']['dataSetDir']}_{regClas}_chList-{chList_str}"
         runLimit = config['data']['limitRuns']
-        if runLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_runLim-{runLimit}"
+        if runLimit > 0: self.dataFolder = f"{self.dataFolder}_runLim-{runLimit}"
         winLimit = config['data']['limitWindowLen']
-        if winLimit > 0: self.dataSaveDir = f"{self.dataSaveDir}_winCountLim-{winLimit}"
-        self.dataSaveDir = f"{self.dataSaveDir}_StompThresh-{config['data']['stompThresh']}"
-        self.dataSaveDir = f"{self.dataSaveDir}_DataThresh-{config['data']['dataThresh']}"
+        if winLimit > 0: self.dataFolder = f"{self.dataFolder}_winCountLim-{winLimit}"
+        self.dataFolder = f"{self.dataFolder}_StompThresh-{config['data']['stompThresh']}"
+        self.dataFolder = f"{self.dataFolder}_DataThresh-{config['data']['dataThresh']}"
+
+        self.dataSaveDir = f"{self.dataPath}/{self.dataFolder}"
 
         self.configs = config
 
@@ -388,7 +389,7 @@ class dataLoader:
                         thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
                         thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
                         #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
-                        if not self.regression or thisSubjectId > 0:
+                        if (not self.regression) or (thisSubjectId > 0):
                             #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                             # Are the lables speeds, or subject Id
                             if thisSubjectId >=0: # Negitives reservered 
@@ -439,7 +440,7 @@ class dataLoader:
                     value = rms_ratio[dataNum]
                     #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
                     if value > self.stompThresh: 
-                        thisSubjectId = -1
+                        #thisSubjectID = -1
                         hasStomp = 0 
                         break
         else: hasStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
@@ -557,14 +558,14 @@ class dataLoader:
 
 
     # If you don't send the normClass, it will calculate based on the data
-    def scale_data(self, data, logFile, norm:normClass=None, scaler=None, scale=None, debug=False):
+    def scale_data(self, data, logFile=None, norm:normClass=None, scaler=None, scale=None, debug=False):
         isTensor = False
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
             isTensor = True
 
+        if debug: logger.info(f"scale_data:{norm}")
         if scaler==None: scaler= norm.type
-        if debug: logger.info(f"{norm}")
 
         if np.iscomplexobj(data):
             if scaler == "std": dataScaled, scalerClass = self.std_complexData(data, logFile, norm)
@@ -583,10 +584,12 @@ class dataLoader:
         #print(f" scalerClass: mean: {type(scalerClass.mean)}")
         data = np.array(data) # make numpy so we can work with it
 
-        if scalerClass.type == "std":
-            data = self.unScale_std(data, scalerClass, debug)
+        if np.iscomplexobj(data):
+            if scalerClass.type == "std": data = self.unScale_std_complex(data, scalerClass, debug)
+            else:                         data = self.unScale_norm_complex(data, scalerClass, debug)
         else:
-            data = self.unScale_norm(data, scalerClass, debug)
+            if scalerClass.type == "std": data = self.unScale_std(data, scalerClass, debug)
+            else:                         data = self.unScale_norm(data, scalerClass, debug)
 
         return data
 
@@ -630,7 +633,8 @@ class dataLoader:
 
         normData = stdised_real + 1j * stdised_imag
 
-        self.logScaler(logFile, self.dataNormConst, complex=True)
+        if logFile != None:
+            self.logScaler(logFile, self.dataNormConst, complex=True)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         return normData, norm
 
@@ -649,7 +653,8 @@ class dataLoader:
             logger.info(f"Orig: \n{data[0:8]}")
             logger.info(f"Orig: \n{normData[0:8]}")
 
-        self.logScaler(logFile, norm)
+        if logFile != None:
+            self.logScaler(logFile, norm)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         return normData, norm
 
@@ -661,29 +666,38 @@ class dataLoader:
 
         normData = data/norm.mean
 
-        self.logScaler(logFile, norm)
+        if logFile != None:
+            self.logScaler(logFile, norm)
         #logger.info(f"l2 norm: {self.dataNormConst.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
     def norm_data(self, data, logFile, norm:normClass, scale, debug):
+        #https://en.wikipedia.org/wiki/Feature_scaling
         if norm == None:
             norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
 
-        if debug: 
-            logger.info(f"{norm}")
-        newMin = -norm.scale
-        newMax = norm.scale
-
         if norm.type == 'meanNorm': 
             normTo = norm.mean
-            adjustMin = 0
         elif norm.type == 'minMaxNorm': 
             normTo = norm.min
-            adjustMin = newMin
 
-        normData = adjustMin + 0.5*(newMax - newMin)*(data-normTo)/(norm.max - norm.min) 
 
-        self.logScaler(logFile, norm)
+        normData = (data-normTo)/(norm.max - norm.min) 
+
+        if debug:
+            logger.info(f"norm_data:{data},  normTo: {normTo}, max: {norm.max}, min: {norm.min} | normData: {normData}")
+
+        #Rescale for min/max
+        if norm.scale!= 1:
+            newMin = -norm.scale
+            newMax = norm.scale
+            normData = newMin + (newMin - newMax)*normData
+
+        if debug:
+            logger.info(f"After rescale: {normData}")
+
+        if logFile != None:
+            self.logScaler(logFile, norm)
         #logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
@@ -748,7 +762,17 @@ class dataLoader:
         return freqList, fftData
 
     #TODO: move to cwt?
-    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False):
+    def plotDataSet(self, cwt_class:cwt, logScaleData:bool):
+        generatePlots = self.configs['plts']['generatePlots']
+        if generatePlots:
+            expDir = f"{self.dataFolder}_{cwt_class.wavelet_name}"
+            #if logScaleData:expDir= f"{expDir}_logData" #Sort this when we get to it
+            expDir = f"{expDir}_dataScaler-{self.dataNormConst.type}_dataScale-{self.dataNormConst.scale}/images"
+            dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=expDir)
+            dataPlotter.generateAndSaveImages(logScaleData)
+
+
+    def cwtTransformData(self, cwt_class:cwt, oneShot=True, saveNormPerams=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
