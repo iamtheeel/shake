@@ -122,7 +122,7 @@ class Trainer:
             writer.writeheader()
 
         #for epoch in range(self.epochs):
-        for epoch in tqdm(range(self.epochs), desc="Training", unit="epoch"):
+        for epoch in tqdm(range(self.epochs), desc="Training Progress", unit="epoch"):
             batchNumber = 0
             correct_epoch = 0
             train_loss_epoch, train_acc_epoch = 0, 0
@@ -130,7 +130,7 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
-            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_t, desc="Batch Progress", unit="batch", leave=False):
+            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
                     '''
@@ -294,7 +294,7 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             print(f"Test Data len: {nData}")
 
-            for data, labels, subjects  in self.dataPrep.dataLoader_v:
+            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
                 #TODO: log scale
@@ -311,7 +311,6 @@ class Trainer:
                 if self.regression:
                     val_loss = self.criterion(val_pred, labels)
                     # Unscale the data
-                    print(f"Preds:")
                     preds_unSc = self.dataPrep.unScale_data(val_pred.item(), self.dataPrep.labNormConst, debug=False)
                     targs_unSc = self.dataPrep.unScale_data(labels.item(), self.dataPrep.labNormConst, debug=False)
                     #logger.info(f"val_pred: {type(val_pred)}, {val_pred.shape}, labels: {type(labels)}, {labels.shape}")

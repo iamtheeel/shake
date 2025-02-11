@@ -747,12 +747,17 @@ class dataLoader:
 
         return freqList, fftData
 
-    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False, testCorrectness=False):
+    #TODO: move to cwt?
+    def cwtTransformData(self, cwt_class, oneShot=True, saveNormPerams=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
         logger.info(f"Starting transorm of data_raw (will apply norm later): {type(timeData)}, {timeData.shape}")
         timeStart = time.time()
+
+        # Test the norm by loading the entire block and running the calcs there to compair
+        # This takes too much mem for the entire set
+        testCorrectness = self.configs['debugs']['testNormCorr']
 
         if saveNormPerams: 
             self.dataNormConst = normClass()
@@ -875,8 +880,7 @@ class dataLoader:
             cwt_class.plotWavelet(saveDir=waveletPlotsDir, sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
     
             # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-            testCorrect = self.configs['debugs']['testNormCorr']
-            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True, testCorrectness=testCorrect) 
+            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True) 
 
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")

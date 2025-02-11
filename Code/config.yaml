@@ -5,7 +5,7 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: True
-    testNormCorr: False
+    testNormCorr: False #This loads up the entire matrix
 
     showFFTPlots: False
     showWindowPlots: False
@@ -33,7 +33,6 @@ data:
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
 
-    #classes: [0, 1, 2, 3]
     classes: ['No Step', '001', '002', '003']
     chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [6, 5, 4] # Try for 3 color plot
