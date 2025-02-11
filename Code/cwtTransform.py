@@ -113,16 +113,14 @@ class cwt:
 
         start_time = time.time()
         if self.wavelet_base == 'fstep':
-            [transformedData, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
+            [data_coefficients, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
                                                                 sampling_period=self.samplePeriod, f_0=self.f0)
         else:
-            [transformedData, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
+            [data_coefficients, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
         if echoOut:
-            logger.info(f"CWT output datashapes | transformedData: {transformedData.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
-
-        data_coefficients = transformedData
+            logger.info(f"CWT output datashapes | transformedData: {data_coefficients.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
         # Keep only every nth column (time point) from the results?
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
@@ -159,7 +157,7 @@ class cwt:
         if display:
             plt.show()
 
-    def get3ChData(self, plotChList, data_coefficients, dataChList, normTo_max = 0, normTo_min = 0):
+    def get3ChData(self, data_coefficients, plotChList, dataChList, normTo_max = 0, normTo_min = 0):
         """
         Input is complex
         Returns as mag
