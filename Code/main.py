@@ -55,6 +55,7 @@ else:
     device = "cpu"
     if torch.cuda.is_available(): device = "cuda"
     if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
+logger.info(f"device: {device}")
 
 def saveSumary(outputDir, dateTime_str, model, dataShape):
     sumFile = f'{outputDir}/{dateTime_str}_modelInfo.txt'
