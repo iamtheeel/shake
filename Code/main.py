@@ -144,7 +144,7 @@ logger.info(f"INIT: --------------------  Get Data   ----------------------")
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, outputDir, logfile)
 
-if configs['data']['dataSetDir'] != "" and os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
+if os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
       data_preparation.loadDataSet()
 else: data_preparation.get_data()
 logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
@@ -207,22 +207,10 @@ def getModel(wavelet_name, model_name, dataShape):
 
 
     
-"""
-Data Preparation
-"""
-logger.info(f"INIT: Get Data")
-from dataLoader import dataLoader
-data_preparation = dataLoader(configs, outputDir, logfile)
-
-if configs['data']['dataSetDir'] != "" and os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
-      data_preparation.loadDataSet()
-else: data_preparation.get_data()
-logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
-
 
 #def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
 def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-    logfile, outputDir = writeThisLogHdr(outputDir, expNum, wavelet_base, cwt_class, data_preparation, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+    logfile, outputDir = writeThisLogHdr(outputDir, expNum, cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     dataAsCWT = True
     if cwt_class.wavelet_base == "None": dataAsCWT = False
 

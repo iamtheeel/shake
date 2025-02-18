@@ -68,6 +68,7 @@ class cwt:
 
         # Our wave function
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
+        logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
 
         self.useLogScaleFreq  = useLogForFreq
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
@@ -107,20 +108,24 @@ class cwt:
         #logger.info(f"Scales: {self.scales}")
         #logger.info(f"Frequencies: {self.frequencies}")
 
-    def cwtTransform(self, data, echoOut=False):
+    def cwtTransform(self, data, debug=False):
         # Perform continuous wavelet transform using the defined wavelet
+        if debug:
+            logger.info(f"cwtTransform: wavelet: {self.wavelet_name}")
         #logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
         if self.wavelet_base == 'fstep':
+            if debug: logger.info(f"Fstep")
             [data_coefficients, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
                                                                 sampling_period=self.samplePeriod, f_0=self.f0)
         else:
+            if debug: logger.info(f"pywt.cwt")
             [data_coefficients, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
         #logger.info(f"Frequencies: {self.data_frequencies}")
         end_time = time.time()
-        if echoOut:
-            logger.info(f"CWT output datashapes | transformedData: {data_coefficients.shape}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
+        if debug:
+            logger.info(f"CWT output datashapes | transformedData: {data_coefficients.shape}, {data_coefficients.dtype}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
         # Keep only every nth column (time point) from the results?
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
@@ -184,7 +189,7 @@ class cwt:
             #logger.info(f"channel {thisCh} channel_data: {channel_data.shape}, {channel_data.max()}, {channel_data.min()}")
             #logger.info(f"channel {thisCh} normalized_data: {normalized_data.shape}, {normalized_data.max()}, {normalized_data.min()}")
 
-            #freqs, times, ch?
+            #freqs, times, ch
             rgb_data[:,:,i] = normalized_data
         if normTo_max == 0:
             logger.info(f"channel_max: {self.maxData}, channel_min: {self.minData}")

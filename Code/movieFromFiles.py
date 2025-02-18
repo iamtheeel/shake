@@ -28,7 +28,7 @@ import glob
 
 
                 
-fps = 2 #Frames per second, 2 fps corrupts the video
+fps = 3 #Frames per second, 2 fps corrupts the video
 
 subject  = 2
 #runs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
@@ -49,7 +49,7 @@ runs = [1, 2]
 #thisDir = 'exp-2_fstep-1_logScaleData-False_dataScaler-meanNorm_dataScale-1'
 #thisDir = 'exp-3_fstep-1.5_logScaleData-False_dataScaler-meanNorm_dataScale-1'
 #thisDir = 'exp-4_fstep-2_logScaleData-False_dataScaler-meanNorm_dataScale-1'
-thisDir = 'exp-1_fstep-2.14_logScaleData-False_dataScaler-meanNorm_dataScale-1_FreqLogScale'
+#thisDir = 'exp-1_fstep-2.14_logScaleData-False_dataScaler-meanNorm_dataScale-1_FreqLogScale'
 #thisDir = 'exp-5_fstep-2.5_logScaleData-False_dataScaler-meanNorm_dataScale-1'
 #thisDir = 'exp-1_fstep-3_logScaleData-False_dataScaler-meanNorm_dataScale-1'
 #thisDir = 'exp-2_fstep-5_logScaleData-False_dataScaler-meanNorm_dataScale-1'
@@ -60,6 +60,9 @@ thisDir = 'exp-1_fstep-2.14_logScaleData-False_dataScaler-meanNorm_dataScale-1_F
 
 ### Lin
 #thisDir = 'exp-1_fstep-2.14_logScaleData-False_dataScaler-meanNorm_dataScale-1_linFreq'
+
+#thisDir = 'classification_chList-8_7_6_5_4_3_2_16_1_runLim-1_winCountLim-20_StompThresh-0_DataThresh-0_fstep-2.14_dataScaler-std'
+thisDir ='classification_chList-8_7_6_5_4_3_2_16_1_runLim-1_winCountLim-20_StompThresh-0_DataThresh-0_cmor10-0.8_dataScaler-std'
 
 
 

@@ -141,7 +141,8 @@ class Trainer:
                     #logger.info(f"after transpose: {data.shape}")
                     data = torch.from_numpy(data)
                     '''
-                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
+                # Not seting the datanormConst is somehow overwriting it?? Makes no sense
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)
@@ -237,7 +238,7 @@ class Trainer:
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
         
             if epoch%1==0:
-                print(f"Training Epoch: {epoch+1} | Loss: {train_loss_epoch:.3f} | {self.accStr}: {train_acc_epoch:.2f} | Time: {epoch_runTime:.3f}s")
+                print(f"Training Epoch: {epoch+1} | Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | Time: {epoch_runTime:.1f}s")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
@@ -295,11 +296,10 @@ class Trainer:
             print(f"Test Data len: {nData}")
 
             for data, labels, subjects in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
-                if self.doCWT:
-                    data = self.cwtClass.cwtTransformBatch(data)
-                #TODO: log scale
-                data, _ = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
-                #TODO: norm
+                if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
+
+                # Not seting the datanormConst is somehow overwriting it?? Makes no sense
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)

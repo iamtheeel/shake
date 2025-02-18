@@ -110,7 +110,7 @@ class dataLoader:
         # windows limit, runs limit
         if self.regression: regClas = "regression"
         else:               regClas = "classification"
-        self.dataFolder = f"{config['data']['dataSetDir']}_{regClas}_chList-{chList_str}"
+        self.dataFolder = f"{regClas}_chList-{chList_str}"
         runLimit = config['data']['limitRuns']
         if runLimit > 0: self.dataFolder = f"{self.dataFolder}_runLim-{runLimit}"
         winLimit = config['data']['limitWindowLen']
@@ -204,22 +204,21 @@ class dataLoader:
 
 
         logger.info(f"Labels: {type(labels)}, {labels.shape}, Data: {type(data)}, {data.shape}")
-        if not self.configs['data']['dataSetDir'] == "":
-            # Create dataset directory if it doesn't exist
-            if not os.path.exists(self.dataSaveDir): os.makedirs(self.dataSaveDir)
+        # Create dataset directory if it doesn't exist
+        if not os.path.exists(self.dataSaveDir): os.makedirs(self.dataSaveDir)
 
-            logger.info(f"Saved data to {self.dataSaveDir}/data.npy")
-            logger.info(f"Saved labels to {self.dataSaveDir}/labels.pt")
-            np.save(f"{self.dataSaveDir}/data.npy", data)
-            torch.save(labels, f"{self.dataSaveDir}/labels.pt")
-            torch.save(subject_list, f"{self.dataSaveDir}/subjects.pt")
-            torch.save(run_list, f"{self.dataSaveDir}/runs.pt")
-            torch.save(startTimes_list, f"{self.dataSaveDir}/startTimes.pt")
-            # Save data configs
-            with open(f"{self.dataSaveDir}/dataConfigs.pkl", 'wb') as f:
-                pickle.dump(self.dataConfigs, f)
-            logger.info(f"Saved data configs to {self.dataSaveDir}/dataConfigs.pkl")
-            #np.save(f"{self.dataSaveDir}/subjects.npy", subjects)
+        logger.info(f"Saved data to {self.dataSaveDir}/data.npy")
+        logger.info(f"Saved labels to {self.dataSaveDir}/labels.pt")
+        np.save(f"{self.dataSaveDir}/data.npy", data)
+        torch.save(labels, f"{self.dataSaveDir}/labels.pt")
+        torch.save(subject_list, f"{self.dataSaveDir}/subjects.pt")
+        torch.save(run_list, f"{self.dataSaveDir}/runs.pt")
+        torch.save(startTimes_list, f"{self.dataSaveDir}/startTimes.pt")
+        # Save data configs
+        with open(f"{self.dataSaveDir}/dataConfigs.pkl", 'wb') as f:
+            pickle.dump(self.dataConfigs, f)
+        logger.info(f"Saved data configs to {self.dataSaveDir}/dataConfigs.pkl")
+        #np.save(f"{self.dataSaveDir}/subjects.npy", subjects)
 
         self.data_raw = data
         self.labels_raw = labels.float()
@@ -564,20 +563,27 @@ class dataLoader:
             data = data.numpy()
             isTensor = True
 
-        if debug: logger.info(f"scale_data:{norm}")
+        if debug: 
+            logger.info(f"scale_data: constants:{norm}")
+            logger.info(f"Before scaling: min: {np.min(data)}, max: {np.max(data)}, shape: {data.shape}")
+            #logger.info(f"{data[0:10, 0, 0]}")
+            #logger.info(f"Complex data: {np.iscomplexobj(data)}")
         if scaler==None: scaler= norm.type
 
         if np.iscomplexobj(data):
-            if scaler == "std": dataScaled, scalerClass = self.std_complexData(data, logFile, norm)
-            else:               dataScaled, scalerClass = self.norm_complexData(data, logFile, norm)
+            if scaler == "std": dataScaled, norm = self.std_complexData(data, logFile, norm, debug)
+            else:               dataScaled, norm = self.norm_complexData(data, logFile, norm)
         else:
-            if scaler == "std": dataScaled, scalerClass = self.std_data(data, logFile, norm, debug)
-            else:               dataScaled, scalerClass = self.norm_data(data, logFile, norm, scale, debug)
+            if scaler == "std": dataScaled, norm = self.std_data(data, logFile, norm, debug)
+            else:               dataScaled, norm = self.norm_data(data, logFile, norm, scale, debug)
 
         if isTensor: # and back to tensor
             dataScaled = torch.from_numpy(dataScaled)
 
-        return dataScaled, scalerClass
+        if debug: 
+            logger.info(f"After scaling: min: {np.min(dataScaled)}, max: {np.max(dataScaled)}, {norm}")
+
+        return dataScaled, norm
 
     def unScale_data(self, data, scalerClass, debug=False):
         #print(f"data: {type(data)}, {type(data[0])}, {len(data)}")
@@ -621,7 +627,9 @@ class dataLoader:
 
         return data
 
-    def std_complexData(self, data, logFile, norm:normClass):
+    def std_complexData(self, data, logFile, norm:normClass, debug):
+        if debug:
+            logger.info(f"std_complexData: {norm}")
         real = np.real(data)
         imag = np.imag(data)
         mean = np.mean(real) + 1j * np.mean(imag) 
@@ -636,6 +644,8 @@ class dataLoader:
         if logFile != None:
             self.logScaler(logFile, self.dataNormConst, complex=True)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
+        if debug:
+            logger.info(f"std_complexData done: {norm}")
         return normData, norm
 
     def std_data(self, data, logFile, norm:normClass, debug):
@@ -650,8 +660,8 @@ class dataLoader:
 
         if debug:
             logger.info(norm)
-            logger.info(f"Orig: \n{data[0:8]}")
-            logger.info(f"Orig: \n{normData[0:8]}")
+            #logger.info(f"Orig: \n{data[0:8]}")
+            #logger.info(f"Norm: \n{normData[0:8]}")
 
         if logFile != None:
             self.logScaler(logFile, norm)
@@ -767,7 +777,9 @@ class dataLoader:
         if generatePlots:
             expDir = f"{self.dataFolder}_{cwt_class.wavelet_name}"
             #if logScaleData:expDir= f"{expDir}_logData" #Sort this when we get to it
-            expDir = f"{expDir}_dataScaler-{self.dataNormConst.type}_dataScale-{self.dataNormConst.scale}/images"
+            expDir = f"{expDir}_dataScaler-{self.dataNormConst.type}"
+            if self.dataNormConst.scale != 1: expDir = f"{expDir}_dataScale-{self.dataNormConst.scale}"
+            expDir = f"{expDir}/images"
             dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=expDir)
             dataPlotter.generateAndSaveImages(logScaleData)
 
@@ -814,7 +826,7 @@ class dataLoader:
                     max = np.max(thisCwtData_raw)
                     sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
 
-                    if np.iscomplexobj(thisCwtData_raw):
+                    if np.iscomplexobj(cwt_class.wavelet_fun):
                         real = np.real(thisCwtData_raw)
                         imag = np.imag(thisCwtData_raw)
 
@@ -860,16 +872,17 @@ class dataLoader:
             cwtTransformTime = time.time() - timeStart
 
         if saveNormPerams:
-            if np.iscomplexobj(cwtData_raw):
+            if np.iscomplexobj(cwt_class.wavelet_fun):
                 mean = mean_Real + 1j * mean_Imag
                 std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
             else:
+                print("NOT COMPLEX")
                 std = np.sqrt(variance/nElements)
             self.dataNormConst.mean = mean
             self.dataNormConst.std = std
 
             #self.dataNormConst.mean = sum/(i+1)
-            logger.info(f"Norm stats | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean} ")
+            logger.info(f"Norm stats: {self.dataNormConst}")
             logger.info(f"std dev | {self.dataNormConst.std}")
             if testCorrectness:
                 logger.info(f"           | min: {np.min(cwtData_raw)}, max: {np.max(cwtData_raw)}, mean: {np.mean(cwtData_raw)}")
@@ -897,14 +910,15 @@ class dataLoader:
             logger.info(f"Loading norm/std perams from: {fileName}")
             with open(fileName, 'rb') as f:
                 self.dataNormConst = pickle.load(f)
-            logger.info(f"Loaded Norm stats from file | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean} ")
+            #logger.info(f"Loaded Norm stats from file | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean}, std: {self.dataNormConst.std} ")
+            logger.info(f"Loaded Norm stats from file: {self.dataNormConst}")
         else: # Calculate the terms
             logger.info(f"Calculating norm/std perams")
             waveletPlotsDir = f"{self.dataSaveDir}/waveletPlots"
             cwt_class.plotWavelet(saveDir=waveletPlotsDir, sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
     
             # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True) 
+            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
 
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")
