@@ -8,7 +8,6 @@
 ###
 import numpy as np
 import matplotlib.pyplot as plt
-import logging
 import os
 import time
 import torch
@@ -16,21 +15,29 @@ import torch
 import pywt #pip install pywavelets
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt
 
+#from dataLoader import normClass
+import typing
+if typing.TYPE_CHECKING: #Fix circular import
+    from fileStructure import fileStruct
+
 from jFFT import jFFT_cl
+
+import logging
 from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class cwt:
-    def __init__(self, configs, dataConfigs):
+    def __init__(self, fileStructure:"fileStruct", configs, dataConfigs):
+        self.fileStructure = fileStructure
         #Data information
         self.samplePeriod = 1/dataConfigs.sampleRate_hz
         self.sampleRate_hz = dataConfigs.sampleRate_hz
         self.configs = configs
 
-        self.saveDir = f"{configs['plts']['pltDir']}/cwt"
-        if not os.path.exists(self.saveDir): os.makedirs(self.saveDir)
+        #self.saveDir = f"{configs['plts']['pltDir']}/cwt"
+        #if not os.path.exists(self.saveDir): os.makedirs(self.saveDir)
 
         self.minData = 1000000.0
         self.maxData = 0.0
@@ -43,7 +50,7 @@ class cwt:
         self.f0 = None
         self.bw = None
 
-    def setupWavelet(self, wavelet_base, f0=1.0, bw=1.0, useLogForFreq=False):
+    def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, useLogForFreq=False):
         self.f0= f0
         self.bw = bw
         if wavelet_base == "mexh" or wavelet_base == "morl":
@@ -73,11 +80,18 @@ class cwt:
         self.useLogScaleFreq  = useLogForFreq
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
 
+        self.fileStructure.setCWT_dir(self)
+        '''
         logScFreq_st = ""
         if useLogForFreq: logScFreq_st = "_logScaleFreq"
         self.normPeramsFileName = f"normPerams_{wavelet_name}{logScFreq_st}"
         logger.info(f"New Wavelet: {wavelet_name}")
         #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
+        
+        self.wavletDir = f"{self.wavelet_name}"
+        '''
+
+        self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
@@ -244,7 +258,7 @@ class cwt:
         time_labels = valid_ticks * self.samplePeriod
         return valid_ticks, time_labels
 
-    def plotWavelet(self, expNum=-1, sRate=0, saveDir="", show = False, save = True):
+    def plotWavelet(self, sRate=0, show = False, save = True):
         # Get the wavelet function values
         complexInput = False
         if np.iscomplexobj(self.wavelet_fun): complexInput = True
@@ -252,7 +266,6 @@ class cwt:
 
         # Plot the time Domain
         expStr = ""
-        if expNum >= 0: expStr = f"Exp: {expNum}, "
         titleStr = f"{expStr}{self.wavelet_base}"
         if self.f0 != 0 or self.bw !=0:
             if self.wavelet_base != 'mexh' or self.wavelet_base != 'morl':
@@ -270,10 +283,8 @@ class cwt:
         plt.legend()
         plt.grid(True)
         if save:
-            dir_path = Path(saveDir)  # Change to your desired path
-            dir_path.mkdir(parents=True, exist_ok=True)
             timeDFileName = f"{self.wavelet_name}_timeD.jpg"
-            timeDFileNamePath = f"{saveDir}/{timeDFileName}"
+            timeDFileNamePath = f"{self.fileStructure.wavletDir}/{timeDFileName}"
             logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
             plt.savefig(timeDFileNamePath)
         if show:
@@ -324,7 +335,7 @@ class cwt:
 
         if save:
             freqDFilename = f"{self.wavelet_name}_freqD.jpg"
-            freqDFilePathName = f"{saveDir}/{freqDFilename}"
+            freqDFilePathName = f"{self.fileStructure.wavletDir}/{freqDFilename}"
             logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
             plt.savefig(freqDFilePathName)
 

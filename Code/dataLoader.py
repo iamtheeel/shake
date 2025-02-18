@@ -20,14 +20,17 @@ import time
 from tqdm import tqdm  #progress bar
 
 from genPlots import *
-from cwtTransform import cwt
+
+from typing import Optional
+if typing.TYPE_CHECKING: #Fix circular import
+    from cwtTransform import cwt
+    from fileStructure import fileStruct
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
-from typing import Optional
 @dataclass
 class normClass:
     type: Optional[str] = None
@@ -49,12 +52,12 @@ class dataConfigs:
 
 
 class dataLoader:
-    def __init__(self, config, dir, logfile):
+    def __init__(self, config, dir, logfile, fileStruct:"fileStruct"):
         self.regression = config['model']['regression']
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
         # Load up the dataset info
-        self.dataPath = config['data']['dataPath']# Where the data is
+        self.inputData = config['data']['inputData']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
         self.batchSize = config['data']['batchSize']
@@ -103,8 +106,13 @@ class dataLoader:
         self.dataNormConst = normClass()
         self.labNormConst = None
 
+        self.configs = config
 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
+        self.fileStruct = fileStruct
+        self.fileStruct.setData_dir(self.dataConfigs)
+        '''
+        self.dataOutDir = f"{self.configs['data']['dataOutDir']}"
         chList_str = "_".join(map(str, self.dataConfigs.chList))
         #TODO: add more info:
         # windows limit, runs limit
@@ -118,9 +126,9 @@ class dataLoader:
         self.dataFolder = f"{self.dataFolder}_StompThresh-{config['data']['stompThresh']}"
         self.dataFolder = f"{self.dataFolder}_DataThresh-{config['data']['dataThresh']}"
 
-        self.dataSaveDir = f"{self.dataPath}/{self.dataFolder}"
+        self.dataSaveDir = f"{self.dataOutDir}/{self.dataFolder}"
+        '''
 
-        self.configs = config
 
     def get_data(self):
         # Load all the data to a 3D numpy matrix:
@@ -204,21 +212,19 @@ class dataLoader:
 
 
         logger.info(f"Labels: {type(labels)}, {labels.shape}, Data: {type(data)}, {data.shape}")
-        # Create dataset directory if it doesn't exist
-        if not os.path.exists(self.dataSaveDir): os.makedirs(self.dataSaveDir)
 
-        logger.info(f"Saved data to {self.dataSaveDir}/data.npy")
-        logger.info(f"Saved labels to {self.dataSaveDir}/labels.pt")
-        np.save(f"{self.dataSaveDir}/data.npy", data)
-        torch.save(labels, f"{self.dataSaveDir}/labels.pt")
-        torch.save(subject_list, f"{self.dataSaveDir}/subjects.pt")
-        torch.save(run_list, f"{self.dataSaveDir}/runs.pt")
-        torch.save(startTimes_list, f"{self.dataSaveDir}/startTimes.pt")
+        logger.info(f"Saved data to {self.fileStruct.dataSaveDir}/data.npy")
+        logger.info(f"Saved labels to {self.fileStruct.dataSaveDir}/labels.pt")
+        np.save(f"{self.fileStruct.dataSaveDir}/data.npy", data)
+        torch.save(labels, f"{self.fileStruct.dataSaveDir}/labels.pt")
+        torch.save(subject_list, f"{self.fileStruct.dataSaveDir}/subjects.pt")
+        torch.save(run_list, f"{self.fileStruct.dataSaveDir}/runs.pt")
+        torch.save(startTimes_list, f"{self.fileStruct.dataSaveDir}/startTimes.pt")
         # Save data configs
-        with open(f"{self.dataSaveDir}/dataConfigs.pkl", 'wb') as f:
+        with open(f"{self.fileStruct.dataSaveDir}/dataConfigs.pkl", 'wb') as f:
             pickle.dump(self.dataConfigs, f)
-        logger.info(f"Saved data configs to {self.dataSaveDir}/dataConfigs.pkl")
-        #np.save(f"{self.dataSaveDir}/subjects.npy", subjects)
+        logger.info(f"Saved data configs to {self.fileStruct.dataSaveDir}/dataConfigs.pkl")
+        #np.save(f"{self.fileStruct.dataSaveDir}/subjects.npy", subjects)
 
         self.data_raw = data
         self.labels_raw = labels.float()
@@ -228,19 +234,19 @@ class dataLoader:
         logger.info(f"====================================================")
 
     def loadDataSet(self):
-        logger.info(f"Loading data from {self.dataSaveDir}/data.npy")
-        logger.info(f"Loading labels from {self.dataSaveDir}/labels.pt")
-        logger.info(f"Loading subjects from {self.dataSaveDir}/subjects.pt")
-        self.data_raw = np.load(f"{self.dataSaveDir}/data.npy")
-        self.labels_raw = torch.load(f"{self.dataSaveDir}/labels.pt", weights_only=False).float()
-        self.subjectList_raw = torch.load(f"{self.dataSaveDir}/subjects.pt", weights_only=False)
-        self.runList_raw = torch.load(f"{self.dataSaveDir}/runs.pt", weights_only=False)
-        self.startTimes_raw = torch.load(f"{self.dataSaveDir}/startTimes.pt", weights_only=False)
+        logger.info(f"Loading data from {self.fileStruct.dataSaveDir}/data.npy")
+        logger.info(f"Loading labels from {self.fileStruct.dataSaveDir}/labels.pt")
+        logger.info(f"Loading subjects from {self.fileStruct.dataSaveDir}/subjects.pt")
+        self.data_raw = np.load(f"{self.fileStruct.dataSaveDir}/data.npy")
+        self.labels_raw = torch.load(f"{self.fileStruct.dataSaveDir}/labels.pt", weights_only=False).float()
+        self.subjectList_raw = torch.load(f"{self.fileStruct.dataSaveDir}/subjects.pt", weights_only=False)
+        self.runList_raw = torch.load(f"{self.fileStruct.dataSaveDir}/runs.pt", weights_only=False)
+        self.startTimes_raw = torch.load(f"{self.fileStruct.dataSaveDir}/startTimes.pt", weights_only=False)
 
-        with open(f"{self.dataSaveDir}/dataConfigs.pkl", 'rb') as f:
+        with open(f"{self.fileStruct.dataSaveDir}/dataConfigs.pkl", 'rb') as f:
             #This will load the ch list from the saved file
             self.dataConfigs = pickle.load(f)
-        logger.info(f"Loaded data configs from {self.dataSaveDir}/dataConfigs.pkl")
+        logger.info(f"Loaded data configs from {self.fileStruct.dataSaveDir}/dataConfigs.pkl")
 
     def plotFFTWindowdData(self):
         show = configs['plots']['showFFTPlots']
@@ -535,8 +541,8 @@ class dataLoader:
         else:
             logger.error(f"ERROR: No such subject, test: {self.test}, {subjectNumber}")
         
-        trial_str = f"{self.dataPath}/{self.test}/data/{trial_str}.hdf5"
-        csv_str = f"{self.dataPath}/{self.test}/{csv_str}.csv"
+        trial_str = f"{self.inputData}/{self.test}/data/{trial_str}.hdf5"
+        csv_str = f"{self.inputData}/{self.test}/{csv_str}.csv"
 
         return trial_str, csv_str
 
@@ -772,19 +778,15 @@ class dataLoader:
         return freqList, fftData
 
     #TODO: move to cwt?
-    def plotDataSet(self, cwt_class:cwt, logScaleData:bool):
+    def plotDataSet(self, cwt_class:"cwt", logScaleData:bool):
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
-            expDir = f"{self.dataFolder}_{cwt_class.wavelet_name}"
-            #if logScaleData:expDir= f"{expDir}_logData" #Sort this when we get to it
-            expDir = f"{expDir}_dataScaler-{self.dataNormConst.type}"
-            if self.dataNormConst.scale != 1: expDir = f"{expDir}_dataScale-{self.dataNormConst.scale}"
-            expDir = f"{expDir}/images"
-            dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=expDir)
+            dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, 
+                                                  expDir=self.fileStruct.dataNormDir)
             dataPlotter.generateAndSaveImages(logScaleData)
 
 
-    def cwtTransformData(self, cwt_class:cwt, oneShot=True, saveNormPerams=False):
+    def cwtTransformData(self, cwt_class:"cwt", oneShot=True, saveNormPerams=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
@@ -796,7 +798,7 @@ class dataLoader:
         testCorrectness = self.configs['debugs']['testNormCorr']
 
         if saveNormPerams: 
-            self.dataNormConst = normClass()
+            #self.dataNormConst = normClass() #This is bug, like 99% sure, but late to class
             self.dataNormConst.min = 10000
             self.dataNormConst.max = 0
 
@@ -892,30 +894,31 @@ class dataLoader:
         if testCorrectness:
             logger.info(f"cwtData: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
         #if self.configs['cwt']['saveCWT']:
-        #    logger.info(f"Saving cwt data: {self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
-        #    np.save(f"{self.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", cwtData_raw)
-        #    np.save(f"{self.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", cwtFrequencies)
+        #    logger.info(f"Saving cwt data: {self.fileStruct.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy, {self.fileStruct.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy")
+        #    np.save(f"{self.fileStruct.dataSaveDir}/cwtData_{cwt_class.wavelet_name}.npy", cwtData_raw)
+        #    np.save(f"{self.fileStruct.dataSaveDir}/cwtFrequencies_{cwt_class.wavelet_name}.npy", cwtFrequencies)
 
 
-    def getNormPerams(self, cwt_class:cwt, logScaleData):
-        logger.info(f"Get the norm/std peramiters | , wavelet_base: {cwt_class.wavelet_base}, wavelet_center_freq: {cwt_class.f0}, wavelet_bandwidth: {cwt_class.bw}, logScaleData: {logScaleData}")
-        logger.info(f"Data dir: {self.dataSaveDir}")
+    def getNormPerams(self, cwt_class:"cwt", logScaleData):
+        logger.info(f"Get the norm/std peramiters | logScaleData: {logScaleData}")
 
-        #logScaleFreq = configs['cwt']['logScaleFreq']
-        #cwt_class.setupWavelet(cwt_class.wavelet_base, f0=cwt_class.f0, bw=cwt_class.bw, useLogForFreq=logScaleFreq)
-        if logScaleData :cwt_class.normPeramsFileName = f"{cwt_class.normPeramsFileName}_logData"
-
-        fileName = f"{self.dataSaveDir}/normPerams_{cwt_class.wavelet_name}.pkl"
+        self.fileStruct.setDataNorm_dir(self.dataNormConst, logScaleData)
+        fileName = f"{self.fileStruct.dataNormDir}/normPerams.pkl"
+        logger.info(f"Looking for: {fileName}")
         if os.path.isfile(fileName):
             logger.info(f"Loading norm/std perams from: {fileName}")
             with open(fileName, 'rb') as f:
                 self.dataNormConst = pickle.load(f)
             #logger.info(f"Loaded Norm stats from file | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean}, std: {self.dataNormConst.std} ")
             logger.info(f"Loaded Norm stats from file: {self.dataNormConst}")
+
+            ###### Fudge
+            #self.dataNormConst.type = "std"
+            #with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
+            ######
         else: # Calculate the terms
             logger.info(f"Calculating norm/std perams")
-            waveletPlotsDir = f"{self.dataSaveDir}/waveletPlots"
-            cwt_class.plotWavelet(saveDir=waveletPlotsDir, sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
+            cwt_class.plotWavelet(sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
     
             # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
             self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 

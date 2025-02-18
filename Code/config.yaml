@@ -10,7 +10,7 @@ debugs:
     showFFTPlots: False
     showWindowPlots: False
 plts:
-    pltDir: "../plots"
+    pltDir: "plots"
     animDir: "/Volumes/Data/thesis/animations"
     #animDir: "../animations"
     generatePlots: True
@@ -28,9 +28,9 @@ plts:
 
 data:
     valSplitPercen: .2 #20% of the data for validation
-    dataPath: "../TestData"
-    #dataPath: "/Volumes/Data/thesis/TestData"
-    #dataSetDir: "savedDataSet"
+    inputData: "../TestData" # The input data
+    dataOutDir: "/Volumes/Data/thesis/data"
+    #dataOutDir: "..data"
 
     test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
@@ -104,9 +104,9 @@ cwt:
     wavelet: ["fstep"] #"None" for no CWT
     #wavelet: ["morl", "cmorl"] # f0 = 0.8125, bw = 6.0
     #wavelet: ["cmor", "fstep" ]
-    #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
-    aveLet_center_freq:  [0.8125] #morl center freq
-    waveLet_center_freq:  [10] # best for cmorl
+    waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
+    #waveLet_center_freq:  [0.8125] #morl center freq
+    #waveLet_center_freq:  [10] # best for cmorl
     #Bandwidth nopt used for fstep
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #waveLet_bandwidth: [6.0] 

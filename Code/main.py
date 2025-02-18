@@ -82,7 +82,7 @@ def writeLogHdr(logfile, dataConfigs):
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
-        writer.writerow(['Data Path', configs['data']['dataPath']])
+        writer.writerow(['Data Path', configs['data']['inputData']])
         writer.writerow(['Ch List', dataConfigs.chList])
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
@@ -141,12 +141,15 @@ logfile, outputDir = getLogFileNames(dateTime_str, expNum=0)
 """
 Data Preparation
 """
+from fileStructure import fileStruct
+fileStructure = fileStruct()
+
 logger.info(f"INIT: --------------------  Get Data   ----------------------")
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, outputDir, logfile)
+data_preparation = dataLoader(configs, outputDir, logfile, fileStructure)
 
-if os.path.exists(f"{data_preparation.dataSaveDir}/data.npy"):
-      data_preparation.loadDataSet()
+if os.path.exists(f"{fileStructure.dataSaveDir}/data.npy"):
+    data_preparation.loadDataSet()
 else: data_preparation.get_data()
 logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
 
@@ -161,7 +164,7 @@ writeLogHdr(logfile, data_preparation.dataConfigs)
 
 # The hyperperamiters setup for expTracking
 logger.info(f"Get cwt peramiters")
-cwt_class = cwt(configs, dataConfigs = data_preparation.dataConfigs)
+cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
 
 
 
@@ -217,8 +220,6 @@ def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale,
 
 
     # TODO: Set to save the transformed data
-    if not dataAsCWT:
-        cwt_class.plotWavelet(saveDir=outputDir, expNum=expNum, sRate=data_preparation.dataConfigs.sampleRate_hz, save=True, show=False )
 
     #Make sure we start with a fresh time d dataset
     data_preparation.resetData() 
@@ -361,20 +362,19 @@ for wavelet_base in configs['cwt']['wavelet']:
         for bandwidth in bandwidths:
             # Load the CWT Here
             logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
-            cwt_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+            cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
 
             for logScaleData in [False]: #Probably not interesting
 
                 for dataScaler in configs['data']['dataScalers']:
-                    #TODO: Normalize the cwt data by dividing both the real and image by the magnitude
                     if dataScaler == "minMaxNorm": dataScale_values = configs['data']['dataScale_values']
                     else:                          dataScale_values = [1]
 
                     for dataScale_value in dataScale_values:
                         #Load the norm perams, or calculate if the file is not there
-                        data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData)
                         data_preparation.dataNormConst.type = dataScaler
                         data_preparation.dataNormConst.scale = dataScale_value
+                        data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData)
 
                         if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams
                             data_preparation.plotDataSet(cwt_class=cwt_class, logScaleData=logScaleData)
@@ -385,6 +385,7 @@ for wavelet_base in configs['cwt']['wavelet']:
                                 labelScale_values = [1]
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
+                                cwt_class.updateDir_dataScale(data_preparation.labNormConst, label=True)
 
                                 for lossFunction in lossFunctions:
 

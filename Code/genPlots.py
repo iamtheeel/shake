@@ -16,10 +16,10 @@ from tqdm import tqdm  #progress bar
 from jFFT import jFFT_cl
 from utils import timeTaken
 
-from cwtTransform import cwt
 import typing
 if typing.TYPE_CHECKING: #Fix circular import
     from dataLoader import dataLoader, normClass
+    from cwtTransform import cwt
 
 #ICE default IO error handler doing an exit(), pid = 12090, errno = 32
 #import matplotlib
@@ -39,7 +39,7 @@ if debug == False:
     logging.disable(level=logging.CRITICAL)
     logger.disabled = True
 
-plotDir = configs['plts']['pltDir']
+plotDir = f"{configs['data']['dataOutDir']}/{configs['plts']['pltDir']}"
 yLim = configs['plts']['yLim']
 
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
@@ -331,7 +331,7 @@ class saveCWT_Time_FFT_images():
 
         # Create the save dir: Just created it so we can check during the no-save
         # Create animation directory if it doesn't exist
-        self.animDir = os.path.join(configs['plts']['animDir'], expDir)
+        self.animDir = os.path.join(expDir, "time_fft_cwt_images")
         os.makedirs(self.animDir, exist_ok=True)
         logger.info(f"Saving plots in: {self.animDir}")
 
