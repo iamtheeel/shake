@@ -52,7 +52,7 @@ class dataConfigs:
 
 
 class dataLoader:
-    def __init__(self, config, logfile, fileStruct:"fileStruct"):
+    def __init__(self, config, fileStruct:"fileStruct"):
         print(f"\n")
         logger.info(f"--------------------  Get Data   ----------------------")
         self.regression = config['model']['regression']
@@ -65,7 +65,7 @@ class dataLoader:
         self.batchSize = config['data']['batchSize']
 
         #TODO: Get from file
-        self.logfile = logfile
+        self.logfile = f"{fileStruct.expTrackFiles.expTrackDir_name}/{fileStruct.expTrackFiles.expTrack_sumary_file}"
 
         self.classes = config['data']['classes']
         if self.regression: self.nClasses = 1
@@ -763,16 +763,19 @@ class dataLoader:
 
         return freqList, fftData
 
-    #TODO: move to cwt?
     def plotDataSet(self, cwt_class:"cwt", logScaleData:bool):
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
-            dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, 
+            if configs['cwt']['doCWT']:
+                dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, 
                                                   expDir=self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name)
-            dataPlotter.generateAndSaveImages(logScaleData)
+                dataPlotter.generateAndSaveImages(logScaleData)
+            else: 
+                logger.info(f"   !!!You owe me time domain plots")
 
 
-    def cwtTransformData(self, cwt_class:"cwt", oneShot=True, saveNormPerams=False):
+    #TODO: Move to cwt
+    def calculateCWTDataNormTerms(self, cwt_class:"cwt", oneShot=True, saveNormPerams=False):
         # Can we transform the data in one shot? or dos this need a for loop?
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
@@ -902,10 +905,12 @@ class dataLoader:
             ######
         else: # Calculate the terms
             logger.info(f"Calculating norm/std perams")
-            cwt_class.plotWavelet(sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
+            if configs['cwt']['doCWT']:
+                # Plot the wavelet
+                cwt_class.plotWavelet(sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
     
-            # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-            self.cwtTransformData(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
+                # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
+                self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
 
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")

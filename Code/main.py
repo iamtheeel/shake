@@ -59,8 +59,8 @@ else:
     if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
 logger.info(f"device: {device}")
 
-def saveSumary(dateTime_str, model, dataShape):
-    sumFile = f'{fileStructure.expTrackDir}/{dateTime_str}_modelInfo.txt'
+def saveSumary(model, dataShape):
+    sumFile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{model.__class__.__name__}_modelInfo.txt'
     logger.info(f"Save modelinfo | fileName: {sumFile} | dataShape: {type(dataShape)}, {dataShape}")
     with open(sumFile, 'w', newline='') as sumFile:
         sys.stdout = sumFile
@@ -73,12 +73,8 @@ def saveSumary(dateTime_str, model, dataShape):
         sys.stdout = sys.__stdout__
 
 # Write a log
-def getLogFileNames(dateTime_str, expNum):
-    fileStructure.setExpTrack_dir(dateTime_str=dateTime_str, expNum=expNum)
-    logfile = f'{fileStructure.expTrackDir}/{dateTime_str}_log.csv'
-    return logfile 
-
-def writeLogHdr(logfile, dataConfigs):
+def writeDataTrackSumaryHdr(dataConfigs):
+    logfile = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
@@ -109,9 +105,8 @@ def writeLogHdr(logfile, dataConfigs):
 
         writer.writerow(['---------'])
 
-def writeThisLogHdr(expNum, cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
-    fileStructure.setExpTrack_dir(expNum=expNum)
-    logfile = f'{fileStructure.expTrackDir}/run-{expNum}_log.csv'
+def writeThisLogHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
+    logfile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackLog_file}'
 
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
@@ -135,13 +130,13 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
-logfile = getLogFileNames(dateTime_str, expNum=0)
+fileStructure.setExpTrack_dir(dateTime_str=dateTime_str)
 
 """
 Data Preparation
 """
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, logfile, fileStructure)
+data_preparation = dataLoader(configs, fileStructure)
 
 if os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDDataSave}"):
     data_preparation.loadDataSet()
@@ -151,7 +146,7 @@ logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 
-writeLogHdr(logfile, data_preparation.dataConfigs)
+writeDataTrackSumaryHdr(data_preparation.dataConfigs)
 # Plots for each window of data
 #data_preparation.plotWindowdData()
 #data_preparation.plotFFTWindowdData()
@@ -159,7 +154,6 @@ writeLogHdr(logfile, data_preparation.dataConfigs)
 
 # The hyperperamiters setup for expTracking
 cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
-
 
 
 #Get the data for the wavelet transform
@@ -171,7 +165,7 @@ cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
 '''
 
 
-expTrackFile = f'{fileStructure.expTrackDir}/{dateTime_str}_dataTrack.csv'
+expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
@@ -207,7 +201,8 @@ def getModel(wavelet_name, model_name, dataShape):
     
 
 def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-    logfile, writeThisLogHdr(expNum, cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+    fileStructure.setExpTrack_run(expNum=expNum)
+    writeThisLogHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     dataAsCWT = True
     if cwt_class.wavelet_base == "None": dataAsCWT = False
 
@@ -270,7 +265,7 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
         model = model.to(torch.complex128)
         #model = model.to(torch.complex64)
     if configs['debugs']['saveModelInfo']: 
-        saveSumary(dateTime_str, model, dataShape)
+        saveSumary(model, dataShape)
 
 
     exp_StartTime = timer()
@@ -371,7 +366,6 @@ for wavelet_base in configs['cwt']['wavelet']:
 
                         if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams
                             data_preparation.plotDataSet(cwt_class=cwt_class, logScaleData=logScaleData)
-                            exit()
 
                         for labelScaler in configs['data']['labelScalers']:
                             if labelScaler == "std": 

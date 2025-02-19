@@ -49,7 +49,7 @@ class MobileNet_v2(nn.Module):
         else:
             numOutputs = numClasses
 
-
+        
         # Load the model from the zoo
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 

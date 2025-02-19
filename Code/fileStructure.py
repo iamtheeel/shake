@@ -30,6 +30,26 @@ Root dir (From Config):
             run-<num>_log.csv
             valResults.csv
 '''
+@dataclass
+class expTrackFiles_class:
+    #Root dir (From Config)/<timeDate>:
+    expTrackDir_name:str 
+    expTrackDateTime:str = ""
+
+    #Files:
+    expTrack_sumary_file:str = ""
+    expTrack_log_file:str = ""
+
+    class expNum_class:
+        expTrackDir_Name:str =""
+
+        #Files
+        modelInfo_file:str = ""  # <modelName>_modelInfo.txt
+        expTrackLog_file:str ="" #run-<num>_log.csv
+        # trining loss figure
+        # Validation results figure
+        # Validateion results sumary
+    expNumDir = expNum_class()
 
 ### Output Data 
 @dataclass
@@ -89,7 +109,8 @@ logger = logging.getLogger(__name__)
 
 class fileStruct:
     def __init__(self):
-        self.dataDirFiles = dataDirFiles_class(dataOutDir_name=configs['data']['dataOutDir'])
+        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=configs['data']['dataOutDir'])
+        self.expTrackFiles = expTrackFiles_class(expTrackDir_name=configs['expTrackDir'])
 
     def makeDir(self, dir_str):
         '''
@@ -98,17 +119,26 @@ class fileStruct:
         dir_path = Path(dir_str)
         dir_path.mkdir(parents=True, exist_ok=True)
 
-    def setExpTrack_dir(self, expNum, dateTime_str=None ):
+    def setExpTrack_dir(self, dateTime_str=None ):
         '''
         '''
-        self.expTrackFolder = f"{configs['expTrackDir']}/{dateTime_str}"
-        if dateTime_str != None:
-            self.dateTimeStr = dateTime_str
-        #if expNum > 0: self.expTrackDir = f"{self.expTrackFolder}/run-{expNum}"
-        self.expTrackDir = f"{self.expTrackFolder}/run-{expNum}"
+        self.expTrackFiles.expTrackDir_name = f"{configs['expTrackDir']}/{dateTime_str}"
+        if dateTime_str != None: self.expTrackFiles.expTrackDateTime = dateTime_str
+        #The experiment tracking
+        self.expTrackFiles.expTrack_log_file = f"{dateTime_str}_DataTrack_Log.csv"
+        self.expTrackFiles.expTrack_sumary_file = f"{dateTime_str}_DataTrack_Sumary.csv"
 
-        self.makeDir(self.expTrackDir)
-        logger.info(f"Experiment Track Dir: {self.expTrackDir}")
+        # The individual experiments
+        self.expTrackFiles.expNumDir.expTrackSum_file = f"{dateTime_str}_DataTrack_Log.csv"
+        self.expTrackFiles.expNumDir.expTrackLog_file = f"{dateTime_str}_DataTrack_Sumary.csv"
+
+        self.makeDir(self.expTrackFiles.expTrackDir_name)
+        logger.info(f"Experiment Track Dir: {self.expTrackFiles.expTrackDir_name}")
+
+    def setExpTrack_run(self, expNum):
+        self.expTrackFiles.expNumDir.expTrackDir_Name = f"{self.expTrackFiles.expTrackDir_name}/exp-{expNum}"
+        self.makeDir(self.expTrackFiles.expNumDir.expTrackDir_Name)
+        logger.info(f"This Experiment Dir: {self.expTrackFiles.expNumDir.expTrackDir_Name}")
 
     def setData_dir(self, dataConfigs):
         '''
