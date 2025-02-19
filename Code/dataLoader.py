@@ -318,7 +318,7 @@ class dataLoader:
 
         dataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
         with open(dataFile , 'a', newline='') as csvFile:
-            csvFile.write('Subject, speed (m/s), run, startTime (s), label')
+            csvFile.write('Subject, speed (m/s), run, startTime (s), dataPtsAfterStomp, label')
             for i in range(data.shape[1]):
                 thisCh = self.dataConfigs.chList[i]
                 csvFile.write(f", sensor {thisCh} rms")
@@ -334,7 +334,7 @@ class dataLoader:
             for run in range(dataEnd): # test with the first few dataums
 
                 startPoint = 0 #points
-                hasStomp = -1 # -1: no stomp yet, then = #since stomp
+                dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
                 nWindows = 0
 
                 while True:
@@ -364,7 +364,7 @@ class dataLoader:
                     # The detection of no step is done in getSubjecteLabel
                     if self.stompThresh == 0: nSkips = 0
                     else                    : nSkips = 3
-                    thisSubjectId, hasStomp = self.findDataStart(hasStomp, rms_ratio, nSkips)
+                    thisSubjectId, dataPtsAfterStomp = self.findDataStart(dataPtsAfterStomp, rms_ratio, nSkips)
                     #print(f"stompThresh: {self.stompThresh}, nSkips: {nSkips}")
 
                     ### for investigation
@@ -375,9 +375,9 @@ class dataLoader:
                     ###
     
                     # append the data
-                    if hasStomp >= nSkips:
+                    thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
+                    if dataPtsAfterStomp >= nSkips:
                         # TODO: make this one data structure
-                        thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
                         thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
                         #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                         if (not self.regression) or (thisSubjectId > 0):
@@ -402,11 +402,11 @@ class dataLoader:
                             try:              startTimes = np.append(startTimes, thisStartTime)
                             except NameError: startTimes = thisStartTime
 
-                        # Do we want to log the 0 vel data for regresion too? 
-                        csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}")
-                        for i in range(len(rms_allCh)): # Each ch
-                            csvFile.write(f", {rms_allCh[i]}")
-                        csvFile.write("\n")
+                    # Do we want to log the 0 vel data for regresion too? Yes
+                    csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {dataPtsAfterStomp}, {thisSubjectId}")
+                    for i in range(len(rms_allCh)): # Each ch
+                        csvFile.write(f", {rms_allCh[i]}")
+                    csvFile.write("\n")
     
                     startPoint += self.stepSize
                     del rms_allCh
@@ -420,11 +420,11 @@ class dataLoader:
 
         return windowedData, labels, subjects, runs, startTimes
 
-    def findDataStart(self, hasStomp, rms_ratio, nSkips):
+    def findDataStart(self, dataPtsAfterStomp, rms_ratio, nSkips):
         thisSubjectID = 0
-        if hasStomp  < 0:
+        if dataPtsAfterStomp  < 0:
             if self.stompThresh == 0:
-                hasStomp = nSkips
+                dataPtsAfterStomp = nSkips
             else:
                 for i in self.stompCh:
                     dataNum = self.dataConfigs.chList.index(i)
@@ -432,11 +432,11 @@ class dataLoader:
                     #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
                     if value > self.stompThresh: 
                         #thisSubjectID = -1
-                        hasStomp = 0 
+                        dataPtsAfterStomp = 0 
                         break
-        else: hasStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
+        else: dataPtsAfterStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
 
-        return thisSubjectID, hasStomp
+        return thisSubjectID, dataPtsAfterStomp
 
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
@@ -882,10 +882,12 @@ class dataLoader:
 
 
     def getNormPerams(self, cwt_class:"cwt", logScaleData):
-        logger.info(f"Get the norm/std peramiters | logScaleData: {logScaleData}")
+        print(f"\n")
+        logger.info(f" -------------- Get the norm/std peramiters | logScaleData: {logScaleData}   ---------------")
+        dataNormDir = self.fileStruct.setDataNorm_dir(self.dataNormConst, logScaleData)
 
-        self.fileStruct.setDataNorm_dir(self.dataNormConst, logScaleData)
-        fileName = f"{self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name}/normPerams.pkl"
+        dataNormDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
+        fileName = f"{dataNormDir.dataNormDir_name}/{dataNormDir.normPeramsFile_name}"
         logger.info(f"Looking for: {fileName}")
         if os.path.isfile(fileName):
             logger.info(f"Loading norm/std perams from: {fileName}")

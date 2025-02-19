@@ -378,7 +378,6 @@ for wavelet_base in configs['cwt']['wavelet']:
                                 labelScale_values = [1]
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
-                                cwt_class.updateDir_dataScale(data_preparation.labNormConst, label=True)
 
                                 for lossFunction in lossFunctions:
 

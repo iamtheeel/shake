@@ -53,8 +53,8 @@ data:
     #stompSens: [5, 6]
     #stompSens: [5, 6, 7]
     stompSens: [5, 6, 7]
-    stompThresh: 0 #1.5 #If 0, then no stomp detection
-    dataThresh: 0 #1.5 # If 0, then no, non-walking detection
+    stompThresh: 1.5 #If 0, then no stomp detection
+    dataThresh: 1.5 # If 0, then no, non-walking detection
 
     windowLen: 2 #sec
     stepSize: 1 #sec

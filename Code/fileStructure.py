@@ -32,10 +32,6 @@ Root dir (From Config):
 '''
 
 ### Output Data 
-'''
-
-     
-'''
 @dataclass
 class dataDirFiles_class:
     #Root dir (From Config):
@@ -65,6 +61,9 @@ class dataDirFiles_class:
             class dataNormDir_class:
                 dataNormFolder_name:str
                 dataNormDir_name:str
+
+                #Files:
+                normPeramsFile_name:str = "normPerams.pkl"
             dataNormDir = dataNormDir_class()
 
             #Time, Frequency, CWT Transformed Data images:
@@ -136,8 +135,6 @@ class fileStruct:
 
         logger.info(f"Data save folder: {self.dataDirFiles.saveDataDir.saveDataDir_name}")
 
-        #self.dataDirFiles = dataDirFiles(timeDDataSave='timeD_data.npy')
-
     def setCWT_dir(self, cwtClass:cwt):
         '''
         '''
@@ -165,6 +162,8 @@ class fileStruct:
         dataNormDir = f"{self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{dataNormFolder}"
 
         self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormFolder_name = dataNormFolder
-        self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name = dataNormFolder
+        self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name = dataNormDir
         logger.info(f"Data Norm Dir: {dataNormDir}")
         self.makeDir(dataNormDir)
+
+        return self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name 

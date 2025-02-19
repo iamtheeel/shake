@@ -433,14 +433,14 @@ class Trainer:
         # Move back to the CPU befor making numpy
         #predicted_classes = torch.argmax(y_preds, dim=2)  # Shape: [datums, batches]
         #true_classes = torch.argmax(y_targs, dim=2) #
-        predicted_classes = torch.argmax(y_preds, dim=1)  # Shape: [datums* batches]
+        pred_classes = torch.argmax(y_preds, dim=1)  # Shape: [datums* batches]
         true_classes = torch.argmax(y_targs, dim=1) #
 
         #pred_flat = predicted_classes.flatten().cpu().numpy() # Shape: [datums*batches]
         #clas_flat = true_classes.flatten().cpu().numpy()
-        print(f"flat pred: {predicted_classes.shape}, class: {true_classes.shape}")
+        print(f"flat pred: {pred_classes.shape}, class: {true_classes.shape}")
 
-        cm = confusion_matrix(predicted_classes, true_classes)
+        cm = confusion_matrix(true_classes, pred_classes)
         logger.info(f"Confusion Matrix:\n{cm}")
 
         # save to log
