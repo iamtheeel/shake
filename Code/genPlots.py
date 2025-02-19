@@ -321,6 +321,7 @@ def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
 
 class saveCWT_Time_FFT_images():
     def __init__(self, data_preparation:"dataLoader", cwt_class:"cwt", expDir):
+        print(f"\n")
         logger.info(f"----------     Generate Plots  ----------------")
         self.data_preparation = data_preparation
         self.showImageNoSave = configs['plts']['showFilesForAnimation']

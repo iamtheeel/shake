@@ -19,12 +19,17 @@ import csv
 #from dataLoader import dataSetWithSubjects
 from cwtTransform import cwt
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: #Fix circular import
+    from fileStructure import fileStruct
+    
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep,  configs, logFile, logDir, expNum, cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    def __init__(self,model, device, dataPrep, fileStru:"fileStruct", configs, logFile, logDir, 
+                 expNum, cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
         self.device = device
 
         self.dataPrep = dataPrep
@@ -54,7 +59,7 @@ class Trainer:
         else:
             self.accStr = f"accuracy (%)"
 
-        self.logDir = logDir
+        self.logDir = fileStru.expTrackDir
         self.logfile = logFile
 
         torch.manual_seed(configs['trainer']['seed'])

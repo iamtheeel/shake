@@ -34,6 +34,8 @@ config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
 
 
+from fileStructure import fileStruct
+fileStructure = fileStruct()
 
 ## Logging
 import logging
@@ -57,8 +59,8 @@ else:
     if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
 logger.info(f"device: {device}")
 
-def saveSumary(outputDir, dateTime_str, model, dataShape):
-    sumFile = f'{outputDir}/{dateTime_str}_modelInfo.txt'
+def saveSumary(dateTime_str, model, dataShape):
+    sumFile = f'{fileStructure.expTrackDir}/{dateTime_str}_modelInfo.txt'
     logger.info(f"Save modelinfo | fileName: {sumFile} | dataShape: {type(dataShape)}, {dataShape}")
     with open(sumFile, 'w', newline='') as sumFile:
         sys.stdout = sumFile
@@ -72,11 +74,9 @@ def saveSumary(outputDir, dateTime_str, model, dataShape):
 
 # Write a log
 def getLogFileNames(dateTime_str, expNum):
-    outputDir = f"{configs['outputDir']}/{dateTime_str}"
-    if expNum > 0: outputDir = f"{outputDir}/run-{expNum}"
-    if not os.path.isdir(outputDir): os.makedirs(outputDir)
-    logfile = f'{outputDir}/{dateTime_str}_log.csv'
-    return logfile, outputDir
+    fileStructure.setExpTrack_dir(dateTime_str=dateTime_str, expNum=expNum)
+    logfile = f'{fileStructure.expTrackDir}/{dateTime_str}_log.csv'
+    return logfile 
 
 def writeLogHdr(logfile, dataConfigs):
     with open(logfile, 'w', newline='') as csvFile:
@@ -109,10 +109,9 @@ def writeLogHdr(logfile, dataConfigs):
 
         writer.writerow(['---------'])
 
-def writeThisLogHdr(logDir, expNum, cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
-    outputDir = f"{logDir}/run-{expNum}"
-    logfile = f'{outputDir}/run-{expNum}_log.csv'
-    if not os.path.isdir(outputDir): os.makedirs(outputDir)
+def writeThisLogHdr(expNum, cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
+    fileStructure.setExpTrack_dir(expNum=expNum)
+    logfile = f'{fileStructure.expTrackDir}/run-{expNum}_log.csv'
 
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
@@ -129,26 +128,22 @@ def writeThisLogHdr(logDir, expNum, cwt_class:cwt, logScaleData, dataScaler, dat
         writer.writerow(['learning_rate', learning_rate])
         writer.writerow(['weight_decay', weight_decay])
         writer.writerow(['---------'])
-    return logfile, outputDir
+    return logfile 
 
 torch.manual_seed(configs['trainer']['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 dateTime_str = '{date:%Y%m%d-%H%M%S}'.format(date=datetime.datetime.now())
-logfile, outputDir = getLogFileNames(dateTime_str, expNum=0)
+logfile = getLogFileNames(dateTime_str, expNum=0)
 
 """
 Data Preparation
 """
-from fileStructure import fileStruct
-fileStructure = fileStruct()
-
-logger.info(f"INIT: --------------------  Get Data   ----------------------")
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, outputDir, logfile, fileStructure)
+data_preparation = dataLoader(configs, logfile, fileStructure)
 
-if os.path.exists(f"{fileStructure.dataSaveDir}/data.npy"):
+if os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDDataSave}"):
     data_preparation.loadDataSet()
 else: data_preparation.get_data()
 logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
@@ -163,7 +158,6 @@ writeLogHdr(logfile, data_preparation.dataConfigs)
 
 
 # The hyperperamiters setup for expTracking
-logger.info(f"Get cwt peramiters")
 cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
 
 
@@ -177,7 +171,7 @@ cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
 '''
 
 
-expTrackFile = f'{outputDir}/{dateTime_str}_dataTrack.csv'
+expTrackFile = f'{fileStructure.expTrackDir}/{dateTime_str}_dataTrack.csv'
 expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
@@ -212,9 +206,8 @@ def getModel(wavelet_name, model_name, dataShape):
 
     
 
-#def runExp(outputDir, expNum, dateTime_str, wavelet_base, wavelet_center_freq, wavelet_bandwidth, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
-    logfile, outputDir = writeThisLogHdr(outputDir, expNum, cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    logfile, writeThisLogHdr(expNum, cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     dataAsCWT = True
     if cwt_class.wavelet_base == "None": dataAsCWT = False
 
@@ -277,7 +270,7 @@ def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale,
         model = model.to(torch.complex128)
         #model = model.to(torch.complex64)
     if configs['debugs']['saveModelInfo']: 
-        saveSumary( outputDir, dateTime_str, model, dataShape)
+        saveSumary(dateTime_str, model, dataShape)
 
 
     exp_StartTime = timer()
@@ -287,7 +280,7 @@ def runExp(outputDir, expNum, dateTime_str, logScaleData, dataScaler, dataScale,
 
         logger.info(f"Load Trainer")
         # Data scaling info?
-        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, logDir=outputDir, expNum=expNum, 
+        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
@@ -403,7 +396,7 @@ for wavelet_base in configs['cwt']['wavelet']:
                                                     logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
 
                                                     #TODO: just send the cwtClass 
-                                                    runExp(outputDir=outputDir, expNum=expNum, dateTime_str=dateTime_str, logScaleData=logScaleData,
+                                                    runExp(expNum=expNum, dateTime_str=dateTime_str, logScaleData=logScaleData,
                                                             dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
                                                             lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
 

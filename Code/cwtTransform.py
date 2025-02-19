@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 class cwt:
     def __init__(self, fileStructure:"fileStruct", configs, dataConfigs):
+        print(f"\n")
+        logger.info(f"----------------------      Get cwt peramiters   ----------------------")
         self.fileStructure = fileStructure
         #Data information
         self.samplePeriod = 1/dataConfigs.sampleRate_hz
@@ -81,15 +83,6 @@ class cwt:
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
 
         self.fileStructure.setCWT_dir(self)
-        '''
-        logScFreq_st = ""
-        if useLogForFreq: logScFreq_st = "_logScaleFreq"
-        self.normPeramsFileName = f"normPerams_{wavelet_name}{logScFreq_st}"
-        logger.info(f"New Wavelet: {wavelet_name}")
-        #logger.info(f"Wavelet time from: {self.wavelet_Time[0]} to {self.wavelet_Time[-1]}")
-        
-        self.wavletDir = f"{self.wavelet_name}"
-        '''
 
         self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
@@ -284,7 +277,7 @@ class cwt:
         plt.grid(True)
         if save:
             timeDFileName = f"{self.wavelet_name}_timeD.jpg"
-            timeDFileNamePath = f"{self.fileStructure.wavletDir}/{timeDFileName}"
+            timeDFileNamePath = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{timeDFileName}"
             logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
             plt.savefig(timeDFileNamePath)
         if show:
@@ -335,7 +328,7 @@ class cwt:
 
         if save:
             freqDFilename = f"{self.wavelet_name}_freqD.jpg"
-            freqDFilePathName = f"{self.fileStructure.wavletDir}/{freqDFilename}"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
             logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
             plt.savefig(freqDFilePathName)
 

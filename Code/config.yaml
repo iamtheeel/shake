@@ -1,4 +1,4 @@
-outputDir: "output"
+expTrackDir: "exp_Track"
 
 debugs:
     debug: True 
@@ -29,7 +29,7 @@ plts:
 data:
     valSplitPercen: .2 #20% of the data for validation
     inputData: "../TestData" # The input data
-    dataOutDir: "/Volumes/Data/thesis/data"
+    dataOutDir: "/Volumes/Data/thesis/data_out"
     #dataOutDir: "..data"
 
     test: "Test_2" #One person fixed pace, straight path, has labels
@@ -50,13 +50,11 @@ data:
     limitRuns: 2 #2 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #20 # Limit the number of windows to load: 0 to load all
 
-
     #stompSens: [5, 6]
     #stompSens: [5, 6, 7]
     stompSens: [5, 6, 7]
     stompThresh: 0 #1.5 #If 0, then no stomp detection
     dataThresh: 0 #1.5 # If 0, then no, non-walking detection
-
 
     windowLen: 2 #sec
     stepSize: 1 #sec
@@ -135,7 +133,7 @@ trainer:
     seed: 4601
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: "multilayerPerceptron"
     #name: "leNetV5"
     name: "MobileNet_v2"
