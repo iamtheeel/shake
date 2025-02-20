@@ -882,11 +882,20 @@ class dataLoader:
 
         if testCorrectness:
             logger.info(f"cwtData: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
+    def calculateTimeDNormTerms(self):
+        logger.info(f"Generate Time D norm from self.data_raw: {self.data_raw.shape}")
+        self.dataNormConst.min = np.min(self.data_raw)
+        self.dataNormConst.max = np.max(self.data_raw)
+        self.dataNormConst.mean = np.mean(self.data_raw)
+        self.dataNormConst.std = np.std(self.data_raw)
+        logger.info(f"{self.dataNormConst}")
 
-
-    def getNormPerams(self, cwt_class:"cwt", logScaleData):
+    def getNormPerams(self, cwt_class:"cwt", logScaleData, dataScaler, dataScale_value):
         print(f"\n")
         logger.info(f" -------------- Get the norm/std peramiters | logScaleData: {logScaleData}   ---------------")
+        self.dataNormConst.type = dataScaler
+        self.dataNormConst.scale = dataScale_value
+
         dataNormDir = self.fileStruct.setDataNorm_dir(self.dataNormConst, logScaleData)
 
         dataNormDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
@@ -904,13 +913,13 @@ class dataLoader:
             #with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             ######
         else: # Calculate the terms
+            #min, max, mean, std
             logger.info(f"Calculating norm/std perams")
             if configs['cwt']['doCWT']:
-                # Plot the wavelet
-                cwt_class.plotWavelet(sRate=self.dataConfigs.sampleRate_hz, save=True, show=False )
-    
                 # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
                 self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
+            else: self.calculateTimeDNormTerms()
+
 
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")

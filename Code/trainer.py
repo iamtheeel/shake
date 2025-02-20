@@ -72,7 +72,7 @@ class Trainer:
         self.cwtClass = cwtClass
         self.doCWT = False
         waveletStr = ""
-        if cwtClass.wavelet_name != "":
+        if cwtClass.wavelet_name != "None":
             self.doCWT = True
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 

@@ -168,15 +168,18 @@ class fileStruct:
     def setCWT_dir(self, cwtClass:cwt):
         '''
         '''
-        self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = \
-                        f"{cwtClass.wavelet_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
+        waveletFolder_name = f"{cwtClass.wavelet_name}"
+        if cwtClass.wavelet_name != 'None':
+            waveletFolder_name = f"{waveletFolder_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
+
         if cwtClass.useLogScaleFreq: 
             logScFreq_st = "_logScaleFreq"
-            self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = f"normPerams_{cwtClass.wavelet_name}{logScFreq_st}"
+            waveletFolder_name = f"normPerams_{cwtClass.wavelet_name}{logScFreq_st}"
         #logger.info(f"Wavelet time from: {cwtClass.wavelet_Time[0]} to {cwtClass.wavelet_Time[-1]}")
 
+        self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = waveletFolder_name
         self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name = \
-            f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name}"
+            f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{waveletFolder_name}"
         
         logger.info(f"Wavelet Dir: {self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}")
         self.makeDir(self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name)

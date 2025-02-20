@@ -47,7 +47,7 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
-    limitRuns: 2 #2 # Limit the number of runs to load: 0 to load all the data
+    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #20 # Limit the number of windows to load: 0 to load all
 
     #stompSens: [5, 6]
@@ -61,7 +61,7 @@ data:
 
     # 16 too big on Mac, or at least with firefox running
     #batchSize: 16 #256 #Should be power of 2
-    batchSize: 1 #256 #Should be power of 2
+    batchSize: 128 #256 #Should be power of 2
 
     dataScalers: ["std"]
     #dataScalers: ["std", "meanNorm"]
@@ -129,14 +129,14 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    epochs: [7]
+    epochs: [40]
     seed: 4601
 
 model: 
     regression: False #Or Clasification
     #name: "multilayerPerceptron"
-    #name: "leNetV5"
-    name: "MobileNet_v2"
+    name: "leNetV5"
+    #name: "MobileNet_v2"
 
     multilayerPerceptron:
         hidden_neurons: 100

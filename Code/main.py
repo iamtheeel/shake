@@ -246,11 +246,13 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
     print(f"DataShape Now: {dataShape}")
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
-    if np.iscomplexobj(cwt_class.wavelet_fun):
-        # This is only partialy implemented
-        # and conv2d is not implemented :(
-        model = model.to(torch.complex128)
-        #model = model.to(torch.complex64)
+    if cwt_class.wavelet_name != 'None':
+        if np.iscomplexobj(cwt_class.wavelet_fun):
+            # This is only partialy implemented
+            # and conv2d is not implemented :(
+            model = model.to(torch.complex128)
+            #model = model.to(torch.complex64)
+
     if configs['debugs']['saveModelInfo']: 
         saveSumary(model, dataShape)
 
@@ -316,27 +318,33 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
 # Model
 # Model Peramiters: 
 expNum = 1
-for wavelet_base in configs['cwt']['wavelet']:
-    centerFreqs = configs['cwt']['waveLet_center_freq']
-    bandwidths = configs['cwt']['waveLet_bandwidth']
+
+# Time D has no transform
+wavelet_bases = ['None']
+if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
+for wavelet_base in wavelet_bases:
+    #logger.info(f"Wavelet: {wavelet_base}")
     if wavelet_base == 'mexh':
         centerFreqs = [1]
         bandwidths = [1]
-    if wavelet_base == 'fstep': #what is the bw?
+    elif wavelet_base == 'fstep': #what is the bw?
         bandwidths = [1]
-    if wavelet_base == 'morl':
+    elif wavelet_base == 'morl':
         centerFreqs = [0.8125]
         bandwidths = [6.0]
-
-    if configs['model']['regression']:
-        lossFunctions = configs['trainer']['loss_regresh']
+    elif wavelet_base == 'None':
+        centerFreqs = [0] # Dummy to 0... Gotta have something to chew
+        bandwidths = [0]
     else:
-        lossFunctions = configs['trainer']['loss_class']
+        centerFreqs = configs['cwt']['waveLet_center_freq']
+        bandwidths = configs['cwt']['waveLet_bandwidth']
 
     for center_freq in centerFreqs:
+        #logger.info(f"Center Freq: {center_freq}")
         for bandwidth in bandwidths:
             # Load the CWT Here
             logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
+            # Go here even on None just to setup the name
             cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
 
             for logScaleData in [False]: #Probably not interesting
@@ -347,9 +355,7 @@ for wavelet_base in configs['cwt']['wavelet']:
 
                     for dataScale_value in dataScale_values:
                         #Load the norm perams, or calculate if the file is not there
-                        data_preparation.dataNormConst.type = dataScaler
-                        data_preparation.dataNormConst.scale = dataScale_value
-                        data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData)
+                        data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
 
                         if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams
                             data_preparation.plotDataSet(cwt_class=cwt_class, logScaleData=logScaleData)
@@ -360,6 +366,10 @@ for wavelet_base in configs['cwt']['wavelet']:
                             else:                   labelScale_values = configs['data']['labelScale_values']
                             for labelScale_value in labelScale_values:
 
+                                if configs['model']['regression']:
+                                    lossFunctions = configs['trainer']['loss_regresh']
+                                else:
+                                    lossFunctions = configs['trainer']['loss_class']
                                 for lossFunction in lossFunctions:
 
                                     for optimizer in configs['trainer']['optimizer']:
@@ -372,7 +382,7 @@ for wavelet_base in configs['cwt']['wavelet']:
 
                                                     logger.info(f"==============================")
                                                     logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                    logger.info(f"Experiment:{expNum}, dataScaler: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                    logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
                                                     logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
 
                                                     #TODO: just send the cwtClass 

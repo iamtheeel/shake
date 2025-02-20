@@ -53,9 +53,11 @@ class cwt:
         self.bw = None
 
     def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, useLogForFreq=False):
+        self.useLogScaleFreq  = useLogForFreq
+
         self.f0= f0
         self.bw = bw
-        if wavelet_base == "mexh" or wavelet_base == "morl":
+        if wavelet_base == "mexh" or wavelet_base == "morl" or wavelet_base == 'None':
             wavelet_name = wavelet_base
         elif wavelet_base == "fstep": #No arguments, arguments handled seperately
             wavelet_name = f"{wavelet_base}-{f0}"
@@ -64,6 +66,10 @@ class cwt:
         # The wavelet
         self.wavelet_base = wavelet_base
         self.wavelet_name = wavelet_name
+
+        self.fileStructure.setCWT_dir(self)
+
+        if wavelet_name == 'None': return #Now that we have the name, we can skip the rest on None
 
         self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
@@ -79,10 +85,7 @@ class cwt:
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
         logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
 
-        self.useLogScaleFreq  = useLogForFreq
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
-
-        self.fileStructure.setCWT_dir(self)
 
         self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
