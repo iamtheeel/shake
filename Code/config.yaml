@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
     showFFTPlots: False

@@ -28,9 +28,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep, fileStru:"fileStruct", configs, logFile, logDir, 
-                 expNum, cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+    def __init__(self,model, device, dataPrep, fileStru:"fileStruct", configs, expNum, 
+                 cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
         self.device = device
+
+        
 
         self.dataPrep = dataPrep
         self.model = model.to(self.device)
@@ -59,8 +61,8 @@ class Trainer:
         else:
             self.accStr = f"accuracy (%)"
 
-        self.logDir = fileStru.expTrackDir
-        self.logfile = logFile
+        self.logDir = fileStru.expTrackFiles.expNumDir.expTrackDir_Name
+        self.logfile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackLog_file}"
 
         torch.manual_seed(configs['trainer']['seed'])
         torch.backends.cudnn.deterministic = True

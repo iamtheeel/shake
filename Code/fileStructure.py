@@ -44,7 +44,7 @@ class expTrackFiles_class:
         expTrackDir_Name:str =""
 
         #Files
-        modelInfo_file:str = ""  # <modelName>_modelInfo.txt
+        #modelInfo_file:str = ""  # <modelName>_modelInfo.txt
         expTrackLog_file:str ="" #run-<num>_log.csv
         # trining loss figure
         # Validation results figure

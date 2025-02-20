@@ -224,19 +224,6 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
     else: 
         data_preparation.labels_norm = data_preparation.labels
 
-    # Save movie goes to cwtTransform data
-    #if cwt_class.wavelet_base != "None" and configs['plts']['saveFilesForAnimation']:
-    #    expDir = f"exp-{expNum}_{cwt_class.wavelet_name}_logScaleData-{logScaleData}_dataScaler-{dataScaler}_dataScale-{dataScale}/images"
-
-    #    #timeStart = time.time()
-    #    saveMovieTime = timeTaken()
-    #    saveMovieFrames(data_preparation, cwt_class, asLogScale=logScaleData, showImageNoSave=configs['plts']['showFilesForAnimation'], expDir=expDir) 
-    #    saveMovieTime.endTime(echo=True, echoStr=f"Save Movie Frames")
-    #    #timeTaken = timeStart - time.time()
-    #    #logger.info(f"Movie Frames saved: {timeTaken:.2f}s")
-
-
-    #TODO: Move to experTrack
     logger.info(f"Get Model")
     model_name = configs['model']['name']
     # Data is currently: datapoints, height(sensorch), width(datapoints)
@@ -275,7 +262,7 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
 
         logger.info(f"Load Trainer")
         # Data scaling info?
-        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, configs=configs, logFile=logfile, expNum=expNum, 
+        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
         logger.info(f"Train")
         trainLoss, trainAcc = trainer.train()
