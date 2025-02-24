@@ -19,6 +19,7 @@ import pickle
 import time
 from tqdm import tqdm  #progress bar
 
+from utils import checkFor_CreateDir
 from genPlots import *
 
 from typing import Optional
@@ -113,6 +114,10 @@ class dataLoader:
         self.fileStruct = fileStruct
         self.fileStruct.setData_dir(self.dataConfigs)
 
+
+        # Setup the dataplotter
+        self.dataPlotter = dataPlotter_class()
+
     def get_data(self):
         # Load all the data to a 3D numpy matrix:
         # 0 = trial: around 20
@@ -139,11 +144,11 @@ class dataLoader:
             subDataShape = np.shape(subjectData) 
             #logger.info(f"Subject: {subjectNumber}, subject shape: {np.shape(subjectData)}")
 
-            #self.plotTimeData(subjectData, subjectNumber)
-            #plotRunFFT(subjectData, self.dataConfigs.sampleRate_hz, subjectNumber, 0, "ByRun")
 
             speed =  self.getSpeedLabels(label_file_csv)
             #print(f"speeds: {speed}")
+
+            self.plotData_bySubject(subjectData, subjectNumber, speed)
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
@@ -194,14 +199,14 @@ class dataLoader:
                                 })
 
 
-        logger.info(f"Labels: {type(labels)}, {labels.shape}, Data: {type(data)}, {data.shape}")
+        logger.info(f"Data min: {np.min(data)}, max: {np.max(data)}")
 
         timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-        logger.info(f"Saved data to {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
-        logger.info(f"Saved labels to {dataSaveDir_str}/labels.pt")
         np.save(f"{dataSaveDir_str}/{timdDataFile_str.timeDDataSave}", data)
+        logger.info(f"Saved data to {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
         torch.save(labels, f"{dataSaveDir_str}/labels.pt")
+        logger.info(f"Saved labels to {dataSaveDir_str}/labels.pt")
         torch.save(subject_list, f"{dataSaveDir_str}/subjects.pt")
         torch.save(run_list, f"{dataSaveDir_str}/runs.pt")
         torch.save(startTimes_list, f"{dataSaveDir_str}/startTimes.pt")
@@ -239,31 +244,47 @@ class dataLoader:
 
         logger.info(f"Plotting FFT of Each windowed block")
         for i, windowBlockData in enumerate(self.data_raw): #each window
-            plotFFT(windowBlockData, self.dataConfigs.sampleRate_hz, self.subjectList_raw[i], self.runList_raw[i], self.startTimes_raw[i], "ByWindow", show=show)
+            self.dataPlotter.plotFFT(windowBlockData, self.dataConfigs.sampleRate_hz, self.subjectList_raw[i], self.runList_raw[i], self.startTimes_raw[i], "ByWindow", show=show)
 
-    def plotWindowdData(self):
-        show = configs['plots']['showWindowPlots']
+    def plotTimeData_byWindow(self):
+        subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
 
+        show = configs['plots']['showWindowPlots'] # lets look at them now, or save
         logger.info(f"Plotting windowed data: {self.data_raw.shape}, samRate: {self.dataConfigs.sampleRate_hz}")
         sTime = 0
         for i, windowBlockData in enumerate(self.data_raw): #each window
             fileN = f"subject-{self.subjectList_raw[i]}_run{self.runList_raw[i]+1}_time-{self.startTimes_raw[i]}"
             title = f"subject:{self.subjectList_raw[i]}, run: {self.runList_raw[i]+1}, time: {self.startTimes_raw[i]}"
             #print(f"data shape: {data[row].shape}, sampRate: {self.dataConfigs.sampleRate_hz}")
-            plotInLine(windowBlockData, fileN, title, sFreq=self.dataConfigs.sampleRate_hz, show=show)
+            self.dataPlotter.dataplotInLine(windowBlockData, fileN, title, sFreq=self.dataConfigs.sampleRate_hz, show=show)
             sTime += self.stepSize_s
 
-    def plotTimeData(self, data, subject):
+    def plotData_bySubject(self, data, subject, speed):
+        plotDirNames = self.fileStruct.dataDirFiles.plotDirNames 
+        subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
+        subFolder = f"{subFolder}/{plotDirNames.baseDir}"
+        timeDImageDir = f"{subFolder}/byRun/{plotDirNames.time}"
+        freqDImageDir = f"{subFolder}/byRun/{plotDirNames.freq}"
+
+        logger.info(f" -----  Saving Plots of Full run subject: {subject} ---------")
+        self.dataPlotter.generalConfigs(self.dataConfigs.sampleRate_hz)
+        self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
+        self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        runNum = 1
+        runNum = 0
         for row in range(data.shape[0]):
             # subject, run, time
             # rms
             #thisLab = torch.argmax(labels[row])
             fileN = f"subject-{subject}_run-{runNum}"
-            title = f"subject:{subject}, run:{runNum}"
+            title = f"Domain subject:{subject}, run:{runNum}, speed:{speed[runNum]:.2f}"
             #print(f"data shape: {data[row].shape}, sampRate: {self.dataConfigs.sampleRate_hz}")
-            plotInLine(data[row], fileN, title, sFreq=self.dataConfigs.sampleRate_hz)
+            self.dataPlotter.plotInLineTime(data[row], fileN, f"Time {title}" )
+            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[0, 10], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, 2], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, 2], show=False) #, subjectNumber, 0, "ByRun")
+            #logger.info(f"Freq max: {self.dataPlotter.freqMax}")
+            #plotRunFFT(subjectData, self.dataConfigs.sampleRate_hz, subjectNumber, 0, "ByRun")
             runNum += 1
 
 
@@ -764,14 +785,20 @@ class dataLoader:
         return freqList, fftData
 
     def plotDataSet(self, cwt_class:"cwt", logScaleData:bool):
+        # Plot the windowed data
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
+            subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
             if configs['cwt']['doCWT']:
-                dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, 
-                                                  expDir=self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name)
-                dataPlotter.generateAndSaveImages(logScaleData)
-            else: 
-                logger.info(f"   !!!You owe me time domain plots")
+                timeFFTCWT_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
+                if checkFor_CreateDir(timeFFTCWT_dir) == False:
+                    dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
+                    dataPlotter.generateAndSaveImages(logScaleData)
+
+            time_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.time_byWindow}"
+            fft_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.freq_byWindow}"
+            logger.info(f"   !!!You owe me time domain plots")
+            #plotTimeData_byWindow(self):
 
 
     #TODO: Move to cwt

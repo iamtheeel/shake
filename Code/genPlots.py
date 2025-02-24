@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm  #progress bar
 
 from jFFT import jFFT_cl
-from utils import timeTaken
+from utils import *
 
 import typing
 if typing.TYPE_CHECKING: #Fix circular import
@@ -39,12 +39,13 @@ if debug == False:
     logging.disable(level=logging.CRITICAL)
     logger.disabled = True
 
-plotDir = f"{configs['data']['dataOutDir']}/{configs['plts']['pltDir']}"
-yLim = configs['plts']['yLim']
+
+#plotDir = f"{configs['data']['dataOutDir']}/{configs['plts']['pltDir']}"
+#yLim = configs['plts']['yLim']
 
 #Each sensors ch list:Sensor 1: ch1, Sensor8: Ch11, 12, 13
 #sensorChList = [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
-#sensorList = configs['data']['sensorList'] 
+sensorChList = configs['data']['chList'] 
 # Erorr on missing chList. Load from dataConfigs.chList
 #chList = configs['data']['chList'] 
 # x is vert
@@ -125,42 +126,136 @@ def plotOverlay(acclData, runStr, plotTitle_str, sFreq):
 
     plt.close
 
-def plotInLine(acclData, runStr, plotTitle_str, sFreq, show=False):
-    time = getTime(acclData.shape[1], sFreq)
+class dataPlotter_class():
+    def __init__(self):
+        self.fftClass = jFFT_cl()
+        self.freqMax = 0
+        pass
 
-    fig, axs = plt.subplots(acclData.shape[0], figsize=(12,12)) #figsize in inches?
-    #Start and end the plot at x percent of the page, no space between each plot
-    fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
-    fig.suptitle(plotTitle_str)
+    def generalConfigs(self, samRate):
+        self.samRate = samRate
 
-    thisRow = 0
-    for chData in acclData:
-        #print(f"rowLen: {row.shape}, {time.shape}")
-        axs[thisRow].plot(time, chData)
-        axs[thisRow].set_ylabel(f'Ch {chList[thisRow]}', fontsize=8)
-        #axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
+    def configTimeD(self, imageDir, yLim, dataMax=0):
+        self.timeDDir = imageDir
+        checkFor_CreateDir(self.timeDDir)
 
-        axs[thisRow].set_ylim(yLim)
-        #axs[thisRow].set_xlim([20, 21])
-        axs[thisRow].get_xaxis().set_visible(False)
+        self.yLim_time = yLim #configs['plts']['yLim']
+        if self.yLim_time == 0: self.yLim_time = [-dataMax, dataMax]
+    def configFreqD(self, yLim, dataMax=0):
 
-        thisRow +=1
-    #Only show the x-axis on the last plot
-    axs[thisRow-1].get_xaxis().set_visible(True)
-    axs[thisRow-1].set_xlabel("Time (s)")
+        self.yLim_freq = yLim #configs['plts']['yLim']
+        if self.yLim_freq == 0: self.yLim_freq = [-dataMax, dataMax]
 
-    # Save the plots
-    pltSaveDir = Path(f"{plotDir}/inLine")
-    pltSaveDir.mkdir(parents=True, exist_ok=True)
-    fileName = f"{pltSaveDir}/{runStr}_inLine.jpg"
-    print(f"FileName: {fileName}")
+    def plotOrShow(self, plt, fig, fileName, show=False):
+        if show:
+            plt.show()
+        else:
+            # Save the plots
+            print(f"FileName: {fileName}")
+            fig.savefig(fileName)
 
-    if show:
-        plt.show()
-    else:
-        fig.savefig(fileName)
 
-    plt.close
+    def plotInLineTime(self, acclData, saveStr, plotTitle_str, show=False):
+        xData = getTime(acclData.shape[1], self.samRate)
+        data = acclData
+
+        xlabel = "Time (s)"
+        fileName = f"{self.timeDDir}/{saveStr}_inLine.jpg"
+        yLim = self.yLim_time
+        self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, show=False)
+
+    def plotInLineFreq(self, imageDir, acclData, saveStr, plotTitle_str, xlim, yLim = None, xInLog = False, show=False):
+        xlimStr = f"fmin-{xlim[0]}_fmax-{xlim[1]}"
+        self.freqDDir = f"{imageDir}_{xlimStr}"
+        if xInLog: self.freqDDir = f"{self.freqDDir}_logX"
+        checkFor_CreateDir(self.freqDDir)
+
+        xData = self.fftClass.getFreqs(self.samRate, acclData.shape[1])
+        data = acclData
+
+        xlabel = "Frequency (Hz)"
+        fileName = f"{self.freqDDir}/{saveStr}_{xlimStr}.jpg"
+        if yLim == None: yLim = self.yLim_freq
+        self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=xlim, isFreq=True, xInLog=xInLog, show=False)
+
+
+    def plotInLine(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, show=False):
+
+        fig, axs = plt.subplots(data.shape[0], figsize=(12,12)) #figsize in inches?
+        #Start and end the plot at x percent of the page, no space between each plot
+        fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
+        fig.suptitle(plotTitle_str)
+    
+        thisRow = 0
+        thisMax = None
+        for chData in data:
+            if isFreq:
+                windowedData = self.fftClass.appWindow(chData, window="Hanning")
+                freqData = self.fftClass.calcFFT(windowedData) #Mag, phase
+                chData = freqData[0]
+
+                thisMax = np.max(chData)
+                if thisMax > self.freqMax: self.freqMax = thisMax
+
+            #print(f"rowLen: {row.shape}, {time.shape}")
+            axs[thisRow].plot(xData, chData)
+            if xInLog: axs[thisRow].set_xscale('log')
+            axs[thisRow].set_ylabel(f'Ch {sensorChList[thisRow]}', fontsize=8)
+            #axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
+    
+            axs[thisRow].set_ylim(yLim)
+            if xLim != None:
+                axs[thisRow].set_xlim(xLim)
+            axs[thisRow].get_xaxis().set_visible(False)
+    
+            thisRow +=1
+        #Only show the x-axis on the last plot
+        axs[thisRow-1].get_xaxis().set_visible(True)
+        axs[thisRow-1].set_xlabel(xlabel)
+
+        self.plotOrShow(plt, fig, fileName, show)
+        #logger.info(f"thisMax: {thisMax}")
+    
+    
+   #def plotInLine(self, acclData, runStr, plotTitle_str, sFreq, show=False):
+    def plotFFT(self,    data,    saveStr, plotTitle_str, show=False):
+        xlim = [0, 10]
+        #ch, datapoint
+        nSamp = data.shape[1]
+        freqList = self.fftClass.getFreqs(self.samRate, nSamp)
+    
+        #print(f"plotFFT: data: {data.shape}, nSamp: {nSamp}, sRate: {samRate}, subject: {subject}")
+        #runStr = f"sub-{subject}_run-{runNum+1}_time-{timeStart}_{name}"
+        #titleStr = f"{name} subject: {subject}, run: {runNum+1}, startTime: {timeStart}sec"
+    
+        plt.figure(figsize=(15, 10))
+        #print(f"run {runNum}: {runData.shape}")
+        for ch, chData in enumerate(data):
+            windowedData = self.fftClass.appWindow(chData, window="Hanning")
+            freqData = self.fftClass.calcFFT(windowedData) #Mag, phase
+            #plotData = np.log10(freqData[0])
+            plotData = freqData[0]
+            #plotData[0] = 0 #dont plot the dc
+            #plotData[1] = 0 #dont plot the dc
+            #plotData[2] = 0 #dont plot the dc
+            #plotData[3] = 0 #dont plot the dc
+    
+            plt.plot(freqList, plotData, label=f"ch {sensorChList[ch]}")
+    
+        plt.xlim(xlim)
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Magnitude")
+        plt.legend()
+        plt.title(plotTitle_str)
+    
+        fileName = f"{self.freqDDir}/{saveStr}_freq.jpg"
+        #self.plotOrShow(plt, fig, f"{self.timeDDir}/{runStr}_inLine.jpg", show)
+        print(f"Saving plot {fileName}")
+        if show:
+            plt.show()
+        else:
+            plt.savefig(fileName)
+        plt.close()
 
 def plotCombined(time, acclData, runStr, plotTitle_str):
     # Plotting the data with time on the x-axis
@@ -276,48 +371,6 @@ def plotRunFFT(data, samRate, subject, timeStart, name):
     for runNum, runData in enumerate(data):
         plotFFT(runData, samRate, subject, runNum, timeStart, name)
 
-def plotFFT(data, samRate, subject, runNum, timeStart, name, show=False):
-    xlim = [0, 65]
-    fftClass = jFFT_cl()
-    #ch, datapoint
-    nSamp = data.shape[1]
-    freqList = fftClass.getFreqs(samRate,nSamp)
-
-    pltSaveDir = Path(f"{plotDir}/freq_df-{fftClass.deltaF:.3f}_fMax-{fftClass.fMax}_plotXMax-{xlim[1]}hz")
-    pltSaveDir.mkdir(parents=True, exist_ok=True)
-    print(f"plotFFT: data: {data.shape}, nSamp: {nSamp}, sRate: {samRate}, subject: {subject}")
-
-    runStr = f"sub-{subject}_run-{runNum+1}_time-{timeStart}_{name}"
-    titleStr = f"{name} subject: {subject}, run: {runNum+1}, startTime: {timeStart}sec"
-
-    plt.figure(figsize=(15, 10))
-    #print(f"run {runNum}: {runData.shape}")
-    for ch, chData in enumerate(data):
-        windowedData = fftClass.appWindow(chData, window="Hanning")
-        freqData = fftClass.calcFFT(windowedData) #Mag, phase
-        #plotData = np.log10(freqData[0])
-        plotData = freqData[0]
-        #plotData[0] = 0 #dont plot the dc
-        #plotData[1] = 0 #dont plot the dc
-        #plotData[2] = 0 #dont plot the dc
-        #plotData[3] = 0 #dont plot the dc
-
-        plt.plot(freqList, plotData, label=f"ch {chList[ch]}")
-
-    plt.xlim(xlim)
-    plt.xlabel("Frequency (Hz)")
-    plt.ylabel("Magnitude")
-    plt.legend()
-    plt.title(titleStr)
-
-    fileName = f"{pltSaveDir}/{runStr}_freq.jpg"
-    print(f"Saving plot {fileName}")
-    if show:
-        plt.show()
-    else:
-        plt.savefig(fileName)
-
-    plt.close()
 
 class saveCWT_Time_FFT_images():
     def __init__(self, data_preparation:"dataLoader", cwt_class:"cwt", expDir):
@@ -325,14 +378,15 @@ class saveCWT_Time_FFT_images():
         logger.info(f"----------     Generate Plots  ----------------")
         self.data_preparation = data_preparation
         self.showImageNoSave = configs['plts']['showFilesForAnimation']
-        self.sensorList = configs['data']['chList']
+        sensorChList = configs['data']['chList']
         self.chPlotList = configs['plts']['rgbPlotChList']
-        if self.chPlotList == 0: self.chPlotList = self.sensorList
+        if self.chPlotList == 0: self.chPlotList = sensorChList
         self.cwt_class = cwt_class
 
         # Create the save dir: Just created it so we can check during the no-save
         # Create animation directory if it doesn't exist
-        self.animDir = os.path.join(expDir, "time_fft_cwt_images")
+        self.animDir = os.path(expDir)
+        #self.animDir = os.path.join(expDir, "time_fft_cwt_images")
         os.makedirs(self.animDir, exist_ok=True)
         logger.info(f"Saving plots in: {self.animDir}")
 
@@ -461,7 +515,7 @@ class saveCWT_Time_FFT_images():
 
     def calcCWTData(self, timeDData):
         # Get the list of ch indexes for the data we want
-        indices = [self.sensorList.index(ch) for ch in self.chPlotList if ch in self.sensorList]
+        indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
 
         #logger.info(f"Data shape: {timeDData.shape}") #ch, timepoints
 
@@ -522,7 +576,7 @@ class saveCWT_Time_FFT_images():
             #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
             #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
             for i, chData in enumerate(data):
-                thisCh = self.sensorList[i]
+                thisCh = sensorChList[i]
                 if thisCh in self.chPlotList:
 
                     thisColor = self.colorList[self.chPlotList.index(thisCh)%len(self.colorList)]

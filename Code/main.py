@@ -28,6 +28,7 @@ from trainer import Trainer
 from cwtTransform import cwt
 
 #from genPlots import saveMovieFrames
+from utils import checkFor_CreateDir
 
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
@@ -256,7 +257,6 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
     if configs['debugs']['saveModelInfo']: 
         saveSumary(model, dataShape)
 
-
     exp_StartTime = timer()
     if configs['debugs']['runModel']:
         logger.info(f"Create Dataloaders")
@@ -356,8 +356,8 @@ for wavelet_base in wavelet_bases:
                     for dataScale_value in dataScale_values:
                         #Load the norm perams, or calculate if the file is not there
                         data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
-
-                        if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams
+                        # Plot the normalized data
+                        if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams cuz that is there the max is
                             data_preparation.plotDataSet(cwt_class=cwt_class, logScaleData=logScaleData)
 
                         for labelScaler in configs['data']['labelScalers']:

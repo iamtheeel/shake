@@ -84,12 +84,21 @@ class dataDirFiles_class:
 
                 #Files:
                 normPeramsFile_name:str = "normPerams.pkl"
+
             dataNormDir = dataNormDir_class()
 
             #Time, Frequency, CWT Transformed Data images:
             #    The images generated.png
         waveletDir = waveletDir_class()
     saveDataDir = saveDataDir_class()
+
+    class plotDirNames_class:
+        #Image Dirs:
+        baseDir: str= "images"
+        time_fft_cwt:str = "time_fft_cwt"
+        time:str = "time"
+        freq:str = "freq"
+    plotDirNames = plotDirNames_class()
 
 
 import os

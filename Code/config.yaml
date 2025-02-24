@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
 
     showFFTPlots: False
@@ -23,8 +23,10 @@ plts:
     #saveInline: False
     
     #yLim: [1, 3]
-    #yLim: [0, 0.002]
-    yLim: [-0.0015, 0.0015]
+    yLim_freqD: [0, 0.2]
+    #min: -0.04518992181415571, max: 0.042370559493933264
+    yLim_timeD: [-0.02, 0.02]
+    #yLim: 0 #Find the limit
 
 data:
     valSplitPercen: .2 #20% of the data for validation
@@ -135,8 +137,8 @@ trainer:
 model: 
     regression: False #Or Clasification
     #name: "multilayerPerceptron"
-    name: "leNetV5"
-    #name: "MobileNet_v2"
+    #name: "leNetV5"
+    name: "MobileNet_v2"
 
     multilayerPerceptron:
         hidden_neurons: 100
