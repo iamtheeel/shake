@@ -151,8 +151,9 @@ class dataPlotter_class():
             plt.show()
         else:
             # Save the plots
-            print(f"FileName: {fileName}")
+            #print(f"FileName: {fileName}")
             fig.savefig(fileName)
+        plt.close(fig)
 
 
     def plotInLineTime(self, acclData, saveStr, plotTitle_str, show=False):
@@ -168,7 +169,7 @@ class dataPlotter_class():
         xlimStr = f"fmin-{xlim[0]}_fmax-{xlim[1]}"
         self.freqDDir = f"{imageDir}_{xlimStr}"
         if xInLog: self.freqDDir = f"{self.freqDDir}_logX"
-        checkFor_CreateDir(self.freqDDir)
+        checkFor_CreateDir(self.freqDDir, echo=False)
 
         xData = self.fftClass.getFreqs(self.samRate, acclData.shape[1])
         data = acclData
@@ -180,7 +181,7 @@ class dataPlotter_class():
 
 
     def plotInLine(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, show=False):
-
+        #print(f"data shape: {data.shape}")
         fig, axs = plt.subplots(data.shape[0], figsize=(12,12)) #figsize in inches?
         #Start and end the plot at x percent of the page, no space between each plot
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
@@ -234,11 +235,8 @@ class dataPlotter_class():
             windowedData = self.fftClass.appWindow(chData, window="Hanning")
             freqData = self.fftClass.calcFFT(windowedData) #Mag, phase
             #plotData = np.log10(freqData[0])
-            plotData = freqData[0]
-            #plotData[0] = 0 #dont plot the dc
-            #plotData[1] = 0 #dont plot the dc
-            #plotData[2] = 0 #dont plot the dc
-            #plotData[3] = 0 #dont plot the dc
+            plotData = freqData[0] #mag, phase
+            #for i in range(0,3): plotData[i] = 0 #dont plot the dc
     
             plt.plot(freqList, plotData, label=f"ch {sensorChList[ch]}")
     

@@ -87,8 +87,8 @@ class dataDirFiles_class:
 
             dataNormDir = dataNormDir_class()
 
-            #Time, Frequency, CWT Transformed Data images:
-            #    The images generated.png
+        #Time, Frequency, CWT Transformed Data images:
+        #    The images generated.png
         waveletDir = waveletDir_class()
     saveDataDir = saveDataDir_class()
 

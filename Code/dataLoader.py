@@ -11,6 +11,7 @@ import h5py, csv
 import numpy as np
 import copy
 import os
+from tqdm import tqdm  #progress bar
 
 import torch
 import torch.nn.functional as tFun
@@ -114,7 +115,6 @@ class dataLoader:
         self.fileStruct = fileStruct
         self.fileStruct.setData_dir(self.dataConfigs)
 
-
         # Setup the dataplotter
         self.dataPlotter = dataPlotter_class()
 
@@ -148,7 +148,7 @@ class dataLoader:
             speed =  self.getSpeedLabels(label_file_csv)
             #print(f"speeds: {speed}")
 
-            self.plotData_bySubject(subjectData, subjectNumber, speed)
+            self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="byRun")
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
@@ -239,53 +239,51 @@ class dataLoader:
             self.dataConfigs = pickle.load(f)
         logger.info(f"Loaded data configs from {dataSaveDir_str}/dataConfigs.pkl")
 
-    def plotFFTWindowdData(self):
-        show = configs['plots']['showFFTPlots']
-
-        logger.info(f"Plotting FFT of Each windowed block")
-        for i, windowBlockData in enumerate(self.data_raw): #each window
-            self.dataPlotter.plotFFT(windowBlockData, self.dataConfigs.sampleRate_hz, self.subjectList_raw[i], self.runList_raw[i], self.startTimes_raw[i], "ByWindow", show=show)
-
-    def plotTimeData_byWindow(self):
-        subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
-
-        show = configs['plots']['showWindowPlots'] # lets look at them now, or save
-        logger.info(f"Plotting windowed data: {self.data_raw.shape}, samRate: {self.dataConfigs.sampleRate_hz}")
-        sTime = 0
-        for i, windowBlockData in enumerate(self.data_raw): #each window
-            fileN = f"subject-{self.subjectList_raw[i]}_run{self.runList_raw[i]+1}_time-{self.startTimes_raw[i]}"
-            title = f"subject:{self.subjectList_raw[i]}, run: {self.runList_raw[i]+1}, time: {self.startTimes_raw[i]}"
-            #print(f"data shape: {data[row].shape}, sampRate: {self.dataConfigs.sampleRate_hz}")
-            self.dataPlotter.dataplotInLine(windowBlockData, fileN, title, sFreq=self.dataConfigs.sampleRate_hz, show=show)
-            sTime += self.stepSize_s
-
-    def plotData_bySubject(self, data, subject, speed):
+    def plotTime_FreqData(self, data, folder, freqYLim, subject=None, speed=None):
+        logger.info(f" -----  Saving Plots of Full run subject: {subject} ---------")
         plotDirNames = self.fileStruct.dataDirFiles.plotDirNames 
         subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
         subFolder = f"{subFolder}/{plotDirNames.baseDir}"
-        timeDImageDir = f"{subFolder}/byRun/{plotDirNames.time}"
-        freqDImageDir = f"{subFolder}/byRun/{plotDirNames.freq}"
+        timeDImageDir = f"{subFolder}/{folder}/{plotDirNames.time}"
+        freqDImageDir = f"{subFolder}/{folder}/{plotDirNames.freq}"
+        if checkFor_CreateDir(timeDImageDir) == True:
+            return #If the folder exists, we aleady have our plots
+        logger.info(f"Writting files to: {timeDImageDir}")
+        logger.info(f"                 : {freqDImageDir}")
 
-        logger.info(f" -----  Saving Plots of Full run subject: {subject} ---------")
         self.dataPlotter.generalConfigs(self.dataConfigs.sampleRate_hz)
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
         self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        runNum = 0
-        for row in range(data.shape[0]):
+        #for row in range(data.shape[0]):
+        sTime = 0
+        for row, dataRow in tqdm(enumerate(data), total=len(data), desc=f"Creating image set for {folder}", unit=" Image Set", leave=False):
             # subject, run, time
             # rms
             #thisLab = torch.argmax(labels[row])
-            fileN = f"subject-{subject}_run-{runNum}"
-            title = f"Domain subject:{subject}, run:{runNum}, speed:{speed[runNum]:.2f}"
+            if subject != None: # This is by Run
+                fileN = f"subject-{subject}_run-{row}"
+                title = f"Domain subject:{subject}, run:{row}, speed:{speed[row]:.2f}"
+            else:               # This is by wiundow
+                thisSubject = self.classes[self.subjectList_raw[row]]
+                thisRun = self.runList_raw[row]
+                startTime = self.startTimes_raw[row]
+                fileN = f"subject-{thisSubject}_run{thisRun}_time-{startTime}"
+                title = f"subject:{thisSubject}, run: {thisRun}, time: {startTime}"
+                #print(f"row: {row}, subject: {thisSubject}, run: {thisRun}, startTime: {startTime}")
+
+
             #print(f"data shape: {data[row].shape}, sampRate: {self.dataConfigs.sampleRate_hz}")
-            self.dataPlotter.plotInLineTime(data[row], fileN, f"Time {title}" )
-            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[0, 10], show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, 2], show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotInLineFreq(freqDImageDir, data[row], fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, 2], show=False) #, subjectNumber, 0, "ByRun")
+
+            #self.dataPlotter.plotInLineTime(data[row], fileN, f"Time {title}" )
+            self.dataPlotter.plotInLineTime(dataRow, fileN, f"Time {title}" )
+            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[0, 10], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
+
             #logger.info(f"Freq max: {self.dataPlotter.freqMax}")
             #plotRunFFT(subjectData, self.dataConfigs.sampleRate_hz, subjectNumber, 0, "ByRun")
-            runNum += 1
+            sTime += self.stepSize_s
 
 
     def resetData(self):
@@ -378,8 +376,6 @@ class dataLoader:
                     # Keep the RMS of time = 0 for a baseline
                     if startPoint == 0: rms_BaseLine = rms_allCh.copy()
                     rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for stomp and no step
-                    #print(f"rms_allCh = {rms_allCh}")
-                    #print(f"rms_BaseLin = {rms_BaseLine}")
 
                     # Look for stomp, and keeps track of how many windows since the stomp
                     # The detection of no step is done in getSubjecteLabel
@@ -388,18 +384,24 @@ class dataLoader:
                     thisSubjectId, dataPtsAfterStomp = self.findDataStart(dataPtsAfterStomp, rms_ratio, nSkips)
                     #print(f"stompThresh: {self.stompThresh}, nSkips: {nSkips}")
 
+                    '''
                     ### for investigation
                     #plotThis = rms_ratio
                     plotThis = rms_allCh
                     try:              plot_run = np.append(plot_run, plotThis.reshape(-1, 1), axis=1)
                     except NameError: plot_run = plotThis.reshape(-1, 1)
-                    ###
+                    '''
     
                     # append the data
                     thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
                     if dataPtsAfterStomp >= nSkips:
                         # TODO: make this one data structure
-                        thisSubjectId = self.getSubjectLabel(subject, rms_ratio) 
+                        thisSubjectId = self.getSubjectLabel(subject, rms_ratio) # Returns 0 for no step
+                        #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
+                        #print(f"rms_allCh = {rms_allCh}")
+                        #print(f"rms_BaseLin = {rms_BaseLine}")
+                        #print(f"rms_ratio = {rms_ratio}")
+
                         #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                         if (not self.regression) or (thisSubjectId > 0):
                             #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
@@ -418,8 +420,8 @@ class dataLoader:
                             thisSubjectNumber = self.getSubjectID(subject) #Keep track of the subject number appart from the label
                             try:              subjects = np.append(subjects, thisSubjectNumber)
                             except NameError: subjects = thisSubjectNumber
-                            try:              runs = np.append(runs, run+1)
-                            except NameError: runs = run+1
+                            try:              runs = np.append(runs, run)
+                            except NameError: runs = run
                             try:              startTimes = np.append(startTimes, thisStartTime)
                             except NameError: startTimes = thisStartTime
 
@@ -498,14 +500,14 @@ class dataLoader:
             if chVal > self.dataThresh:
                 label = self.getSubjectID(subjectNumber)
                 break
-
         return label
 
     def getSubjectID(self, subjectNumber):
-        if subjectNumber == '001': return 1
-        elif subjectNumber == '002': return 2
-        elif subjectNumber == '003': return 3
-        else: return 0
+        return(self.classes.index(subjectNumber))
+        #if subjectNumber == '001': return 1
+        #elif subjectNumber == '002': return 2
+        #elif subjectNumber == '003': return 3
+        #else: return 0
 
     def getSpeedLabels(self, csv_file_name ):
         with open(csv_file_name, mode='r') as speedFile:
@@ -570,7 +572,7 @@ class dataLoader:
 
 
     # If you don't send the normClass, it will calculate based on the data
-    def scale_data(self, data, logFile=None, norm:normClass=None, scaler=None, scale=None, debug=False):
+    def scale_data(self, data, log=False, norm:normClass=None, scaler=None, scale=None, debug=False):
         isTensor = False
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
@@ -584,11 +586,11 @@ class dataLoader:
         if scaler==None: scaler= norm.type
 
         if np.iscomplexobj(data):
-            if scaler == "std": dataScaled, norm = self.std_complexData(data, logFile, norm, debug)
-            else:               dataScaled, norm = self.norm_complexData(data, logFile, norm)
+            if scaler == "std": dataScaled, norm = self.std_complexData(data, log, norm, debug)
+            else:               dataScaled, norm = self.norm_complexData(data, log, norm)
         else:
-            if scaler == "std": dataScaled, norm = self.std_data(data, logFile, norm, debug)
-            else:               dataScaled, norm = self.norm_data(data, logFile, norm, scale, debug)
+            if scaler == "std": dataScaled, norm = self.std_data(data, log, norm, debug)
+            else:               dataScaled, norm = self.norm_data(data, log, norm, scale, debug)
 
         if isTensor: # and back to tensor
             dataScaled = torch.from_numpy(dataScaled)
@@ -640,7 +642,7 @@ class dataLoader:
 
         return data
 
-    def std_complexData(self, data, logFile, norm:normClass, debug):
+    def std_complexData(self, data, log, norm:normClass, debug):
         if debug:
             logger.info(f"std_complexData: {norm}")
         real = np.real(data)
@@ -654,14 +656,14 @@ class dataLoader:
 
         normData = stdised_real + 1j * stdised_imag
 
-        if logFile != None:
-            self.logScaler(logFile, self.dataNormConst, complex=True)
+        if log:
+            self.logScaler(self.logfile, self.dataNormConst, complex=True)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         if debug:
             logger.info(f"std_complexData done: {norm}")
         return normData, norm
 
-    def std_data(self, data, logFile, norm:normClass, debug):
+    def std_data(self, data, log, norm:normClass, debug):
         # Normalize the data
         # float: from 0 to 1
         # 0.5 = center
@@ -676,12 +678,12 @@ class dataLoader:
             #logger.info(f"Orig: \n{data[0:8]}")
             #logger.info(f"Norm: \n{normData[0:8]}")
 
-        if logFile != None:
-            self.logScaler(logFile, norm)
+        if log:
+            self.logScaler(self.logfile, norm)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         return normData, norm
 
-    def norm_complexData(self, data, logFile, norm:normClass):
+    def norm_complexData(self, data, log, norm:normClass):
         #L2 norm is frobenious_norm, saved as mean
 
         if norm == None:
@@ -689,12 +691,12 @@ class dataLoader:
 
         normData = data/norm.mean
 
-        if logFile != None:
-            self.logScaler(logFile, norm)
+        if log:
+            self.logScaler(self.logfile, norm)
         #logger.info(f"l2 norm: {self.dataNormConst.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
-    def norm_data(self, data, logFile, norm:normClass, scale, debug):
+    def norm_data(self, data, log, norm:normClass, scale, debug):
         #https://en.wikipedia.org/wiki/Feature_scaling
         if norm == None:
             norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
@@ -719,12 +721,13 @@ class dataLoader:
         if debug:
             logger.info(f"After rescale: {normData}")
 
-        if logFile != None:
-            self.logScaler(logFile, norm)
+        if log:
+            self.logScaler(self.logfile, norm)
         #logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
-    def logScale_Data(self, data, logFile):
+    '''
+    def logScale_Data(self, data ):
         logger.info(f"Convert data to log scale | type: {type(data)}, shape: {data.shape}")
 
         logdata = np.log10(data)
@@ -735,12 +738,12 @@ class dataLoader:
         min = np.min(np.abs(data))
 
         logger.info(f"log scale | max: {max}, min: {min}")
-        with open(logFile, 'a', newline='') as csvFile:
+        with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow([f'--------- Convert Datq to log  -------'])
             writer.writerow(['min', 'max'])
+    '''
 
-    #def logScaler(self, logFile, scaler, name_a, name_b, data_a, data_b, scale=1):
     def logScaler(self, logFile, scaler:normClass, complex=False):
         # TODO:write min, man, std, mean, scail for everybody
         with open(logFile, 'a', newline='') as csvFile:
@@ -784,21 +787,18 @@ class dataLoader:
 
         return freqList, fftData
 
-    def plotDataSet(self, cwt_class:"cwt", logScaleData:bool):
+    def plotDataByWindow(self, cwt_class:"cwt", logScaleData:bool):
         # Plot the windowed data
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
-            subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
+            subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.waveletDir_name
             if configs['cwt']['doCWT']:
-                timeFFTCWT_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
+                timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir) == False:
                     dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
                     dataPlotter.generateAndSaveImages(logScaleData)
 
-            time_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.time_byWindow}"
-            fft_dir= f"{subFolder.dataNormDir_name}/{self.fileStruct.dataDirFiles.plotDirNames.freq_byWindow}"
-            logger.info(f"   !!!You owe me time domain plots")
-            #plotTimeData_byWindow(self):
+            self.plotTime_FreqData(data=self.data_raw, freqYLim=0.5, folder="byWindow")
 
 
     #TODO: Move to cwt

@@ -35,12 +35,13 @@ class timeTaken:
         return  f"{self.timeTaken_s:.{self.sigFig}f}s"
 
 
-def checkFor_CreateDir(thisDir):
+def checkFor_CreateDir(thisDir, echo=True):
     '''
     Checks for the dir, returns true if it exists
     if not returns false and creates
     '''
-    logger.info(f"Checking for: {thisDir}")
+    if echo:
+        logger.info(f"Checking for: {thisDir}")
     dir_path = Path(thisDir)
     if dir_path.is_dir():
         return True

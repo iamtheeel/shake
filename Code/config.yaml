@@ -56,7 +56,7 @@ data:
     #stompSens: [5, 6, 7]
     stompSens: [5, 6, 7]
     stompThresh: 1.5 #If 0, then no stomp detection
-    dataThresh: 1.5 # If 0, then no, non-walking detection
+    dataThresh: 2 # If 0, then no, non-walking detection
 
     windowLen: 2 #sec
     stepSize: 1 #sec
@@ -135,7 +135,7 @@ trainer:
     seed: 4601
 
 model: 
-    regression: False #Or Clasification
+    regression: True #Or Clasification
     #name: "multilayerPerceptron"
     #name: "leNetV5"
     name: "MobileNet_v2"

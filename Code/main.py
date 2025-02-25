@@ -148,10 +148,6 @@ if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 
 writeDataTrackSumaryHdr(data_preparation.dataConfigs)
-# Plots for each window of data
-#data_preparation.plotWindowdData()
-#data_preparation.plotFFTWindowdData()
-
 
 # The hyperperamiters setup for expTracking
 cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
@@ -220,7 +216,7 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
 
     if configs['model']['regression']: 
         logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
-        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data=data_preparation.labels, logFile=logfile, scaler=labelScaler , scale=labelScale, debug=False)
+        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data=data_preparation.labels, log=True, scaler=labelScaler , scale=labelScale, debug=False)
         #print(f"{data_preparation.labNormConst.type}")
     else: 
         data_preparation.labels_norm = data_preparation.labels
@@ -357,8 +353,7 @@ for wavelet_base in wavelet_bases:
                         #Load the norm perams, or calculate if the file is not there
                         data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
                         # Plot the normalized data
-                        if configs['plts']['generatePlots']: #We can't plot unless we have the norm perams cuz that is there the max is
-                            data_preparation.plotDataSet(cwt_class=cwt_class, logScaleData=logScaleData)
+                        data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=logScaleData)
 
                         for labelScaler in configs['data']['labelScalers']:
                             if labelScaler == "std": 
