@@ -246,7 +246,8 @@ class dataLoader:
         subFolder = f"{subFolder}/{plotDirNames.baseDir}"
         timeDImageDir = f"{subFolder}/{folder}/{plotDirNames.time}"
         freqDImageDir = f"{subFolder}/{folder}/{plotDirNames.freq}"
-        if checkFor_CreateDir(timeDImageDir) == True:
+        # Don't write for the windowed data if we already have it
+        if subject == None and checkFor_CreateDir(timeDImageDir) == True:
             return #If the folder exists, we aleady have our plots
         logger.info(f"Writting files to: {timeDImageDir}")
         logger.info(f"                 : {freqDImageDir}")
