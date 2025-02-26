@@ -87,7 +87,7 @@ class MobileNet_v2(nn.Module):
 
 
 class leNetV5_timeDomain(nn.Module):
-    def __init__(self, numClasses: int, nCh, config):
+    def __init__(self, numClasses: int, dataShape, config):
         super().__init__() 
         """
         LeNet-5:
@@ -106,29 +106,45 @@ class leNetV5_timeDomain(nn.Module):
         self.configsModel = config['model']['leNetV5']
         self.seed = config['trainer']['seed']
 
+        self.target_height = config['model']['timeDImgHeight']
+        self.nCh = dataShape[1]
+        self.timePoints = dataShape[2]
+
+        print(f"h: {self.target_height}, nPoints: {self.timePoints}, nCh: {self.nCh}")
 
         self.conv2d_layers = [0,4,7]
         self.bn_layers = [1,5,8]
         self.shaLayEnd = 1
         self.midLayEnd = 2
 
-        conv_1Lay = 12
-        conv_2Lay = 12
-        conv_3_out = 128
+        conv_1Lay = 16
+        conv_2Lay = 32
+        conv_3_out = 64
         #conv_2Lay = 24
         torch.manual_seed(self.seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+
+        self.reshape_a = nn.Sequential(
+                                    nn.Conv2d(in_channels=self.nCh, out_channels=conv_1Lay, kernel_size=(1, 5), stride=(1, 2), padding=(0, 2)),  # (batch, conv_1Lay, 1, time_reduced)
+                                    nn.BatchNorm2d(conv_1Lay),
+                                    nn.ReLU(),
+                                    nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2)),  # Pooling only along time dimension
+        )
+
+        self.reshape_b = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
+
+
         self.features = nn.Sequential(
-                                        nn.Conv2d(in_channels=nCh, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=1),
+                                        nn.Conv2d(in_channels=self.nCh, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=1),
                                         nn.BatchNorm2d(conv_1Lay),
                                         nn.ReLU(),
                                         nn.MaxPool2d(kernel_size=2, stride=2),
 
-                                        #nn.Conv2d(in_channels=conv_1Lay, out_channels=conv_2Lay, kernel_size=3, stride=1, padding=0),
-                                        #nn.BatchNorm2d(conv_2Lay),
-                                        #nn.ReLU(),
+                                        nn.Conv2d(in_channels=conv_1Lay, out_channels=conv_2Lay, kernel_size=3, stride=1, padding=0),
+                                        nn.BatchNorm2d(conv_2Lay),
+                                        nn.ReLU(),
 
                                         nn.Conv2d(in_channels=conv_2Lay, out_channels=conv_3_out, kernel_size=3, stride=1, padding=0),
                                         nn.BatchNorm2d(conv_3_out),
@@ -136,14 +152,14 @@ class leNetV5_timeDomain(nn.Module):
                                         nn.MaxPool2d(kernel_size=2, stride=2)
                                      )
 
-        linMult = 825 # 1 = 24x linConnections
-        stage1 = 512
-        stage2 = 128
+        linMult = 11536 #825 # 1 = 24x linConnections
+        #stage1 = 64 #512
+        stage2 = 128 #128
         self.linear = nn.Sequential( nn.Flatten(),
-                                      nn.Linear(linMult*conv_3_out, stage1), 
+                                      nn.Linear(linMult*conv_3_out, conv_3_out),#stage1), 
                                       nn.ReLU(),
                                       nn.Dropout(0.5),
-                                      nn.Linear(stage1, stage2), 
+                                      nn.Linear(conv_3_out, stage2), 
                                       nn.ReLU()
                                       )  
 
@@ -151,7 +167,12 @@ class leNetV5_timeDomain(nn.Module):
 
 
     def forward(self, x: torch.Tensor):
-        #x = self.layer(x)
+        x = self.reshape_b(x)
+        # Reshape: (batch, conv1d_out, time_steps) -> (batch, 3, height, width)
+        x = torch.tile(x.unsqueeze(2), (1, 1, self.target_height, 1))  # Repeat along height
+        x = x.permute(0, 2, 3, 1)  # (batch, height, time, channels)
+        x = x.reshape(x.shape[0], self.nCh, self.target_height, self.timePoints)  # Final reshape
+
         x = self.features(x)
 
         x = self.linear(x)

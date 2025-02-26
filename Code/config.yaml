@@ -4,18 +4,17 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
-    showFFTPlots: False
-    showWindowPlots: False
 plts:
     pltDir: "plots"
     animDir: "/Volumes/Data/thesis/animations"
     #animDir: "../animations"
-    generatePlots: True
+    generatePlots: False
     showFilesForAnimation: False #Show instead of save
 
+    #For CWT plottited data
     rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
@@ -135,10 +134,11 @@ trainer:
     seed: 4601
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: "multilayerPerceptron"
-    #name: "leNetV5"
-    name: "MobileNet_v2"
+    name: "leNetV5"
+    #name: "MobileNet_v2"
+    timeDImgHeight: 64 #240
 
     multilayerPerceptron:
         hidden_neurons: 100

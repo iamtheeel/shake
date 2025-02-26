@@ -149,7 +149,7 @@ class Trainer:
                     data = torch.from_numpy(data)
                     '''
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=True, norm=self.dataPrep.dataNormConst, debug=False)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)
@@ -306,7 +306,7 @@ class Trainer:
                 if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, logFile=self.logfile, norm=self.dataPrep.dataNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=True, norm=self.dataPrep.dataNormConst, debug=False)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)

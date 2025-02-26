@@ -150,6 +150,7 @@ else                             : accStr = f"Acc (%)"
 writeDataTrackSumaryHdr(data_preparation.dataConfigs)
 
 # The hyperperamiters setup for expTracking
+#if configs['cwt']['doCWT']: Put back in when we sort out norm
 cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
 
 
@@ -184,7 +185,7 @@ def getModel(wavelet_name, model_name, dataShape):
         # For now use the ch as the height, and the npoints as the width
         if wavelet_name == "None":
             #TODO: rewrite lenet to take timeD as an argument
-            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
         else:
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     elif model_name == "MobileNet_v2":
@@ -226,21 +227,18 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
     # Data is currently: datapoints, height(sensorch), width(datapoints)
     print(f"Data Shape of Time D raw: {data_preparation.data.shape}")
     batchSize = configs['data']['batchSize'] 
-    runs = data_preparation.data.shape[0]
     timePts = data_preparation.data.shape[2]
+    nCh = data_preparation.data.shape[1]
     if dataAsCWT:
-        nCh = data_preparation.data.shape[1]
-        height = cwt_class.numScales
-
+        height = cwt_class.numScales #have not done the CWT yet
+        dataShape = (batchSize, nCh, height, timePts) #Batch, Ch, Freqs, TimePts
     else:
-        # Note, for timeD, height = data ch
-        nCh = 1
-        height = data_preparation.data.shape[1]
-        # We want: datapoints, image channels, height, width 
-        data_preparation.data = np.expand_dims(data_preparation.data, axis=1)  # Equivalent to unsqueeze(1)
-    dataShape = (batchSize, nCh, height, timePts) #Batch, Ch, Freqs, TimePts
+        #data_preparation.data = np.expand_dims(data_preparation.data, axis=1)  # (batch, 1, Ch, datapoints)
+        #data_preparation.data = np.expand_dims(data_preparation.data, axis=2)  # (batch, ch, 1, datapoints)
+        #height = data_preparation.data.shape[2]
+        dataShape = (batchSize, nCh, timePts) #Batch, Ch, Freqs, TimePts
     #dataShape = (batchSize, runs, nCh, height, timePts) #Batch, Runs, Ch, Freqs, TimePts
-    print(f"DataShape Now: {dataShape}")
+    print(f"DataShape Now (with batch and cwt): {dataShape}, raw: {data_preparation.data.shape}")
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
     if cwt_class.wavelet_name != 'None':
@@ -341,6 +339,7 @@ for wavelet_base in wavelet_bases:
             # Load the CWT Here
             logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
             # Go here even on None just to setup the name
+            #if wavelet_base != 'None': Put back in when we sort norm out
             cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
 
             for logScaleData in [False]: #Probably not interesting

@@ -148,7 +148,8 @@ class dataLoader:
             speed =  self.getSpeedLabels(label_file_csv)
             #print(f"speeds: {speed}")
 
-            self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="byRun")
+            if configs['plts']['generatePlots']:
+                self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="byRun")
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
@@ -199,7 +200,7 @@ class dataLoader:
                                 })
 
 
-        logger.info(f"Data min: {np.min(data)}, max: {np.max(data)}")
+        logger.info(f"Total Dataset: {data.shape}, Data min: {np.min(data)}, max: {np.max(data)}")
 
         timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
