@@ -60,9 +60,6 @@ data:
     windowLen: 2 #sec
     stepSize: 1 #sec
 
-    # 16 too big on Mac, or at least with firefox running
-    #batchSize: 16 #256 #Should be power of 2
-    batchSize: 128 #256 #Should be power of 2
 
     dataScalers: ["std"]
     #dataScalers: ["std", "meanNorm"]
@@ -120,6 +117,11 @@ cwt:
     logScale: False
 
 trainer:
+    # 16 too big on Mac, or at least with firefox running
+    #batchSize: 16 #256 #Should be power of 2
+    batchSize: 64 #256 #Should be power of 2
+    #batchSize: 128 #256 #Should be power of 2
+
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
     loss_regresh: ["MSE"] # for regresion
@@ -130,13 +132,14 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    epochs: [40]
+    epochs: [200]
     seed: 4601
 
 model: 
     regression: False #Or Clasification
-    #name: "multilayerPerceptron"
-    name: "leNetV5"
+    name: ["leNetV5_folded" ]
+    #name: ["leNetV5_folded", "leNetV5"]
+    #name: "leNetV5"
     #name: "MobileNet_v2"
     timeDImgHeight: 64 #240
 

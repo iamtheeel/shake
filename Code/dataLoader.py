@@ -64,7 +64,7 @@ class dataLoader:
         self.inputData = config['data']['inputData']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.valPercen = config['data']['valSplitPercen']
-        self.batchSize = config['data']['batchSize']
+        self.batchSize = config['trainer']['batchSize']
 
         #TODO: Get from file
         self.logfile = f"{fileStruct.expTrackFiles.expTrackDir_name}/{fileStruct.expTrackFiles.expTrack_sumary_file}"

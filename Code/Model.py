@@ -9,8 +9,12 @@
 import torch #torch
 from torch import nn
 from torchvision import models
+import math
 
-#
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
     # Start with a supoer simple multi layer perseptron
 class multilayerPerceptron(nn.Module):
     def __init__(self,input_features,num_classes,config):
@@ -85,8 +89,86 @@ class MobileNet_v2(nn.Module):
 
         return x
 
-
 class leNetV5_timeDomain(nn.Module):
+    def __init__(self, numClasses:int, dataShape, config):
+    #def __init__(self, numClasses: int, nCh, config):
+        super().__init__() 
+        """
+        LeNet-5:
+            Convolution kernal = 5x5, stride=1, tanh
+            Pooling, kernal = 2x2, stride 2, tanh
+
+            Convolution kernal = 5x5, stride=1, tanh
+            Pooling, kernal = 2x2, stride 2, tanh
+
+            ## Fully connected
+            Convolution kernal = 5x5, stride=1, tanh
+
+            FC, tanh
+            FC, softmax
+        """
+        logger.info(f"Init, dataShape: {dataShape}")
+
+        nCh = 1 #dataShape[1]
+        self.configsModel = config['model']['leNetV5']
+        self.seed = config['trainer']['seed']
+
+        self.conv2d_layers = [0,4,7]
+        self.bn_layers = [1,5,8]
+        self.shaLayEnd = 1
+        self.midLayEnd = 2
+
+        conv_1Lay = 12
+        conv_2Lay = 12
+        conv_3_out = 128
+        #conv_2Lay = 24
+        torch.manual_seed(self.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+        self.features = nn.Sequential(
+                                        nn.Conv2d(in_channels=nCh, out_channels=conv_1Lay, kernel_size=3, stride=1, padding=1),
+                                        nn.BatchNorm2d(conv_1Lay),
+                                        nn.ReLU(),
+                                        nn.MaxPool2d(kernel_size=2, stride=2),
+
+                                        #nn.Conv2d(in_channels=conv_1Lay, out_channels=conv_2Lay, kernel_size=3, stride=1, padding=0),
+                                        #nn.BatchNorm2d(conv_2Lay),
+                                        #nn.ReLU(),
+
+                                        nn.Conv2d(in_channels=conv_2Lay, out_channels=conv_3_out, kernel_size=3, stride=1, padding=0),
+                                        nn.BatchNorm2d(conv_3_out),
+                                        nn.ReLU(),
+                                        nn.MaxPool2d(kernel_size=2, stride=2)
+                                     )
+
+        linMult = 825 # 1 = 24x linConnections
+        stage1 = 512
+        stage2 = 128
+        self.linear = nn.Sequential( nn.Flatten(),
+                                      nn.Linear(linMult*conv_3_out, stage1), 
+                                      nn.ReLU(),
+                                      nn.Dropout(0.5),
+                                      nn.Linear(stage1, stage2), 
+                                      nn.ReLU()
+                                      )  
+
+        self.clasifyer = nn.Sequential(nn.Linear(128, numClasses)  )
+
+
+    def forward(self, x: torch.Tensor):
+        #data comes in as        (batch, ch, timepoints)
+        x = x.data.unsqueeze(1) #(batch, 1, ch, timepoints)
+        #logger.info(f"Data shape: {x.shape}")
+
+        x = self.features(x)
+
+        x = self.linear(x)
+        x = self.clasifyer(x)
+
+        return x 
+
+class leNetV5_folded(nn.Module):
     def __init__(self, numClasses: int, dataShape, config):
         super().__init__() 
         """
@@ -103,14 +185,20 @@ class leNetV5_timeDomain(nn.Module):
             FC, tanh
             FC, softmax
         """
+        logger.info(f"Init, dataShape: {dataShape}")
         self.configsModel = config['model']['leNetV5']
         self.seed = config['trainer']['seed']
 
-        self.target_height = config['model']['timeDImgHeight']
-        self.nCh = dataShape[1]
         self.timePoints = dataShape[2]
+        self.target_height = config['model']['timeDImgHeight']
+        #self.target_height = math.ceil(math.sqrt(self.timePoints))
+        self.target_width = math.ceil(self.timePoints/self.target_height)
 
-        print(f"h: {self.target_height}, nPoints: {self.timePoints}, nCh: {self.nCh}")
+        self.batchSize = dataShape[0]
+        self.nCh = dataShape[1]
+        self.target_size = self.target_width*self.target_height
+
+        logger.info(f"h: {self.target_height}, w: {self.target_width}, nPoints: {self.timePoints}, nCh: {self.nCh}")
 
         self.conv2d_layers = [0,4,7]
         self.bn_layers = [1,5,8]
@@ -133,7 +221,7 @@ class leNetV5_timeDomain(nn.Module):
                                     nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2)),  # Pooling only along time dimension
         )
 
-        self.reshape_b = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
+        self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
 
 
         self.features = nn.Sequential(
@@ -152,9 +240,9 @@ class leNetV5_timeDomain(nn.Module):
                                         nn.MaxPool2d(kernel_size=2, stride=2)
                                      )
 
-        linMult = 11536 #825 # 1 = 24x linConnections
+        linMult = 154 #825 # 1 = 24x linConnections
         #stage1 = 64 #512
-        stage2 = 128 #128
+        stage2 = 64 #128
         self.linear = nn.Sequential( nn.Flatten(),
                                       nn.Linear(linMult*conv_3_out, conv_3_out),#stage1), 
                                       nn.ReLU(),
@@ -163,15 +251,34 @@ class leNetV5_timeDomain(nn.Module):
                                       nn.ReLU()
                                       )  
 
-        self.clasifyer = nn.Sequential(nn.Linear(128, numClasses)  )
+        self.clasifyer = nn.Sequential(nn.Linear(stage2, numClasses)  )
+
+    def reShape(self, x):
+        #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
+        thisBatchSize = x.shape[0]
+        if self.timePoints > self.target_size:
+            x = x[:self.target_size]  # Trim excess values
+        
+        # Pad if necessary
+        elif self.timePoints < self.target_size:
+            pad_size = self.target_size - self.timePoints
+            #logger.info(f"Reshaping pad: {pad_size}")
+            #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
+            x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+            #logger.info(f"Reshaped: {x.numel()}")
+
+
+        # Reshape to (height, width)
+        #x = x.view(self.target_height, self.target_width)
+        x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
+
+        return x
 
 
     def forward(self, x: torch.Tensor):
-        x = self.reshape_b(x)
-        # Reshape: (batch, conv1d_out, time_steps) -> (batch, 3, height, width)
-        x = torch.tile(x.unsqueeze(2), (1, 1, self.target_height, 1))  # Repeat along height
-        x = x.permute(0, 2, 3, 1)  # (batch, height, time, channels)
-        x = x.reshape(x.shape[0], self.nCh, self.target_height, self.timePoints)  # Final reshape
+        x = self.convForReshape(x)
+
+        x = self.reShape(x)
 
         x = self.features(x)
 

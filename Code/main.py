@@ -83,7 +83,7 @@ def writeDataTrackSumaryHdr(dataConfigs):
         writer.writerow(['Ch List', dataConfigs.chList])
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
-        writer.writerow(['batchSize', configs['data']['batchSize']])
+        writer.writerow(['batchSize', configs['trainer']['batchSize']])
 
         writer.writerow(['wavelets', configs['cwt']['wavelet']])
         writer.writerow(['centerFreqs', configs['cwt']['waveLet_center_freq']])
@@ -188,6 +188,8 @@ def getModel(wavelet_name, model_name, dataShape):
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
         else:
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+    elif model_name == "leNetV5_folded":
+            model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, nCh=nCh, config=configs)
     else: 
@@ -198,7 +200,7 @@ def getModel(wavelet_name, model_name, dataShape):
 
     
 
-def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs, model_name):
     fileStructure.setExpTrack_run(expNum=expNum)
     writeThisLogHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     dataAsCWT = True
@@ -223,10 +225,9 @@ def runExp(expNum, dateTime_str, logScaleData, dataScaler, dataScale, labelScale
         data_preparation.labels_norm = data_preparation.labels
 
     logger.info(f"Get Model")
-    model_name = configs['model']['name']
     # Data is currently: datapoints, height(sensorch), width(datapoints)
     print(f"Data Shape of Time D raw: {data_preparation.data.shape}")
-    batchSize = configs['data']['batchSize'] 
+    batchSize = configs['trainer']['batchSize'] 
     timePts = data_preparation.data.shape[2]
     nCh = data_preparation.data.shape[1]
     if dataAsCWT:
@@ -373,15 +374,18 @@ for wavelet_base in wavelet_bases:
                                             for weight_decay in configs['trainer']['weight_decay']:
 
                                                 for epochs in configs['trainer']['epochs']:
+                                                    for model_name in configs['model']['name']:
 
-                                                    logger.info(f"==============================")
-                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                    logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
 
-                                                    #TODO: just send the cwtClass 
-                                                    runExp(expNum=expNum, dateTime_str=dateTime_str, logScaleData=logScaleData,
-                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
-
-                                                    expNum += 1
+                                                        logger.info(f"==============================")
+                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                        logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+    
+                                                        #TODO: just send the cwtClass 
+                                                        runExp(expNum=expNum, logScaleData=logScaleData,
+                                                                dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs, 
+                                                                model_name=model_name)
+    
+                                                        expNum += 1

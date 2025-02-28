@@ -52,7 +52,7 @@ class Trainer:
         self.weight_decay = weight_decay
         self.epochs = epochs
 
-        self.batchSize = self.configs['data']['batchSize']
+        self.batchSize = self.configs['trainer']['batchSize']
         self.classes = self.configs['data']['classes']
 
         self.regression = self.configs['model']['regression']
@@ -76,9 +76,10 @@ class Trainer:
             self.doCWT = True
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 
-        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}\n" \
-                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}, " \
-                             f"epochs:{self.epochs}, batchSize:{self.configs['data']['batchSize']}"  
+        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}, " \
+                             f"Model: {self.model.__class__.__name__}\n" \
+                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
+                             f"epochs:{self.epochs}, batchSize:{self.batchSize}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
     def set_training_config(self):
@@ -388,10 +389,10 @@ class Trainer:
 
         if self.regression:
             if(self.configs['debugs']['writeValData']): self.logRegression(y_preds, y_targs)
-            self.plotRegRes(y_preds, y_targs)
+            self.plotRegRes(y_preds, y_targs, valAcc= test_acc)
         else:
             if(self.configs['debugs']['writeValData']): self.logClassification(y_preds, y_targs)
-            self.plotConfMat(y_preds, y_targs)
+            self.plotConfMat(y_preds, y_targs, valAcc=test_acc)
 
         return finalValLoss, test_acc, classAcc
 
@@ -414,11 +415,11 @@ class Trainer:
             for row in y_preds_targets:
                 writer.writerow(row.tolist())
     
-    def plotRegRes(self, preds, targets ):
+    def plotRegRes(self, preds, targets, valAcc):
         #logger.info(f"Type preds: {type(preds[0])}, targets: {type(targets[0])}")
         #logger.info(f"plot results: {len(preds)}, labels: {len(targets)}")
         plt.figure(figsize=(8, 6))
-        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}")
+        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, Val Acc: {valAcc:.1f}%")
         plt.plot(range(len(preds)), preds, label=f"Predictions")    
         plt.plot(range(len(targets)), targets, label=f"targets")    
         plt.legend()
@@ -428,7 +429,7 @@ class Trainer:
         plt.savefig(f"{self.logDir}/validation_{self.expNum}.jpg")
         #plt.show()
 
-    def plotConfMat(self, y_preds, y_targs ):
+    def plotConfMat(self, y_preds, y_targs, valAcc ):
         from sklearn.metrics import confusion_matrix
         import matplotlib.pyplot as plt
         import seaborn  as sns
@@ -456,7 +457,7 @@ class Trainer:
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.classes, yticklabels=self.classes)
         plt.xlabel('Predicted Labels')
         plt.ylabel('True Labels')
-        plt.title(f'Confusion Matrix: {self.hyperPeramStr}')
+        plt.title(f'CM: {self.hyperPeramStr}, val acc: {valAcc:.1f}%')
         plt.savefig(f"{self.logDir}/validation_{self.expNum}.jpg")
         #plt.show()
         
