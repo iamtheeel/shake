@@ -200,8 +200,13 @@ def getModel(wavelet_name, model_name, dataShape):
 
     
 
-def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay, epochs, model_name):
+def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+           lossFunction, optimizer, learning_rate, weight_decay, epochs, 
+           model_name):
+
     fileStructure.setExpTrack_run(expNum=expNum)
+    exp_StartTime = timer()
+
     writeThisLogHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     dataAsCWT = True
     if cwt_class.wavelet_base == "None": dataAsCWT = False
@@ -249,11 +254,10 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
 
-    if configs['debugs']['saveModelInfo']: 
-        saveSumary(model, dataShape)
 
-    exp_StartTime = timer()
     if configs['debugs']['runModel']:
+        if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
+
         logger.info(f"Create Dataloaders")
         data_preparation.createDataloaders(expNum) 
 
@@ -323,6 +327,7 @@ for wavelet_base in wavelet_bases:
         centerFreqs = [1]
         bandwidths = [1]
     elif wavelet_base == 'fstep': #what is the bw?
+        centerFreqs = configs['cwt']['waveLet_center_freq']
         bandwidths = [1]
     elif wavelet_base == 'morl':
         centerFreqs = [0.8125]

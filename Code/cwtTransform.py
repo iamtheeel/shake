@@ -55,21 +55,21 @@ class cwt:
     def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, useLogForFreq=False):
         self.useLogScaleFreq  = useLogForFreq
 
+        self.wavelet_base = wavelet_base
         self.f0= f0
         self.bw = bw
-        if wavelet_base == "mexh" or wavelet_base == "morl" or wavelet_base == 'None':
-            wavelet_name = wavelet_base
+        logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
+        if wavelet_base == "mexh" or  wavelet_base=="morl" or wavelet_base == 'None':
+            self.wavelet_name = wavelet_base
         elif wavelet_base == "fstep": #No arguments, arguments handled seperately
-            wavelet_name = f"{wavelet_base}-{f0}"
-        else: 
-            wavelet_name = f"{wavelet_base}-{f0}-{bw}"
+            self.wavelet_name = f"{wavelet_base}-{f0}"
+        else:  #cmorl
+            self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
         # The wavelet
-        self.wavelet_base = wavelet_base
-        self.wavelet_name = wavelet_name
+        logger.info(f"Wavelet name: {self.wavelet_name}")
 
-        self.fileStructure.setCWT_dir(self)
 
-        if wavelet_name == 'None': return #Now that we have the name, we can skip the rest on None
+        if self.wavelet_name == 'None': return #Now that we have the name, we can skip the rest on None
 
         self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
@@ -86,6 +86,8 @@ class cwt:
         logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
+
+        self.fileStructure.setCWT_dir(self)
 
         self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
@@ -115,8 +117,8 @@ class cwt:
 
         #TODO: write to log file
         #logger.info(f"Scales: {self.scales.shape}")
-        #logger.info(f"Scales: {self.scales}")
-        #logger.info(f"Frequencies: {self.frequencies}")
+        #logger.info(f"Scales: \n{self.scales}")
+        #logger.info(f"Frequencies: \n{self.frequencies}")
 
     def cwtTransform(self, data, debug=False):
         # Perform continuous wavelet transform using the defined wavelet

@@ -383,10 +383,13 @@ class saveCWT_Time_FFT_images():
 
         # Create the save dir: Just created it so we can check during the no-save
         # Create animation directory if it doesn't exist
-        self.animDir = os.path(expDir)
+        #print(f"Exp Dir: {expDir}")
+        self.animDir = expDir
+        #self.animDir = os.path(expDir)
         #self.animDir = os.path.join(expDir, "time_fft_cwt_images")
-        os.makedirs(self.animDir, exist_ok=True)
-        logger.info(f"Saving plots in: {self.animDir}")
+        #os.makedirs(self.animDir, exist_ok=True)
+        checkFor_CreateDir(self.animDir, echo=True)
+        #logger.info(f"Saving plots in: {self.animDir}")
 
         self.complexInput = False
         if np.iscomplexobj(cwt_class.wavelet_fun): self.complexInput = True
@@ -519,6 +522,7 @@ class saveCWT_Time_FFT_images():
 
         # Filter foo along the channel dimension
         cwtData, cwtFrequencies = self.cwt_class.cwtTransform(timeDData[indices, :], debug=False)
+        logger.info(f"Max in this CWT: {np.max(cwtData)}")
         #height, ch, width (240, 3, 3304)
         cwtData = np.transpose(cwtData, (0, 2, 1)) # H, w, ch
         #logger.info(f"CWT Data shape: {cwtData.shape}") 
@@ -527,7 +531,8 @@ class saveCWT_Time_FFT_images():
         #logger.info(f"CWT Before scaling: min: {np.min(cwtData)}, max: {np.max(cwtData)}")
         # Not seting the datanormConst is somehow overwriting it?? Makes no sense
         #cwtData, _ = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
-        cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
+        if self.data_preparation.dataNormConst.type != "none":
+            cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
 
         #if self.complexInput:
         cwtData = np.abs(cwtData)
@@ -595,11 +600,13 @@ class saveCWT_Time_FFT_images():
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
             fileName = f"{dataumNumber:04d}_ch-{pltCh_Str}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
-            filePath = os.path.join(self.animDir, fileName)
+            #filePath = os.path.join(self.animDir, fileName)
+            filePath = f"{self.animDir}/{fileName}"
             if self.showImageNoSave:
                 logger.info(f"Image File: {filePath}")
                 plt.show()
             else:
                 plt.savefig(filePath, dpi=250, bbox_inches=None)
+            plt.close(fig)
 
             #procTime.endTime(echo=True, echoStr=f"Finished with dataNum: {dataumNumber}")

@@ -72,8 +72,8 @@ elif plotNum == 2:
     ax.set_title("Time Domain Data: LeNet, Un-Reshaped")
     ax.set_yticks(np.arange(1, yCount)) #Every tick for ch
 elif plotNum == 3:
-    ax.set_xlabel("Width: sqrt(Time Points)")
-    ax.set_zlabel("Height: sqrt(Time Points)")
+    ax.set_xlabel("Width: 64")
+    ax.set_zlabel("Height: 52")
     ax.set_ylabel("Num Color Ch: Data Ch")
     ax.set_title("Data ReShaped for Image Models")
     ax.set_yticks(np.arange(1, yCount+1)) #Every tick for ch

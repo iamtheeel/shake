@@ -160,12 +160,23 @@ class fileStruct:
         # windows limit, runs limit
         if self.regression: regClas = "regression"
         else:               regClas = "classification"
+
         dataFolder = f"{regClas}_chList-{chList_str}"
+
+        #Window len and step size
+        dataFolder = f"{dataFolder}_winLen-{configs['data']['windowLen']}"
+        dataFolder = f"{dataFolder}_step-{configs['data']['stepSize']}"
+
         runLimit = configs['data']['limitRuns']
         if runLimit > 0: dataFolder = f"{dataFolder}_runLim-{runLimit}"
         winLimit = configs['data']['limitWindowLen']
         if winLimit > 0: self.dataFolder = f"{dataFolder}_winCountLim-{winLimit}"
-        dataFolder = f"{dataFolder}_StompThresh-{configs['data']['stompThresh']}"
+
+        stompThresh = configs['data']['stompThresh'] 
+        if isinstance(stompThresh, str):
+            dataFolder = f"{dataFolder}_StompThresh-File"
+        else:
+            dataFolder = f"{dataFolder}_StompThresh-{stompThresh}"
         dataFolder = f"{dataFolder}_DataThresh-{configs['data']['dataThresh']}"
 
         self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.dataOutDir_name}/{dataFolder}"

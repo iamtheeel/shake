@@ -77,6 +77,10 @@ class dataLoader:
         self.stompCh = config['data']['stompSens']
         self.dataThresh = config['data']['dataThresh']
         self.stompThresh = config['data']['stompThresh']
+        self.stompFromFile = False
+        if isinstance(self.stompThresh, str):
+            self.stompFromFile = True
+            self.stompTimes_np = self.getStompTimes(f"{config['data']['inputData']}/{self.stompThresh}")
 
         self.dataConfigs = dataConfigs()
         self.dataConfigs.sampleRate_hz = 0
@@ -149,7 +153,7 @@ class dataLoader:
             #print(f"speeds: {speed}")
 
             if configs['plts']['generatePlots']:
-                self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="byRun")
+                self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="../byRun_plots")
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
@@ -249,6 +253,7 @@ class dataLoader:
         freqDImageDir = f"{subFolder}/{folder}/{plotDirNames.freq}"
         # Don't write for the windowed data if we already have it
         if subject == None and checkFor_CreateDir(timeDImageDir) == True:
+            #TODO: This does not work cuz we run this 3 times with each subject
             return #If the folder exists, we aleady have our plots
         logger.info(f"Writting files to: {timeDImageDir}")
         logger.info(f"                 : {freqDImageDir}")
@@ -353,15 +358,22 @@ class dataLoader:
                 dataEnd = data.shape[0]
             #for run in range(data.shape[0]): # make sure the data is in order one run at a time
             for run in range(dataEnd): # test with the first few dataums
-
-                startPoint = 0 #points
-                dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
                 nWindows = 0
+                firstDataPoint = True
+
+                dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
+                if self.stompFromFile:
+                    #print(f"Subject: {subject}, run: {run}")
+                    sTime_sec = self.getStompTime(subject, run)
+                    startPoint = sTime_sec * self.dataConfigs.sampleRate_hz
+                else:
+                    startPoint = 0 #points
 
                 while True:
+                    startPoint = int(startPoint)
                     nWindows += 1
                     endPoint = startPoint + self.windowLen
-                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {window_len}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}")
+                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
                     if self.dataConfigs.dataLen_pts <= endPoint: break
                     if self.configs['data']['limitWindowLen'] > 0:
                         if nWindows >= self.configs['data']['limitWindowLen']: break
@@ -376,14 +388,20 @@ class dataLoader:
                         #print(f"rms_allCh: {rms_allCh.shape}")
 
                     # Keep the RMS of time = 0 for a baseline
-                    if startPoint == 0: rms_BaseLine = rms_allCh.copy()
+                    if firstDataPoint:
+                        rms_BaseLine = rms_allCh.copy()
+                        firstDataPoint = False
                     rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for stomp and no step
 
                     # Look for stomp, and keeps track of how many windows since the stomp
                     # The detection of no step is done in getSubjecteLabel
-                    if self.stompThresh == 0: nSkips = 0
-                    else                    : nSkips = 3
-                    thisSubjectId, dataPtsAfterStomp = self.findDataStart(dataPtsAfterStomp, rms_ratio, nSkips)
+                    if self.stompFromFile == False:
+                        if self.stompThresh == 0: nSkips = 0
+                        else                    : nSkips = 3
+                        thisSubjectId, dataPtsAfterStomp = self.findDataStart(dataPtsAfterStomp, rms_ratio, nSkips)
+                    else: 
+                        dataPtsAfterStomp = 1
+                        nSkips = 0
                     #print(f"stompThresh: {self.stompThresh}, nSkips: {nSkips}")
 
                     '''
@@ -524,7 +542,26 @@ class dataLoader:
 
         #print(f"Labels: {speedList}")
         return speedList
+    
+    def getStompTimes(self, csv_file_name):
+        with open(csv_file_name, mode='r') as stompTimesFile:
+            stompTimes_reader = csv.reader(stompTimesFile)
+            header = next(stompTimes_reader)
+            data = []
+            for row in stompTimes_reader:
+                subjects = row[0]
+                runs = int(row[1])
+                times = float(row[2])
+                data.append((subjects, runs, times))
+        #startTimes_np = np.array(data)
+        startTimes_np = np.array(data, dtype=[("name", "U50"), ("run", "i4"), ("startTime", "f4")])
 
+        #print(startTimes_np)
+        return startTimes_np
+
+    def getStompTime(self, subject, run):
+        mask = (self.stompTimes_np["name"] == subject) & (self.stompTimes_np["run"] == run)
+        return self.stompTimes_np["startTime"][mask][0]
 
     def getSubjects(self):
         if((self.test == "Test_2") or (self.test == "Test_3")):
@@ -708,11 +745,10 @@ class dataLoader:
         elif norm.type == 'minMaxNorm': 
             normTo = norm.min
 
-
         normData = (data-normTo)/(norm.max - norm.min) 
 
         if debug:
-            logger.info(f"norm_data:{data},  normTo: {normTo}, max: {norm.max}, min: {norm.min} | normData: {normData}")
+            logger.info(f"normeddata:{data},  normTo: {normTo}, max: {norm.max}, min: {norm.min} | normData: {normData}")
 
         #Rescale for min/max
         if norm.scale!= 1:
@@ -793,14 +829,15 @@ class dataLoader:
         # Plot the windowed data
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
+            # plot the cwt data
             subFolder =self.fileStruct.dataDirFiles.saveDataDir.waveletDir.waveletDir_name
             if configs['cwt']['doCWT']:
                 timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir) == False:
                     dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
                     dataPlotter.generateAndSaveImages(logScaleData)
-
             self.plotTime_FreqData(data=self.data_raw, freqYLim=0.5, folder="byWindow")
+
 
 
     #TODO: Move to cwt
@@ -809,7 +846,7 @@ class dataLoader:
         # Transform the RAW data. We do not actually have the data yet.
         timeData = self.data_raw
         logger.info(f"Starting transorm of data_raw (will apply norm later): {type(timeData)}, {timeData.shape}")
-        timeStart = time.time()
+        timeStart = time()
 
         # Test the norm by loading the entire block and running the calcs there to compair
         # This takes too much mem for the entire set
@@ -889,14 +926,14 @@ class dataLoader:
         #For testing to make sure we have the right thing
         if testCorrectness:
             cwtData_raw = np.transpose(cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
-            cwtTransformTime = time.time() - timeStart
+            cwtTransformTime = time() - timeStart
 
         if saveNormPerams:
             if np.iscomplexobj(cwt_class.wavelet_fun):
                 mean = mean_Real + 1j * mean_Imag
                 std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
             else:
-                print("NOT COMPLEX")
+                #print("NOT COMPLEX")
                 std = np.sqrt(variance/nElements)
             self.dataNormConst.mean = mean
             self.dataNormConst.std = std
@@ -945,8 +982,13 @@ class dataLoader:
             #min, max, mean, std
             logger.info(f"Calculating norm/std perams")
             if configs['cwt']['doCWT']:
+                configMax = configs['data']['dataMax']
+                print(f"configMax: {configMax}")
                 # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-                self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
+                if configMax == 0: #This takes forever, only do it if nessisary
+                    self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
+                else: 
+                    self.dataNormConst.max = configMax
             else: self.calculateTimeDNormTerms()
 
 
