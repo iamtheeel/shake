@@ -140,7 +140,7 @@ trainer:
     seed: 4601
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     name: ["leNetV5_folded" ]
     #name: ["leNetV5_folded", "leNetV5"]
     #name: "leNetV5"

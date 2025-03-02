@@ -140,7 +140,7 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
-            for data, labels, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
 
@@ -148,11 +148,13 @@ class Trainer:
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
                     #labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=True, scaler=labelScaler , scale=labelScale, debug=False)
-                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=False, norm=self.dataPrep.labNormConst, debug=False)
-                    labels = labels.unsqueeze(1) #Todo: fixe in dataloader!
+                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                    #labels = labels.unsqueeze(1) #Todo: fixe in dataloader!
                     #print(f"Labels shape: {labels.shape}")
                 else:
-                    labels = tFun.one_hot(labels, num_classes=self.nClasses)
+                    #labels = tFun.one_hot(labelsSubject, num_classes=len(self.classes)) # Cross entropy does not expect one_hot
+                    labels = labelsSubject#.unsqueeze(1) # we want ([batch size,])
+                    #print(f"labels shape: {labels.shape}")
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)
@@ -193,8 +195,9 @@ class Trainer:
                     epoch_squared_diff = np.append(epoch_squared_diff, diff_sq)
                     correct_batch = 0
                 else:
+                    labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=len(self.classes)).float()
                     out_pred_argMax = torch.argmax(out_pred, 1) # Convert to argMax
-                    labels_argMax = torch.argmax(labels,1) #convert to argMax
+                    labels_argMax = torch.argmax(labels_one_hot,1) #convert to argMax
                     correct_batch = out_pred_argMax.eq(labels_argMax).sum().item() # How many did we get right in this batch
                     correct_epoch += correct_batch
                 #print(f"Training Predicted Shape: {out_pred_argMax.shape}")
@@ -305,12 +308,15 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             print(f"Test Data len: {nData}")
 
-            for data, labels, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
                 if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=True, norm=self.dataPrep.dataNormConst, debug=False)
-                labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
+                if self.regression:
+                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                else:
+                    labels = tFun.one_hot(labelsSubject, num_classes=len(self.classes))
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)

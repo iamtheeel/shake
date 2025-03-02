@@ -66,10 +66,10 @@ class HDF5Dataset(Dataset):
             self.data_max = f["data"].attrs["max"]
             self.data_mean = f["data"].attrs["mean"]
             self.data_std = f["data"].attrs["std"]
-            self.lab_min = f["labels"].attrs["min"]
-            self.lab_max = f["labels"].attrs["max"]
-            self.lab_mean = f["labels"].attrs["mean"]
-            self.lab_std = f["labels"].attrs["std"]
+            self.lab_min = f["labelsSpeed"].attrs["min"]
+            self.lab_max = f["labelsSpeed"].attrs["max"]
+            self.lab_mean = f["labelsSpeed"].attrs["mean"]
+            self.lab_std = f["labelsSpeed"].attrs["std"]
 
     def __len__(self):
         return self.length
@@ -78,13 +78,14 @@ class HDF5Dataset(Dataset):
         with h5py.File(self.file_path, "r") as f:
             data = torch.tensor(f["data"][idx], dtype=torch.float32)
             #label = torch.tensor(f["labels"][idx], dtype=torch.float32)
-            label = torch.tensor(f["labels"][idx], dtype=torch.float32)#.unsqueeze(1) 
+            label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
+            label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
             subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
             run = torch.tensor(f["runs"][idx], dtype=torch.long)
             sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
 
             #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
-        return data, label, subject, run, sTime
+        return data, label_speed, label_subject, subject, run, sTime
 
 class dataLoader:
     def __init__(self, config, fileStruct:"fileStruct"):
@@ -171,7 +172,8 @@ class dataLoader:
             writer.writeheader()
 
         data_list = []
-        label_list = []
+        speed_label_list = []
+        subject_label_list = []
         subject_list = []
         run_list = []
         sTime_list = []
@@ -194,49 +196,22 @@ class dataLoader:
                 self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectNumber, speed=speed, folder="../byRun_plots")
 
             # Window the data
-            windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
-            logger.info(f" label {type(labelBlock)}: {labelBlock.shape}")
+            windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
+            logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
+            logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
             logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
 
 
             # Append the data to the set
             data_list.append(windowedBlock)
-            label_list.append(labelBlock)
+            speed_label_list.append(labelBlock_speed)
+            subject_label_list.append(labelBlock_subject)
             subject_list.append(subjectBlock)
             run_list.append(runBlock)
             sTime_list.append(startTimes)
 
-            #try:              data = np.append(data, windowedBlock, axis=0)  # or should this be a torch tensor?
-            #except NameError: data = windowedBlock
-
-            labelBlock = torch.from_numpy(labelBlock)
-            if self.regression:
-                thisSubLabels = labelBlock.unsqueeze(1)
-            else: 
-                thisSubLabels = tFun.one_hot(labelBlock, num_classes=self.nClasses) # make 0 = [1,0,0], 1 = [0,1,0]... etc
-                #logger.info(f"one_hot label: {thisSubLabels.shape}")
-
-            '''
-            # The labels and subjects are torch 
-            try:              labels = torch.cat((labels, thisSubLabels), 0) 
-            except NameError: labels = thisSubLabels
-
-            subjectBlock = torch.from_numpy(subjectBlock)
-            try:              subject_list = torch.cat((subject_list, subjectBlock), 0) 
-            except NameError: subject_list = subjectBlock
-
-            runBlock = torch.from_numpy(runBlock)
-            try:              run_list = torch.cat((run_list, runBlock), 0) 
-            except NameError: run_list = runBlock
-
-            startTimesBlock = torch.from_numpy(startTimes)
-            try:              startTimes_list = torch.cat((startTimes_list, startTimesBlock), 0) 
-            except NameError: startTimes_list = startTimesBlock
-            '''
-
-
             #logger.info(f"Labels: {thisSubLabels}")
-            logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape} ")
+            logger.info(f"Up to: {subjectNumber}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
@@ -252,22 +227,27 @@ class dataLoader:
 
         ## Convert our lists to numpys
         data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
-        labels_np = np.concatenate(label_list, axis=0) # datapoints
+        labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
+        labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
         subjects_np = np.concatenate(subject_list, axis=0)
         runs_np = np.concatenate(run_list, axis=0)
         sTimes_np = np.concatenate(sTime_list, axis=0)
+
+        #Reshape the speed labels for batch processing
+        labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
+        #labelsSubject_np = labelsSubject_np.reshape(-1,1) #go from (num,) to (num,1)
 
         data_min = np.min(data_np)
         data_max = np.max(data_np)
         data_mean = np.mean(data_np)
         data_std = np.std(data_np)
 
-        lab_min = np.min(labels_np)
-        lab_max = np.max(labels_np)
-        lab_mean = np.mean(labels_np)
-        lab_std = np.std(labels_np)
+        lab_min = np.min(labelsSpeed_np)
+        lab_max = np.max(labelsSpeed_np)
+        lab_mean = np.mean(labelsSpeed_np)
+        lab_std = np.std(labelsSpeed_np)
 
-        logger.info(f"Dataset: {data_np.shape}, labels: {labels_np.shape}")
+        logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
         logger.info(f"Label min: {lab_min}, max: {lab_max}, mean: {lab_mean}, std: {lab_std}")
 
@@ -277,7 +257,8 @@ class dataLoader:
         with h5py.File(f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}", "w") as h5dataFile:
             #TODO: add sameple rate, etc
             data_ds = h5dataFile.create_dataset("data", data=data_np)
-            label_ds = h5dataFile.create_dataset("labels", data=labels_np)
+            label_ds = h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
+            h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
             h5dataFile.create_dataset("subjects", data=subjects_np)
             h5dataFile.create_dataset("runs", data=runs_np)
             h5dataFile.create_dataset("sTimes", data=sTimes_np)
@@ -292,21 +273,6 @@ class dataLoader:
             label_ds.attrs["mean"] = lab_mean
             label_ds.attrs["std"] = lab_std
 
-        '''
-        np.save(f"{dataSaveDir_str}/{timdDataFile_str.timeDDataSave}", data)
-        logger.info(f"Saved data to {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
-        torch.save(labels, f"{dataSaveDir_str}/labels.pt")
-        logger.info(f"Saved labels to {dataSaveDir_str}/labels.pt")
-        torch.save(subject_list, f"{dataSaveDir_str}/subjects.pt")
-        torch.save(run_list, f"{dataSaveDir_str}/runs.pt")
-        torch.save(startTimes_list, f"{dataSaveDir_str}/startTimes.pt")
-
-        self.data_raw = data
-        self.labels_raw = labels.float()
-        self.subjectList_raw = subject_list
-        self.runList_raw = run_list
-        self.startTimes_raw = startTimes_list
-        '''
         # Save data configs
         with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'wb') as f:
             pickle.dump(self.dataConfigs, f)
@@ -316,18 +282,6 @@ class dataLoader:
 
     def loadPeramiters(self):
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-        '''
-        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
-        logger.info(f"Loading data from {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
-        logger.info(f"Loading labels from {dataSaveDir_str}/labels.pt")
-        logger.info(f"Loading subjects from {dataSaveDir_str}/subjects.pt")
-        self.data_raw = np.load(f"{dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
-        self.labels_raw = torch.load(f"{dataSaveDir_str}/labels.pt", weights_only=False).float()
-        self.subjectList_raw = torch.load(f"{dataSaveDir_str}/subjects.pt", weights_only=False)
-        self.runList_raw = torch.load(f"{dataSaveDir_str}/runs.pt", weights_only=False)
-        self.startTimes_raw = torch.load(f"{dataSaveDir_str}/startTimes.pt", weights_only=False)
-        '''
-
         with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'rb') as f:
             #This will load the ch list from the saved file
             self.dataConfigs = pickle.load(f)
@@ -535,8 +489,10 @@ class dataLoader:
                             # Append the data, labels, and all that junk
                             try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
                             except NameError: windowedData = thisDataBlock
-                            try:              labels = np.append(labels, thisLabel)
-                            except NameError: labels = thisLabel
+                            try:              labels_speed = np.append(labels_speed, speed[run])
+                            except NameError: labels_speed = speed[run]
+                            try:              labels_subject = np.append(labels_subject, thisSubjectId)
+                            except NameError: labels_subject = thisSubjectId
                             thisSubjectNumber = self.getSubjectID(subject) #Keep track of the subject number appart from the label
                             try:              subjects = np.append(subjects, thisSubjectNumber)
                             except NameError: subjects = thisSubjectNumber
@@ -561,7 +517,7 @@ class dataLoader:
             #end Run
 
 
-        return windowedData, labels, subjects, runs, startTimes
+        return windowedData, labels_speed, labels_subject, subjects, runs, startTimes
 
     def findDataStart(self, dataPtsAfterStomp, rms_ratio, nSkips):
         thisSubjectID = 0
