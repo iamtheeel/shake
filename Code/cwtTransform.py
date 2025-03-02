@@ -55,6 +55,9 @@ class cwt:
     def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, useLogForFreq=False):
         self.useLogScaleFreq  = useLogForFreq
 
+        self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
+        self.max_freq = self.configs['cwt']['fMax']
+
         self.wavelet_base = wavelet_base
         self.f0= f0
         self.bw = bw
@@ -69,7 +72,8 @@ class cwt:
         logger.info(f"Wavelet name: {self.wavelet_name}")
 
 
-        if self.wavelet_name == 'None': return #Now that we have the name, we can skip the rest on None
+        self.fileStructure.setCWT_dir(self) 
+        if self.wavelet_name == 'None':return #Now that we have the name, we can skip the rest on None
 
         self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
@@ -87,15 +91,11 @@ class cwt:
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
 
-        self.fileStructure.setCWT_dir(self)
-
         self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
         
-        self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
-        self.max_freq = self.configs['cwt']['fMax']
         if self.max_freq == 0: self.max_freq = self.sampleRate_hz/2 #Nyquist
 
         if self.wavelet_base != 'fstep':

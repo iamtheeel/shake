@@ -15,7 +15,7 @@ from tqdm import tqdm  #progress bar
 
 import torch
 import torch.nn.functional as tFun
-from torch.utils.data import DataLoader, TensorDataset, random_split
+from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 import pickle
 import time
 from tqdm import tqdm  #progress bar
@@ -51,7 +51,40 @@ class dataConfigs:
     nTrials: Optional[int] = None
     chList: Optional[list] = None
 
+class HDF5Dataset(Dataset):
+    def __init__(self, file_path ):
+        self.file_path = file_path
+        self.h5_file = None  # Will be opened in `__getitem__`
 
+        # Open file to get dataset size
+        with h5py.File(self.file_path, "r") as f:
+            self.length = len(f["data"])  # Number of samples
+            self.shape = f["data"].shape
+
+            #Stats
+            self.data_min = f["data"].attrs["min"]
+            self.data_max = f["data"].attrs["max"]
+            self.data_mean = f["data"].attrs["mean"]
+            self.data_std = f["data"].attrs["std"]
+            self.lab_min = f["labels"].attrs["min"]
+            self.lab_max = f["labels"].attrs["max"]
+            self.lab_mean = f["labels"].attrs["mean"]
+            self.lab_std = f["labels"].attrs["std"]
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        with h5py.File(self.file_path, "r") as f:
+            data = torch.tensor(f["data"][idx], dtype=torch.float32)
+            #label = torch.tensor(f["labels"][idx], dtype=torch.float32)
+            label = torch.tensor(f["labels"][idx], dtype=torch.float32)#.unsqueeze(1) 
+            subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
+            run = torch.tensor(f["runs"][idx], dtype=torch.long)
+            sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
+
+            #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
+        return data, label, subject, run, sTime
 
 class dataLoader:
     def __init__(self, config, fileStruct:"fileStruct"):
@@ -63,7 +96,6 @@ class dataLoader:
         # Load up the dataset info
         self.inputData = config['data']['inputData']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
-        self.valPercen = config['data']['valSplitPercen']
         self.batchSize = config['trainer']['batchSize']
 
         #TODO: Get from file
@@ -111,7 +143,7 @@ class dataLoader:
         self.dataLoader_v = None
 
         self.dataNormConst = normClass()
-        self.labNormConst = None
+        self.labNormConst = normClass()
 
         self.configs = config
 
@@ -138,6 +170,12 @@ class dataLoader:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
             writer.writeheader()
 
+        data_list = []
+        label_list = []
+        subject_list = []
+        run_list = []
+        sTime_list = []
+
         self.subjects = self.getSubjects()
         for subjectNumber in self.subjects:
             data_file_hdf5, label_file_csv = self.getFileName(subjectNumber)
@@ -157,12 +195,19 @@ class dataLoader:
 
             # Window the data
             windowedBlock, labelBlock, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectNumber, speed=speed)
-            #logger.info(f"data: {windowedBlock.shape}, label: {labelBlock.shape}")
+            logger.info(f" label {type(labelBlock)}: {labelBlock.shape}")
+            logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
 
 
             # Append the data to the set
-            try:              data = np.append(data, windowedBlock, axis=0)  # or should this be a torch tensor?
-            except NameError: data = windowedBlock
+            data_list.append(windowedBlock)
+            label_list.append(labelBlock)
+            subject_list.append(subjectBlock)
+            run_list.append(runBlock)
+            sTime_list.append(startTimes)
+
+            #try:              data = np.append(data, windowedBlock, axis=0)  # or should this be a torch tensor?
+            #except NameError: data = windowedBlock
 
             labelBlock = torch.from_numpy(labelBlock)
             if self.regression:
@@ -171,6 +216,7 @@ class dataLoader:
                 thisSubLabels = tFun.one_hot(labelBlock, num_classes=self.nClasses) # make 0 = [1,0,0], 1 = [0,1,0]... etc
                 #logger.info(f"one_hot label: {thisSubLabels.shape}")
 
+            '''
             # The labels and subjects are torch 
             try:              labels = torch.cat((labels, thisSubLabels), 0) 
             except NameError: labels = thisSubLabels
@@ -186,10 +232,11 @@ class dataLoader:
             startTimesBlock = torch.from_numpy(startTimes)
             try:              startTimes_list = torch.cat((startTimes_list, startTimesBlock), 0) 
             except NameError: startTimes_list = startTimesBlock
+            '''
 
 
             #logger.info(f"Labels: {thisSubLabels}")
-            logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape}, {data.shape}")
+            logger.info(f"Up to: {subjectNumber}, Labels, data shapes: {thisSubLabels.shape} ")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
@@ -203,11 +250,49 @@ class dataLoader:
                                 'chList': self.dataConfigs.chList
                                 })
 
+        ## Convert our lists to numpys
+        data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
+        labels_np = np.concatenate(label_list, axis=0) # datapoints
+        subjects_np = np.concatenate(subject_list, axis=0)
+        runs_np = np.concatenate(run_list, axis=0)
+        sTimes_np = np.concatenate(sTime_list, axis=0)
 
-        logger.info(f"Total Dataset: {data.shape}, Data min: {np.min(data)}, max: {np.max(data)}")
+        data_min = np.min(data_np)
+        data_max = np.max(data_np)
+        data_mean = np.mean(data_np)
+        data_std = np.std(data_np)
+
+        lab_min = np.min(labels_np)
+        lab_max = np.max(labels_np)
+        lab_mean = np.mean(labels_np)
+        lab_std = np.std(labels_np)
+
+        logger.info(f"Dataset: {data_np.shape}, labels: {labels_np.shape}")
+        logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
+        logger.info(f"Label min: {lab_min}, max: {lab_max}, mean: {lab_mean}, std: {lab_std}")
 
         timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+        ## Save as HDF5
+        with h5py.File(f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}", "w") as h5dataFile:
+            #TODO: add sameple rate, etc
+            data_ds = h5dataFile.create_dataset("data", data=data_np)
+            label_ds = h5dataFile.create_dataset("labels", data=labels_np)
+            h5dataFile.create_dataset("subjects", data=subjects_np)
+            h5dataFile.create_dataset("runs", data=runs_np)
+            h5dataFile.create_dataset("sTimes", data=sTimes_np)
+
+            # Store statistics as attributes
+            data_ds.attrs["min"] = data_min
+            data_ds.attrs["max"] = data_max
+            data_ds.attrs["mean"] = data_mean
+            data_ds.attrs["std"] = data_std
+            label_ds.attrs["min"] = lab_min
+            label_ds.attrs["max"] = lab_max
+            label_ds.attrs["mean"] = lab_mean
+            label_ds.attrs["std"] = lab_std
+
+        '''
         np.save(f"{dataSaveDir_str}/{timdDataFile_str.timeDDataSave}", data)
         logger.info(f"Saved data to {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
         torch.save(labels, f"{dataSaveDir_str}/labels.pt")
@@ -215,21 +300,24 @@ class dataLoader:
         torch.save(subject_list, f"{dataSaveDir_str}/subjects.pt")
         torch.save(run_list, f"{dataSaveDir_str}/runs.pt")
         torch.save(startTimes_list, f"{dataSaveDir_str}/startTimes.pt")
-        # Save data configs
-        with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'wb') as f:
-            pickle.dump(self.dataConfigs, f)
-        logger.info(f"Saved data configs to {dataSaveDir_str}/dataConfigs.pkl")
 
         self.data_raw = data
         self.labels_raw = labels.float()
         self.subjectList_raw = subject_list
         self.runList_raw = run_list
         self.startTimes_raw = startTimes_list
+        '''
+        # Save data configs
+        with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'wb') as f:
+            pickle.dump(self.dataConfigs, f)
+        logger.info(f"Saved data configs to {dataSaveDir_str}/dataConfigs.pkl")
+
         logger.info(f"====================================================")
 
-    def loadDataSet(self):
-        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
+    def loadPeramiters(self):
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+        '''
+        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         logger.info(f"Loading data from {dataSaveDir_str}/{timdDataFile_str.timeDDataSave}")
         logger.info(f"Loading labels from {dataSaveDir_str}/labels.pt")
         logger.info(f"Loading subjects from {dataSaveDir_str}/subjects.pt")
@@ -238,6 +326,7 @@ class dataLoader:
         self.subjectList_raw = torch.load(f"{dataSaveDir_str}/subjects.pt", weights_only=False)
         self.runList_raw = torch.load(f"{dataSaveDir_str}/runs.pt", weights_only=False)
         self.startTimes_raw = torch.load(f"{dataSaveDir_str}/startTimes.pt", weights_only=False)
+        '''
 
         with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'rb') as f:
             #This will load the ch list from the saved file
@@ -302,6 +391,7 @@ class dataLoader:
         self.labels = self.labels_raw.clone().detach() #labels are tensor
 
     def createDataloaders(self, expNum):
+        '''
         self.data = torch.tensor(self.data, dtype=torch.float32) # dataloader wants a torch tensor
 
         logger.info(f"data: {self.data.shape}")
@@ -309,20 +399,30 @@ class dataLoader:
         logger.info(f"subjects: {type(self.subjectList_raw)}, {self.subjectList_raw.shape}")
         dataSet = TensorDataset(self.data, self.labels_norm, self.subjectList_raw)
         #plotRegreshDataSetLab(dataSet, "total set")
+        '''
+
+        #TODO: modify for CWT
+        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
+        dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+        dataSetFile = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
+        dataSet = HDF5Dataset(dataSetFile)
+        # Get the info from the file
+        self.dataShape = dataSet.shape
+        self.setNormTermsFromData(dataSet)
+
 
         # Split sizes
-        trainRatio = 1 - self.valPercen
+        trainRatio = configs['data']['trainRatio']
         train_size = int(trainRatio * len(dataSet))  # 80% for training
         val_size = len(dataSet) - train_size  # 20% for validation
 
-        logger.info(f"dataset: {len(dataSet)}, valPer: {self.valPercen}, train: {train_size}, val: {val_size}")
+        logger.info(f"dataset: {len(dataSet)}, trainRatio: {trainRatio}, train: {train_size}, val: {val_size}")
         # Rand split was not obeying  config['trainer']['seed'], so force the issue
-        # random_split sorts the data, this makes it hard to look at validation
         dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
         dataSet_v.indices.sort() # put the validation data back in order
         #plotRegreshDataSetLab(dataSet_v, "validation set")
 
-        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=False)
+        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
         self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
         #plotRegreshDataLoader(self.dataLoader_t)
         #plotRegreshDataLoader(self.dataLoader_v)
@@ -612,10 +712,11 @@ class dataLoader:
 
     # If you don't send the normClass, it will calculate based on the data
     def scale_data(self, data, log=False, norm:normClass=None, scaler=None, scale=None, debug=False):
-        isTensor = False
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
             isTensor = True
+        else: 
+            isTensor = False
 
         if debug: 
             logger.info(f"scale_data: constants:{norm}")
@@ -631,11 +732,11 @@ class dataLoader:
             if scaler == "std": dataScaled, norm = self.std_data(data, log, norm, debug)
             else:               dataScaled, norm = self.norm_data(data, log, norm, scale, debug)
 
-        if isTensor: # and back to tensor
-            dataScaled = torch.from_numpy(dataScaled)
-
         if debug: 
             logger.info(f"After scaling: min: {np.min(dataScaled)}, max: {np.max(dataScaled)}, {norm}")
+
+        if isTensor: # and back to tensor
+            dataScaled = torch.from_numpy(dataScaled)
 
         return dataScaled, norm
 
@@ -948,13 +1049,20 @@ class dataLoader:
 
         if testCorrectness:
             logger.info(f"cwtData: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
-    def calculateTimeDNormTerms(self):
-        logger.info(f"Generate Time D norm from self.data_raw: {self.data_raw.shape}")
-        self.dataNormConst.min = np.min(self.data_raw)
-        self.dataNormConst.max = np.max(self.data_raw)
-        self.dataNormConst.mean = np.mean(self.data_raw)
-        self.dataNormConst.std = np.std(self.data_raw)
-        logger.info(f"{self.dataNormConst}")
+
+    def setNormTermsFromData(self, dataSet:HDF5Dataset):
+        #TODO: Log the min, max, mean, std
+
+        self.dataNormConst.min = dataSet.data_min
+        self.dataNormConst.max = dataSet.data_max
+        self.dataNormConst.mean = dataSet.data_mean
+        self.dataNormConst.std = dataSet.data_std
+        logger.info(f"Data: {self.dataNormConst}")
+        self.labNormConst.min = dataSet.lab_min
+        self.labNormConst.max = dataSet.lab_max
+        self.labNormConst.mean = dataSet.lab_mean
+        self.labNormConst.std = dataSet.lab_std
+        logger.info(f"Labels: {self.labNormConst}")
 
     def getNormPerams(self, cwt_class:"cwt", logScaleData, dataScaler, dataScale_value):
         print(f"\n")
@@ -989,8 +1097,7 @@ class dataLoader:
                     self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
                 else: 
                     self.dataNormConst.max = configMax
-            else: self.calculateTimeDNormTerms()
 
-
+            self.dataNormConst.type = dataScaler
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")

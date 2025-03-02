@@ -10,6 +10,7 @@
 from timeit import default_timer as timer
 import torch
 from torch import nn
+import torch.nn.functional as tFun
 import numpy as np
 from tqdm import tqdm  #progress bar
 
@@ -22,13 +23,14 @@ from cwtTransform import cwt
 from typing import TYPE_CHECKING
 if TYPE_CHECKING: #Fix circular import
     from fileStructure import fileStruct
+    from dataLoader import dataLoader
     
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self,model, device, dataPrep, fileStru:"fileStruct", configs, expNum, 
+    def __init__(self,model, device, dataPrep:"dataLoader", fileStru:"fileStruct", configs, expNum, 
                  cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
         self.device = device
 
@@ -138,19 +140,19 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
-            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
+            for data, labels, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
                 if self.doCWT:
                     data = self.cwtClass.cwtTransformBatch(data)
-                    '''
-                    #logger.info(f"before cwt: {data.shape}")
-                    data, freqs = self.cwtClass.cwtTransform(data=data.numpy())
-                    #logger.info(f"after cwt: {data.shape}")
-                    data = np.transpose(data, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
-                    #logger.info(f"after transpose: {data.shape}")
-                    data = torch.from_numpy(data)
-                    '''
+
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=True, norm=self.dataPrep.dataNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
+                if self.regression:
+                    #labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=True, scaler=labelScaler , scale=labelScale, debug=False)
+                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                    labels = labels.unsqueeze(1) #Todo: fixe in dataloader!
+                    #print(f"Labels shape: {labels.shape}")
+                else:
+                    labels = tFun.one_hot(labels, num_classes=self.nClasses)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)
@@ -303,11 +305,12 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             print(f"Test Data len: {nData}")
 
-            for data, labels, subjects in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
+            for data, labels, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
                 if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=True, norm=self.dataPrep.dataNormConst, debug=False)
+                labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labels, log=False, norm=self.dataPrep.labNormConst, debug=False)
 
                 data = data.to(self.device)
                 labels = labels.to(self.device)
@@ -419,7 +422,7 @@ class Trainer:
         #logger.info(f"Type preds: {type(preds[0])}, targets: {type(targets[0])}")
         #logger.info(f"plot results: {len(preds)}, labels: {len(targets)}")
         plt.figure(figsize=(8, 6))
-        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, Val Acc: {valAcc:.1f}%")
+        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, Val Acc: {valAcc:.4f}rms")
         plt.plot(range(len(preds)), preds, label=f"Predictions")    
         plt.plot(range(len(targets)), targets, label=f"targets")    
         plt.legend()

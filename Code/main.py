@@ -139,10 +139,11 @@ Data Preparation
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, fileStructure)
 
-if os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDDataSave}"):
-    data_preparation.loadDataSet()
-else: data_preparation.get_data()
-logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
+if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
+    data_preparation.get_data()
+else: 
+    data_preparation.loadPeramiters() #TODO: goes away when the perams get loaded to the dataseet
+#logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
@@ -208,43 +209,44 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     exp_StartTime = timer()
 
     writeThisLogHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
-    dataAsCWT = True
     if cwt_class.wavelet_base == "None": dataAsCWT = False
+    else:                                dataAsCWT = True
 
 
     # TODO: Set to save the transformed data
 
     #Make sure we start with a fresh time d dataset
-    data_preparation.resetData() 
+    #data_preparation.resetData() 
     #logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
 
     #Log scale the lin data
     scaleStr = f"d: {data_preparation.dataNormConst.type} {data_preparation.dataNormConst.scale}, l: {labelScaler} {labelScale}"
     if(logScaleData): scaleStr = f"{scaleStr}, Log"
 
+
+    '''
     if configs['model']['regression']: 
         logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
         data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data=data_preparation.labels, log=True, scaler=labelScaler , scale=labelScale, debug=False)
         #print(f"{data_preparation.labNormConst.type}")
     else: 
         data_preparation.labels_norm = data_preparation.labels
+    '''
 
     logger.info(f"Get Model")
     # Data is currently: datapoints, height(sensorch), width(datapoints)
-    print(f"Data Shape of Time D raw: {data_preparation.data.shape}")
+    print(f"Data Shape loaded data : {data_preparation.dataShape}")
     batchSize = configs['trainer']['batchSize'] 
-    timePts = data_preparation.data.shape[2]
-    nCh = data_preparation.data.shape[1]
+    timePts = data_preparation.dataShape[2]
+    nCh = data_preparation.dataShape[1]
     if dataAsCWT:
         height = cwt_class.numScales #have not done the CWT yet
         dataShape = (batchSize, nCh, height, timePts) #Batch, Ch, Freqs, TimePts
     else:
-        #data_preparation.data = np.expand_dims(data_preparation.data, axis=1)  # (batch, 1, Ch, datapoints)
-        #data_preparation.data = np.expand_dims(data_preparation.data, axis=2)  # (batch, ch, 1, datapoints)
         #height = data_preparation.data.shape[2]
         dataShape = (batchSize, nCh, timePts) #Batch, Ch, Freqs, TimePts
     #dataShape = (batchSize, runs, nCh, height, timePts) #Batch, Runs, Ch, Freqs, TimePts
-    print(f"DataShape Now (with batch and cwt): {dataShape}, raw: {data_preparation.data.shape}")
+    print(f"DataShape Now (with batch and cwt): {dataShape}")
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
     if cwt_class.wavelet_name != 'None':
@@ -255,28 +257,23 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             #model = model.to(torch.complex64)
 
 
-    if configs['debugs']['runModel']:
-        if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
+    if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
-        logger.info(f"Create Dataloaders")
-        data_preparation.createDataloaders(expNum) 
 
-        logger.info(f"Load Trainer")
-        # Data scaling info?
-        trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
+    logger.info(f"Load Trainer")
+    # Data scaling info?
+    trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
-        logger.info(f"Train")
-        trainLoss, trainAcc = trainer.train()
-        logger.info(f"Run Validation")
-        valLoss, valAcc, classAcc = trainer.validation()
-        del trainer
-    else:
-        trainLoss, valLoss = 0, 0
-        trainAcc , valAcc  = 0, 0
-        classAcc = 0
+
+    logger.info(f"Train")
+    trainLoss, trainAcc = trainer.train()
+
+    logger.info(f"Run Validation")
+    valLoss, valAcc, classAcc = trainer.validation()
+    del trainer
 
     exp_runTime = timer() - exp_StartTime
-
+    # Log the results
     with open(expTrackFile, 'a', newline='') as csvFile:
         print(f"Writing data: {expTrackFile}")
         writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
@@ -301,7 +298,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     del model
 
 
-# Experiments:
+# Experimens:
 # Wavelet
 # Center Frequency
 # Bandwidth
@@ -316,9 +313,10 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 # Sliding window overlap
 # Model
 # Model Peramiters: 
-expNum = 1
 
-# Time D has no transform
+
+
+expNum = 1
 wavelet_bases = ['None']
 if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
 for wavelet_base in wavelet_bases:
@@ -355,12 +353,18 @@ for wavelet_base in wavelet_bases:
                     else:                          dataScale_values = [1]
 
                     for dataScale_value in dataScale_values:
+                        data_preparation.dataNormConst.type = dataScaler
+
+                        logger.info(f"Create Dataloaders")
+                        data_preparation.createDataloaders(expNum) 
                         #Load the norm perams, or calculate if the file is not there
-                        data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
+                        # The norm perameters are now saved in the dataset
+                        #data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
                         # Plot the normalized data
                         data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=logScaleData)
 
                         for labelScaler in configs['data']['labelScalers']:
+                            data_preparation.labNormConst.type = labelScaler
                             if labelScaler == "std": 
                                 labelScale_values = [1]
                             else:                   labelScale_values = configs['data']['labelScale_values']
@@ -388,9 +392,10 @@ for wavelet_base in wavelet_bases:
                                                         logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
     
                                                         #TODO: just send the cwtClass 
-                                                        runExp(expNum=expNum, logScaleData=logScaleData,
-                                                                dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs, 
-                                                                model_name=model_name)
+                                                        if configs['debugs']['runModel']:
+                                                            runExp(expNum=expNum, logScaleData=logScaleData,
+                                                                    dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                    lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs, 
+                                                                    model_name=model_name)
     
-                                                        expNum += 1
+                                                            expNum += 1

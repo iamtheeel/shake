@@ -64,6 +64,7 @@ class dataDirFiles_class:
         saveDataDir_name:str = ""
 
         #Files: 
+        timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
         timeDDataSave:str = 'timeD_data.npy' #File with the time domain data selected for this run
         timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
 
