@@ -340,6 +340,8 @@ class leNetV5_cwt(nn.Module):
                                      )
 
         #linMult = 486750 # 1 = conv_3_out linConnections
+        # the number of cwt freques is tied up in this
+        # The batch size also
         linMult = 11536 #47792 # 1 = conv_3_out linConnections
         #linMult = 1
         stage1 = 512

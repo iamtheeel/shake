@@ -425,33 +425,39 @@ class dataLoader:
             self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
             self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
 
-    def createDataloaders(self, writeLog=False):
+    def loadDataSet(self, dataSetFile=None,writeLog=True ):
+        timeD = False
+        if dataSetFile == None:
+            timeD = True
+            fileName_str = self.fileStruct.dataDirFiles.saveDataDir
+            dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+            dataSetFile = f"{dataSaveDir_str}/{fileName_str.timeDData_file}"
 
-        #TODO: modify for CWT
-        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
-        dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-        dataSetFile = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
-        self.timeDDataSet = HDF5Dataset(dataSetFile) # Keep the full dataset in order so we can transform off of it
-        # Get the info from the file
-        self.dataShape = self.timeDDataSet.shape
-        self.getPeramsFromHDF5Dataset(self.timeDDataSet)
+        logger.info(f"Loading dataset file: {dataSetFile}")
+        dataSet = HDF5Dataset(dataSetFile) # Keep the full dataset in order so we can transform off of it
+        self.getPeramsFromHDF5Dataset(dataSet=dataSet)
+        if timeD:
+            self.timeDDataSet = dataSet # Keep the full dataset in order so we can transform off of it
+        else:
+            self.CWTDataSet = dataSet # Keep the full dataset in order so we can transform off of it
+        #self.dataShape = dataSet.shape
 
+        self.createDataloaders(dataSet=dataSet, writeLog=writeLog)
+    
+    def createDataloaders(self, dataSet, writeLog=True):
         # Split sizes
         trainRatio = configs['data']['trainRatio']
-        train_size = int(trainRatio * len(self.timeDDataSet))  # 80% for training
-        val_size = len(self.timeDDataSet) - train_size  # 20% for validation
+        train_size = int(trainRatio * len(dataSet))  # 80% for training
+        val_size = len(dataSet) - train_size  # 20% for validation
 
-        logger.info(f"dataset: {len(self.timeDDataSet)}, trainRatio: {trainRatio}, train: {train_size}, val: {val_size}")
+        logger.info(f"dataset: {len(dataSet)}, trainRatio: {trainRatio}, train: {train_size}, val: {val_size}")
         # Rand split was not obeying  config['trainer']['seed'], so force the issue
-        dataSet_t, dataSet_v = random_split(self.timeDDataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
+        dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
         dataSet_v.indices.sort() # put the validation data back in order
-        #plotRegreshDataSetLab(dataSet_v, "validation set")
 
         self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
         #self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=4, persistent_workers=True, shuffle=True)
         self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
-        #plotRegreshDataLoader(self.dataLoader_t)
-        #plotRegreshDataLoader(self.dataLoader_v)
 
         if writeLog: self.logDataShape()
     
@@ -907,7 +913,7 @@ class dataLoader:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['--------- Time D Data Shape------------------'])
             writer.writerow(['TimeD Shape', 'train batch size', 'val batch size', 'train count', 'val count', 'classes'])
-            writer.writerow([self.dataShape, self.dataLoader_t.batch_size, self.dataLoader_v.batch_size, trainDataSize, valDataSize, self.classes] )
+            writer.writerow([self.timeDDataSet.shape, self.dataLoader_t.batch_size, self.dataLoader_v.batch_size, trainDataSize, valDataSize, self.classes] )
             writer.writerow(['---------------------------------------------'])
 
 
@@ -963,12 +969,13 @@ class dataLoader:
 
     def writeToCWTDataFile(self, filename, data, label_speed, label_subject, subject, run, startTime):
         # Create HDF5 file with expandable datasets
+        label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
         with h5py.File(filename, "a") as cwtDataFile:
             if "data" not in cwtDataFile:
                 dataShape = data.shape
                 # Create datasets with `maxshape=(None, ...)` to allow dynamic resizing
                 cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[2], dataShape[1], dataShape[2]), dtype="float32", chunks=True)
-                cwtDataFile.create_dataset("labelsSpeed", shape=(0,), maxshape=(None,), dtype="float32", chunks=True)
+                cwtDataFile.create_dataset("labelsSpeed", shape=(0,1), maxshape=(None,1), dtype="float32", chunks=True)
                 cwtDataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
                 cwtDataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
                 cwtDataFile.create_dataset("runs", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
@@ -1012,10 +1019,9 @@ class dataLoader:
                 filePath = Path(cwtFile)
                 if filePath.exists() == False:
                     self.generateCWT_calcNormTerms(cwt_class=cwt_class, saveFile=cwtFile)
-                self.CWTDataSet = HDF5Dataset(cwtFile)
-                self.getPeramsFromHDF5Dataset(self.CWTDataSet)
-                self.CWTdataShape = self.CWTDataSet.shape
-                logger.info(f"CWT Datashape: {self.CWTdataShape}")
+
+                self.loadDataSet(dataSetFile=cwtFile, writeLog=True ) 
+                logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
 
                 # Plot the saved images
                 if configs['plts']['generatePlots']:
@@ -1056,7 +1062,7 @@ class dataLoader:
             #logger.info(f"Transforming data: {i}, {data.shape}")
             data = data_tensor.numpy()
             thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
-            logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
+            #logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
             self.writeToCWTDataFile(saveFile, thisCwtData_raw, label_speed, label_subject, subject, run, startTime)
 
             nElements += thisCwtData_raw.size

@@ -140,14 +140,15 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
-            for data_torch, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
-                data_np = data_torch.numpy()
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
+                #logger.info(f" foobar data shape: {data.shape}")
                 #if self.doCWT:
                 #    data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
+                    #logger.info(f"asdf {labelsSpeed.shape}")
                     labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
                     #print(f"Labels shape: {labels.shape}")
                 else:
@@ -313,6 +314,7 @@ class Trainer:
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
                     labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                    #logger.info(f"labels shape: {labels.shape}")
                 else:
                     labels = tFun.one_hot(labelsSubject, num_classes=len(self.classes))
 

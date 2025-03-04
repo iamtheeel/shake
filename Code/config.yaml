@@ -4,14 +4,14 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
 plts:
     pltDir: "plots"
     animDir: "/Volumes/Data/thesis/animations"
     #animDir: "../animations"
-    generatePlots: True
+    generatePlots: False
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
@@ -48,8 +48,8 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
-    limitRuns: 2 #2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 4 #20 # Limit the number of windows to load: 0 to load all
+    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #20 # Limit the number of windows to load: 0 to load all
 
     #stompSens: [5, 6]
     #stompSens: [5, 6, 7]
@@ -94,15 +94,15 @@ cwt:
     doCWT: True
     saveCWT: True
 
-    logScaleFreq: False
+    logScaleFreq: True
     numScales: 64 #240
-    fMin: 0.5 # 0 = 0... so don't use 0 makes for div by 0
-    fMax: 5 #0 = use the nyquist
+    fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
+    fMax: 100 #5 #0 = use the nyquist
     wavelet: ["fstep"] #"None" for no CWT
     #wavelet: ["morl", "cmorl"] # f0 = 0.8125, bw = 6.0
     #wavelet: ["cmor", "fstep" ]
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
-    waveLet_center_freq:  [1] #fstep center freq best4 for fStep 0.5 to 10hz
+    waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep 0.5 to 10hz
     waveLet_bandwidth: [1]  #
     #waveLet_center_freq:  [0.8125] #morl center freq
     #waveLet_center_freq:  [10] # best for cmorl
@@ -122,8 +122,8 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running
-    #batchSize: 16 #256 #Should be power of 2
-    batchSize: 64 #256 #Should be power of 2
+    batchSize: 8 #256 #Should be power of 2
+    #batchSize: 128 #256 #Should be power of 2
     #batchSize: 128 #256 #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
@@ -140,7 +140,7 @@ trainer:
     seed: 4601
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     name: ["leNetV5"]
     #name: ["leNetV5_folded"]
     #name: ["leNetV5_folded", "leNetV5"]

@@ -209,9 +209,11 @@ class fileStruct:
         if cwtClass.wavelet_name != 'None':
             waveletFolder_name = f"{waveletFolder_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
 
+        waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
+
         if cwtClass.useLogScaleFreq: 
             logScFreq_st = "_logScaleFreq"
-            waveletFolder_name = f"normPerams_{cwtClass.wavelet_name}{logScFreq_st}"
+            waveletFolder_name = f"{cwtClass.wavelet_name}{logScFreq_st}"
         #logger.info(f"Wavelet time from: {cwtClass.wavelet_Time[0]} to {cwtClass.wavelet_Time[-1]}")
 
         #self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = waveletFolder_name

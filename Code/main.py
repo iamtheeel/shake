@@ -142,7 +142,7 @@ writeLogHdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
     data_preparation.get_data()
-data_preparation.createDataloaders(writeLog=True) #Load the timed dataset even if we are doing a cwt
+data_preparation.loadDataSet(writeLog=True) #Load the timed dataset even if we are doing a cwt
 
 
 # The hyperperamiters setup for expTracking
@@ -203,8 +203,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     exp_StartTime = timer()
 
     writeDataTrackHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
-    if cwt_class.wavelet_base == "None": dataAsCWT = False
-    else:                                dataAsCWT = True
 
 
     # TODO: Set to save the transformed data
@@ -215,19 +213,14 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
 
     logger.info(f"Get Model")
-    # Data is currently: datapoints, height(sensorch), width(datapoints)
-    print(f"Data Shape loaded data : {data_preparation.dataShape}")
     batchSize = configs['trainer']['batchSize'] 
-    timePts = data_preparation.dataShape[2]
-    nCh = data_preparation.dataShape[1]
-    if dataAsCWT:
-        height = cwt_class.numScales #have not done the CWT yet
-        dataShape = (batchSize, nCh, height, timePts) #Batch, Ch, Freqs, TimePts
+    # Add the batch size to the dataloader shape, but don't include the number of items
+    if configs['cwt']['doCWT']:
+        dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
     else:
-        #height = data_preparation.data.shape[2]
-        dataShape = (batchSize, nCh, timePts) #Batch, Ch, Freqs, TimePts
-    #dataShape = (batchSize, runs, nCh, height, timePts) #Batch, Runs, Ch, Freqs, TimePts
-    print(f"DataShape Now (with batch and cwt): {dataShape}")
+        dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
+
+    logger.info(f"Data Shape loaded data : {dataShape}")
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
     if cwt_class.wavelet_name != 'None':

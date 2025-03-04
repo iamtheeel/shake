@@ -57,6 +57,7 @@ class cwt:
 
         self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
         self.max_freq = self.configs['cwt']['fMax']
+        self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
         self.wavelet_base = wavelet_base
         self.f0= f0
@@ -75,7 +76,6 @@ class cwt:
         self.fileStructure.setCWT_dir(self) 
         if self.wavelet_name == 'None':return #Now that we have the name, we can skip the rest on None
 
-        self.numScales = self.configs['cwt']['numScales']  #480 #This is the height of the image
 
         if self.wavelet_base == 'fstep':
             self.wavelet = FootStepWavelet(central_frequency=f0)
