@@ -137,7 +137,7 @@ class dataPlotter_class():
 
     def configTimeD(self, imageDir, yLim, dataMax=0):
         self.timeDDir = imageDir
-        checkFor_CreateDir(self.timeDDir)
+        checkFor_CreateDir(self.timeDDir, echo=False)
 
         self.yLim_time = yLim #configs['plts']['yLim']
         if self.yLim_time == 0: self.yLim_time = [-dataMax, dataMax]
@@ -166,9 +166,10 @@ class dataPlotter_class():
         self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, show=False)
 
     def plotInLineFreq(self, imageDir, acclData, saveStr, plotTitle_str, xlim, yLim = None, xInLog = False, show=False):
+        #logger.info(f"{imageDir}")
         xlimStr = f"fmin-{xlim[0]}_fmax-{xlim[1]}"
         self.freqDDir = f"{imageDir}_{xlimStr}"
-        if xInLog: self.freqDDir = f"{self.freqDDir}_logX"
+        if xInLog: self.freqDDir = f"{self.freqDDir}_log"
         checkFor_CreateDir(self.freqDDir, echo=False)
 
         xData = self.fftClass.getFreqs(self.samRate, acclData.shape[1])
@@ -218,7 +219,6 @@ class dataPlotter_class():
         #logger.info(f"thisMax: {thisMax}")
     
     
-   #def plotInLine(self, acclData, runStr, plotTitle_str, sFreq, show=False):
     def plotFFT(self,    data,    saveStr, plotTitle_str, show=False):
         xlim = [0, 10]
         #ch, datapoint
@@ -405,7 +405,10 @@ class saveCWT_Time_FFT_images():
             if self.complexInput:
                 self.normTo_max = np.max(np.abs(data_preparation.dataNormConst.max)) # We plot in mag
             # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-            self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
+            if data_preparation.dataNormConst.type == None:
+                self.normTo_max = data_preparation.dataNormConst.max
+            else:
+                self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
             self.normTo_max = np.abs(self.normTo_max)
             self.normTo_max = self.normTo_max/fudge
         ### For CWT we plot the magnitude
@@ -514,28 +517,22 @@ class saveCWT_Time_FFT_images():
             axs[1, 0].text(0.05, -0.15, textstr, transform=axs[1, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
             '''
 
-    def calcCWTData(self, timeDData):
+    def getCWTData(self, cwtDataSet):
         # Get the list of ch indexes for the data we want
         indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
 
-        #logger.info(f"Data shape: {timeDData.shape}") #ch, timepoints
-
-        # Filter foo along the channel dimension
-        cwtData, cwtFrequencies = self.cwt_class.cwtTransform(timeDData[indices, :], debug=False)
-        logger.info(f"Max in this CWT: {np.max(cwtData)}")
-        #height, ch, width (240, 3, 3304)
-        cwtData = np.transpose(cwtData, (0, 2, 1)) # H, w, ch
-        #logger.info(f"CWT Data shape: {cwtData.shape}") 
+        cwtData = cwtDataSet[0].permute(1, 2, 0) #coming in as ch, freqs, timepoints
+        cwtData = cwtData[:,:,indices] # Only use the data from the plot list
 
         # scale as we would for processing
         #logger.info(f"CWT Before scaling: min: {np.min(cwtData)}, max: {np.max(cwtData)}")
         # Not seting the datanormConst is somehow overwriting it?? Makes no sense
         #cwtData, _ = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
-        if self.data_preparation.dataNormConst.type != "none":
-            cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
+        if self.data_preparation.dataNormConst.type != None:
+            if self.data_preparation.dataNormConst.type != "none":
+                cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
 
-        #if self.complexInput:
-        cwtData = np.abs(cwtData)
+        cwtData = np.abs(cwtData) # non complex goes negitive
 
         ### Normalize for plotting
         #logger.info(f"norm min: {self.normTo_min}, max: {self.normTo_max}")
@@ -543,9 +540,13 @@ class saveCWT_Time_FFT_images():
         cwtData = (cwtData - self.normTo_min) / (self.normTo_max - self.normTo_min)
         #logger.info(f"CWT After Plot Norm: min: {np.min(cwtData)}, max: {np.max(cwtData)}")
         
-        return cwtData, cwtFrequencies
+        return cwtData 
     
     def plotCWT(self, axs, cwtData):
+        # We only plot the data from the sensor list4
+        #indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
+        #cwtData = cwtData[:,:, indices]
+
         axs[1, 1].imshow(cwtData, aspect='auto')
         #TODO: Put in function
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
@@ -560,15 +561,13 @@ class saveCWT_Time_FFT_images():
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
 
     def generateAndSaveImages(self, logScaleData):
-        #procTime = timeTaken(2) 
-        dataEnd = self.data_preparation.data_raw.shape[0]
-        #procTime.endTime(echo=True, echoStr=f"Preliminary Done, datasize: {dataEnd}")
+        #dataEnd = self.data_preparation.data_raw.shape[0]
+        #for dataumNumber in tqdm(range(0, dataEnd), desc="Generating CWT, FFT Plots For Movie", unit="Plot"):
+        for thisWindowNum, (data_torch, label_speed, subjectLabel, subject, run, timeWindow) in  \
+                  tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Generateing CWT Data", unit="Window" ):
 
-        for dataumNumber in tqdm(range(0, dataEnd), desc="Generating CWT, FFT Plots For Movie", unit="Plot"):
-            #procTime.startTime()
-            #The time domain data and labels
-            #Data is ch, timepoint
-            data, run, timeWindow, subjectLabel = self.data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels
+            data = data_torch.numpy()
+            #data, run, timeWindow, subjectLabel = self.data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels
             # Get the fft data and labels
             time = getTime(data.shape[1], self.data_preparation.dataConfigs.sampleRate_hz)
             freqList, fftData = self.data_preparation.getFFTData(data)
@@ -578,8 +577,8 @@ class saveCWT_Time_FFT_images():
 
             #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
             #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
-            for i, chData in enumerate(data):
-                thisCh = sensorChList[i]
+            for thisChNum, chData in enumerate(data):
+                thisCh = sensorChList[thisChNum]
                 if thisCh in self.chPlotList:
 
                     thisColor = self.colorList[self.chPlotList.index(thisCh)%len(self.colorList)]
@@ -588,18 +587,21 @@ class saveCWT_Time_FFT_images():
                     axs[0, 0].plot(0, label=f"ch {thisCh}", color=thisColor) #Col, row
 
                     self.plotTimeD(chData=chData, time=time, axs=axs, thisColor=thisColor)
-                    self.plotFreqD(fftData=fftData[i], freqList=freqList, axs=axs, thisColor=thisColor, asLogScale=logScaleData)
+                    self.plotFreqD(fftData=fftData[thisChNum], freqList=freqList, axs=axs, thisColor=thisColor, asLogScale=logScaleData)
             #End Ch Data
 
             axs[0, 0].legend() #loc="lower center") #Display the ch list on our info window
 
             # Plot the CWT Data
-            cwtData, cwtFreqList = self.calcCWTData(data)
-            self.plotCWT(axs, cwtData)
+            #cwtData, cwtFreqList = self.calcCWTData(data)
+            cwt_Data = self.data_preparation.CWTDataSet.__getitem__(thisWindowNum) # data, label_speed, label_subject, subject, run, sTime
+            cwtFreqList = self.cwt_class.frequencies
+            cwtData = self.getCWTData(cwt_Data)
+            self.plotCWT(axs, cwtData) #h, w, 3
 
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
-            fileName = f"{dataumNumber:04d}_ch-{pltCh_Str}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
+            fileName = f"{thisWindowNum:04d}_ch-{pltCh_Str}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
             #filePath = os.path.join(self.animDir, fileName)
             filePath = f"{self.animDir}/{fileName}"
             if self.showImageNoSave:

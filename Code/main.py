@@ -74,7 +74,7 @@ def saveSumary(model, dataShape):
         sys.stdout = sys.__stdout__
 
 # Write a log
-def writeDataTrackSumaryHdr(dataConfigs):
+def writeLogHdr(dataConfigs):
     logfile = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
     with open(logfile, 'w', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
@@ -106,10 +106,10 @@ def writeDataTrackSumaryHdr(dataConfigs):
 
         writer.writerow(['---------'])
 
-def writeThisLogHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
+def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
     logfile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackLog_file}'
 
-    with open(logfile, 'w', newline='') as csvFile:
+    with open(logfile, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['wavelet', cwt_class.wavelet_base])
         writer.writerow(['wavelet_center_freq', cwt_class.f0])
@@ -138,32 +138,26 @@ Data Preparation
 """
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, fileStructure)
+writeLogHdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
     data_preparation.get_data()
-else: 
-    data_preparation.loadPeramiters() #TODO: goes away when the perams get loaded to the dataseet
-#logger.info(f"Time domain data shape: {data_preparation.data_raw.shape}")
+data_preparation.createDataloaders(writeLog=True) #Load the timed dataset even if we are doing a cwt
 
-if configs['model']['regression']: accStr = f"Acc (RMS Error)"
-else                             : accStr = f"Acc (%)"
-
-writeDataTrackSumaryHdr(data_preparation.dataConfigs)
 
 # The hyperperamiters setup for expTracking
 #if configs['cwt']['doCWT']: Put back in when we sort out norm
 cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
 
 
-#Get the data for the wavelet transform
-#For the stomp triggered data: 15 sec in for subject 1, run 1 is the 3rd dataum
 '''
 thisTimeWindow = 15 #3 # Subjects and runs are in here
 thisChannel = 0 #Ch 0 is all channels
 cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
 '''
 
-
+if configs['model']['regression']: accStr = f"Acc (RMS Error)"
+else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
@@ -208,30 +202,17 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
-    writeThisLogHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+    writeDataTrackHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
     if cwt_class.wavelet_base == "None": dataAsCWT = False
     else:                                dataAsCWT = True
 
 
     # TODO: Set to save the transformed data
 
-    #Make sure we start with a fresh time d dataset
-    #data_preparation.resetData() 
-    #logger.info(f"After preprocessing data shape: {data_preparation.data.shape}")
-
     #Log scale the lin data
     scaleStr = f"d: {data_preparation.dataNormConst.type} {data_preparation.dataNormConst.scale}, l: {labelScaler} {labelScale}"
     if(logScaleData): scaleStr = f"{scaleStr}, Log"
 
-
-    '''
-    if configs['model']['regression']: 
-        logger.info(f"Norm the labels: {labelScaler}, {labelScale}")
-        data_preparation.labels_norm, data_preparation.labNormConst = data_preparation.scale_data(data=data_preparation.labels, log=True, scaler=labelScaler , scale=labelScale, debug=False)
-        #print(f"{data_preparation.labNormConst.type}")
-    else: 
-        data_preparation.labels_norm = data_preparation.labels
-    '''
 
     logger.info(f"Get Model")
     # Data is currently: datapoints, height(sensorch), width(datapoints)
@@ -255,8 +236,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             # and conv2d is not implemented :(
             model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
-
-
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
 
@@ -316,6 +295,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
 
 
+data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
 expNum = 1
 wavelet_bases = ['None']
 if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
@@ -345,6 +325,7 @@ for wavelet_base in wavelet_bases:
             # Go here even on None just to setup the name
             #if wavelet_base != 'None': Put back in when we sort norm out
             cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+            data_preparation.generateCWTDataByWindow(cwt_class=cwt_class)
 
             for logScaleData in [False]: #Probably not interesting
 
@@ -355,13 +336,9 @@ for wavelet_base in wavelet_bases:
                     for dataScale_value in dataScale_values:
                         data_preparation.dataNormConst.type = dataScaler
 
-                        logger.info(f"Create Dataloaders")
-                        data_preparation.createDataloaders(expNum) 
-                        #Load the norm perams, or calculate if the file is not there
-                        # The norm perameters are now saved in the dataset
                         #data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
                         # Plot the normalized data
-                        data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=logScaleData)
+                        #data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=logScaleData)
 
                         for labelScaler in configs['data']['labelScalers']:
                             data_preparation.labNormConst.type = labelScaler

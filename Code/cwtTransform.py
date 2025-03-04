@@ -139,6 +139,7 @@ class cwt:
         if debug:
             logger.info(f"CWT output datashapes | transformedData: {data_coefficients.shape}, {data_coefficients.dtype}, data_frequencies: {data_frequencies.shape}, time: {end_time - start_time}s")
 
+        data_coefficients = np.transpose(data_coefficients, (1, 0, 2))           # we want: ch, freqs, timepoints
         # Keep only every nth column (time point) from the results?
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
         #self.data_coefficients = data[:, ::step_size]

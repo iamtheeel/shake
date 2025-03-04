@@ -19,7 +19,7 @@ dataLen = 2 # Seconds window len = 2, record len = 30
 cwtFreqsCount = 128
 nSensors = 9
 
-plotNum = 3
+plotNum = 2
 # Raw Data
 if plotNum == 1: # Raw time d
     chCount = nSensors #y
@@ -30,7 +30,7 @@ if plotNum == 1: # Raw time d
 elif plotNum == 2: # Data format to LeNet
     #For LeNet un-reshaped
     colorCh = 1 
-    chCount = np.linspace(0,colorCh) #y
+    chCount = np.linspace(0,nSensors) #y
     timePoints = np.linspace(0, dataRate * dataLen - 1, num=20, dtype=int)  
     X, Z  = np.meshgrid(timePoints, chCount)
     colors = cm.rainbow(np.linspace(0, 1, colorCh+1, endpoint=True))  # Generates 'chCount' distinct colors
@@ -71,6 +71,7 @@ elif plotNum == 2:
     ax.set_ylabel("Number of Color Ch: 1")
     ax.set_title("Time Domain Data: LeNet, Un-Reshaped")
     ax.set_yticks(np.arange(1, yCount)) #Every tick for ch
+    ax.set_zticks(np.arange(1, nSensors+1)) #Every tick for ch
 elif plotNum == 3:
     ax.set_xlabel("Width: 64")
     ax.set_zlabel("Height: 52")

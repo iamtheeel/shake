@@ -340,7 +340,7 @@ class leNetV5_cwt(nn.Module):
                                      )
 
         #linMult = 486750 # 1 = conv_3_out linConnections
-        linMult = 47792 # 1 = conv_3_out linConnections
+        linMult = 11536 #47792 # 1 = conv_3_out linConnections
         #linMult = 1
         stage1 = 512
         stage2 = 128

@@ -59,19 +59,20 @@ class dataDirFiles_class:
 
     #Time Domain Data Dir (<Regresion or Classification>_<list of channesl>_<Run Count limit>_<Stomp Thresh>_<Data thresh>):
     class saveDataDir_class:
+        chListDir_name:str = ""
         #The dir name
-        saveDataFolder_name:str = ""
+        #saveDataFolder_name:str = ""
         saveDataDir_name:str = ""
 
         #Files: 
         timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
-        timeDDataSave:str = 'timeD_data.npy' #File with the time domain data selected for this run
         timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
 
         #Wavelet Data dir (<wavelet name>_<Center frequency>_<Bandwidth>):
         class waveletDir_class:
-            waveletFolder_name:str
+            #waveletFolder_name:str
             waveletDir_name:str
+            cwtDataSet_Name:str = "CWT_data.hdf5"
             
             ## Files:
             #<name>_<f0>_<bw>_freqD.jpg #Plot of wavelet, frequency domain
@@ -95,8 +96,8 @@ class dataDirFiles_class:
 
     class plotDirNames_class:
         #Image Dirs:
-        baseDir: str= "images"
-        time_fft_cwt:str = "time_fft_cwt"
+        #baseDir: str= "images"
+        time_fft_cwt:str = "time_fft_cwt_plots"
         time:str = "time"
         freq:str = "freq"
     plotDirNames = plotDirNames_class()
@@ -150,19 +151,30 @@ class fileStruct:
         self.makeDir(self.expTrackFiles.expNumDir.expTrackDir_Name)
         logger.info(f"This Experiment Dir: {self.expTrackFiles.expNumDir.expTrackDir_Name}")
 
-    def setData_dir(self, dataConfigs):
+    def setFullData_dir(self ):
         '''
         '''
-        dataFolder =self.dataDirFiles.saveDataDir.saveDataFolder_name 
-        self.regression = configs['model']['regression']
+        #dataFolder =self.dataDirFiles.saveDataDir.saveDataFolder_name 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
-        chList_str = "_".join(map(str, dataConfigs.chList))
+
+        chList_str = "_".join(map(str, configs['data']['chList']))
         #TODO: add more info:
         # windows limit, runs limit
+
+        dataFolder = f"chList-{chList_str}"
+
+        self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.dataOutDir_name}/{dataFolder}"
+        #self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
+        self.makeDir(self.dataDirFiles.saveDataDir.chListDir_name)
+        logger.info(f"Ch list folder: {self.dataDirFiles.saveDataDir.chListDir_name}")
+
+    
+    def setWindowedData_dir(self):
+        # We drop the 0 vel for regression
+        self.regression = configs['model']['regression']
         if self.regression: regClas = "regression"
         else:               regClas = "classification"
-
-        dataFolder = f"{regClas}_chList-{chList_str}"
+        dataFolder = f"{regClas}"
 
         #Window len and step size
         dataFolder = f"{dataFolder}_winLen-{configs['data']['windowLen']}"
@@ -180,10 +192,14 @@ class fileStruct:
             dataFolder = f"{dataFolder}_StompThresh-{stompThresh}"
         dataFolder = f"{dataFolder}_DataThresh-{configs['data']['dataThresh']}"
 
-        self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.dataOutDir_name}/{dataFolder}"
-        self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
-        self.makeDir(self.dataDirFiles.saveDataDir.saveDataDir_name)
+        limitRuns = configs['data']['limitRuns']
+        limitWindows = configs['data']['limitWindowLen']
+        if limitRuns !=0: dataFolder = f"{dataFolder}_runLim-{limitRuns}"
+        if limitWindows !=0: dataFolder = f"{dataFolder}_windowLim-{limitWindows}"
 
+        self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{dataFolder}"
+        #self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
+        self.makeDir(self.dataDirFiles.saveDataDir.saveDataDir_name)
         logger.info(f"Data save folder: {self.dataDirFiles.saveDataDir.saveDataDir_name}")
 
     def setCWT_dir(self, cwtClass:cwt):
@@ -198,7 +214,7 @@ class fileStruct:
             waveletFolder_name = f"normPerams_{cwtClass.wavelet_name}{logScFreq_st}"
         #logger.info(f"Wavelet time from: {cwtClass.wavelet_Time[0]} to {cwtClass.wavelet_Time[-1]}")
 
-        self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = waveletFolder_name
+        #self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = waveletFolder_name
         self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name = \
             f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{waveletFolder_name}"
         
