@@ -78,8 +78,8 @@ class Trainer:
             self.doCWT = True
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 
-        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}, " \
-                             f"Model: {self.model.__class__.__name__}\n" \
+        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr},\n " \
+                             f"Model: {self.model.__class__.__name__}" \
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
                              f"epochs:{self.epochs}, batchSize:{self.batchSize}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
@@ -268,10 +268,12 @@ class Trainer:
     def plotTrainingLossRegresh(self, lossArr ):
         plt.figure(figsize=(10,5))
         plt.title(f"{self.hyperPeramStr}")
+        #plt.title(f"{self.hyperPeramStr}, pad= 20")
         plt.xlabel("Epoch")
         plt.ylabel("Training Loss")
         plt.ylim([0,1])
         plt.plot(lossArr)    
+        plt.tight_layout() #Tighten up the layout
         plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
 
     def plotTrainingLoss(self, lossArr, accArr ):

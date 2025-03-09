@@ -121,7 +121,7 @@ cwt:
     logScale: False
 
 trainer:
-    # 16 too big on Mac, or at least with firefox running
+    # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
     batchSize: 8 #256 #Should be power of 2
     #batchSize: 128 #256 #Should be power of 2
     #batchSize: 128 #256 #Should be power of 2
@@ -141,11 +141,10 @@ trainer:
 
 model: 
     regression: False #Or Clasification
-    name: ["leNetV5"]
-    #name: ["leNetV5_folded"]
-    #name: ["leNetV5_folded", "leNetV5"]
-    #name: "leNetV5"
-    #name: "MobileNet_v2"
+    #name: ["leNetV5"]
+    name: ["MobileNet_v2"] #Time domain not ready yet
+    #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
+    #name: ["MobileNet_v2", "leNetV5"] # The models we have
     timeDImgHeight: 64 #240
 
     multilayerPerceptron:

@@ -180,11 +180,11 @@ def getModel(wavelet_name, model_name, dataShape):
         # For now use the ch as the height, and the npoints as the width
         if wavelet_name == "None":
             #TODO: rewrite lenet to take timeD as an argument
-            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+            model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
         else:
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
-    elif model_name == "leNetV5_folded":
-            model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+    elif model_name == "leNetV5_unFolded":
+            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, nCh=nCh, config=configs)
     else: 
@@ -219,8 +219,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
-
-    logger.info(f"Data Shape loaded data : {dataShape}")
+    logger.info(f"Data Shape loaded data : {dataShape}") # Batch size, nCh, width, height
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape)
     if cwt_class.wavelet_name != 'None':

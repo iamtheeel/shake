@@ -98,10 +98,10 @@ class cwt:
         
         if self.max_freq == 0: self.max_freq = self.sampleRate_hz/2 #Nyquist
 
-        if self.wavelet_base != 'fstep':
-            center_freq = pywt.central_frequency(self.wavelet)
-        else: 
+        if self.wavelet_base == 'fstep':
             center_freq = self.wavelet.central_frequency
+        else: 
+            center_freq = pywt.central_frequency(self.wavelet)
 
         #min_scale = center_freq / (self.max_freq * self.samplePeriod)
         #max_scale = center_freq / (self.min_freq * self.samplePeriod)
