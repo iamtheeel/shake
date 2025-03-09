@@ -144,10 +144,14 @@ def getYAxis(data_frequencies, yTicks):
     freq_labels = data_frequencies[valid_ticks]
     return valid_ticks, freq_labels
 
-def getXAxis(data_coefficients, xTicks):
+def getXAxis(data_len, xTicks):
     # Get the x-axis ticks and labels
     # Scale x-axis by sample rate to show time in seconds
-    valid_ticks = xTicks.astype(int)[(xTicks >= 0) & (xTicks < data_coefficients.shape[1])]  # Only positive indices within data width
+    valid_ticks = xTicks.astype(int)[(xTicks >= 0) & (xTicks < data_len)]  # Only positive indices within data width
+
+    #if len(valid_ticks) == 0:  # If filtering removed all values, generate custom ticks
+    #    valid_ticks = np.linspace(0, data_len - 1, num=10, dtype=int)
+
     time_labels = valid_ticks / dataCapRate_hz
     return valid_ticks, time_labels
 
@@ -180,7 +184,9 @@ cwtData_mag = cwtData_mag/dataMax
 plt.title(f"Complex Morelet, Center Frequency: {f0}, bandwidth: {bw}")
 plt.imshow(cwtData_mag, aspect='auto')#, origin='lower')
 validY_ticks, freq_labels = getYAxis(frequencies, plt.gca().get_yticks())
-validX_ticks, time_labels = getXAxis(cwtData_mag[0], plt.gca().get_xticks())
+validX_ticks, time_labels = getXAxis(cwtData_mag.shape[1], plt.gca().get_xticks())
+time_labels = time_labels + plotTimeRange_s[0]
+
 plt.yticks(validY_ticks)
 plt.xticks(validX_ticks)
 plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
@@ -220,7 +226,8 @@ cwtData_mag = cwtData_mag/dataMax
 plt.title(f"FootStep Wavelet, Center Frequency: {f0} ")
 plt.imshow(cwtData_mag, aspect='auto')#, origin='lower')
 validY_ticks, freq_labels = getYAxis(frequencies, plt.gca().get_yticks())
-validX_ticks, time_labels = getXAxis(cwtData_mag[0], plt.gca().get_xticks())
+validX_ticks, time_labels = getXAxis(cwtData_mag.shape[1], plt.gca().get_xticks())
+time_labels = time_labels + plotTimeRange_s[0]
 plt.yticks(validY_ticks)
 plt.xticks(validX_ticks)
 plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])

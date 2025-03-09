@@ -556,7 +556,7 @@ class saveCWT_Time_FFT_images():
         plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
 
         plt.xlabel('Time (s)')
-        valid_ticks, time_labels = self.cwt_class.getXAxis(cwtData[0], plt.gca().get_xticks())
+        valid_ticks, time_labels = self.cwt_class.getXAxis(cwtData.shape[1], plt.gca().get_xticks())
         plt.gca().set_xticks(valid_ticks)
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
 

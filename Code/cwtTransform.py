@@ -154,10 +154,10 @@ class cwt:
         freq_labels = data_frequencies[valid_ticks]
         return valid_ticks, freq_labels
 
-    def getXAxis(self, data_coefficients, xTicks):
+    def getXAxis(self, data_len, xTicks):
         # Get the x-axis ticks and labels
         # Scale x-axis by sample rate to show time in seconds
-        valid_ticks = xTicks.astype(int)[(xTicks >= 0) & (xTicks < data_coefficients.shape[1])]  # Only positive indices within data width
+        valid_ticks = xTicks.astype(int)[(xTicks >= 0) & (xTicks < data_len)]  # Only positive indices within data width
         time_labels = valid_ticks * self.samplePeriod
         return valid_ticks, time_labels
 
