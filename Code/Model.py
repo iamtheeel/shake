@@ -41,11 +41,14 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class MobileNet_v2(nn.Module):
-    def __init__(self, numClasses:int, nCh:int, config=None):
+    def __init__(self, numClasses:int, dataShape, config=None):
         super().__init__() 
+        #TODO: Modify so its the same code for resnet
         '''
         MobileNet
         '''
+        # Load the model from the zoo
+
         self.seed = config['trainer']['seed']
         self.isRegresh = config['model']['regression']
         if self.isRegresh:
@@ -53,12 +56,41 @@ class MobileNet_v2(nn.Module):
         else:
             numOutputs = numClasses
 
-        
-        # Load the model from the zoo
+        # DataShape: [batch, colorCh, height, width]
+        logger.info(f"Data Shape: {dataShape}")
+        self.nCh = dataShape[1]
+
+        # Load the model from zoo
+        #base_model = models.regnet... so many to choose from
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 
         # Modify the first convolution layer to accept nCh channels instead of the default 3
-        base_model.features[0][0] = nn.Conv2d(nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        
+        base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
+        if(config['cwt']['doCWT']):
+            # [Batch, Ch, Frequencies, TimePoints]
+            self.timDData = False
+        else:
+            # [Batch, Ch, TimePoints]
+            self.timDData = True
+            self.timePoints = dataShape[2]
+            self.target_width = math.floor(math.sqrt(self.timePoints))
+            self.target_height = math.ceil(self.timePoints/self.target_width)
+            #the new count must be more than the number of timepoints
+            logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
+            '''
+            base_model.features[0][0] = nn.Conv1d(
+                                                  in_channels=self.nCh,
+                                                  out_channels=32,
+                                                  kernel_size=3,
+                                                  stride=2,
+                                                  padding=1,
+                                                  bias=False
+                                                 )
+            '''
+
+        
+
 
 
         #TODO: add a layer, or modify the first to change 2D to 3D
@@ -76,6 +108,8 @@ class MobileNet_v2(nn.Module):
     def forward(self, x: torch.Tensor):
         #TODO: 
         # run the new layers if timed
+        if self.timDData: x = x.unsqueeze(-1) # Reshape the data to fit
+
         # pass the first layer
         # Reshape the data
 

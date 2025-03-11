@@ -84,6 +84,11 @@ class Trainer:
                              f"epochs:{self.epochs}, batchSize:{self.batchSize}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
+        #Writh the headder for the validation acc by epoch file
+        with open(f"{self.logDir}/valiResults_byEpoch.csv", 'a', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(["Epoch Num", "Loss", self.accStr])
+
     def set_training_config(self):
         #print(f"Selected Optimizer = {self.optimizerName}")
         if self.optimizerName == "SGD":
@@ -259,6 +264,9 @@ class Trainer:
                                  'loss'     : train_loss_epoch,
                                  'time(s)'  : epoch_runTime
                                  })
+                
+            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
+                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
         # End Epoch
 
         self.plotTrainingLoss(lossArr=lossArr, accArr=accArr )
@@ -294,7 +302,7 @@ class Trainer:
         plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
         #plt.show()
     
-    def validation(self):
+    def validation(self, epochNum=0):
         self.model.eval()
         test_loss, test_acc, total = 0, 0, 0
         correct,total = 0,0
@@ -309,7 +317,7 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             print(f"Test Data len: {nData}")
 
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc="Validation Progress", unit="Time Window"):
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window"):
                 #if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
@@ -389,9 +397,9 @@ class Trainer:
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.writer(csvFile, dialect='unix')
-                writer.writerow(["------- Validation --------"])
-                writer.writerow(["Loss", self.accStr])
-                writer.writerow([finalValLoss, test_acc])
+                writer.writerow([f"------- Validation -------- epochNum: {epochNum}", "Loss:", finalValLoss, self.accStr, test_acc])
+                #writer.writerow(["Loss", self.accStr])
+                #writer.writerow([finalValLoss, test_acc])
                 if self.regression:
                     writer.writerow(["Class Acc: "])
                     for i in range(len(self.classes)):
@@ -399,48 +407,52 @@ class Trainer:
 
 
         if self.regression:
-            if(self.configs['debugs']['writeValData']): self.logRegression(y_preds, y_targs)
-            self.plotRegRes(y_preds, y_targs, valAcc= test_acc)
+            if(self.configs['debugs']['writeValData']): self.logRegression(y_preds, y_targs, epochNum=epochNum)
+            self.plotRegRes(y_preds, y_targs, valAcc= test_acc, epochNum=epochNum)
         else:
-            if(self.configs['debugs']['writeValData']): self.logClassification(y_preds, y_targs)
-            self.plotConfMat(y_preds, y_targs, valAcc=test_acc)
+            if(self.configs['debugs']['writeValData']): self.logClassification(y_preds, y_targs, epochNum=epochNum)
+            self.plotConfMat(y_preds, y_targs, valAcc=test_acc, epochNum=epochNum)
+
+        with open(f"{self.logDir}/valiResults_byEpoch.csv", 'a', newline='') as csvFile:
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow([epochNum, finalValLoss, test_acc])
 
         return finalValLoss, test_acc, classAcc
 
     #TODO: Put the subject, run, and time info in the log 
-    def logRegression(self, y_preds, labels):
+    def logRegression(self, y_preds, labels, epochNum=0):
         #logger.info(f"log results: {len(y_preds)}")#, y_preds_targets: {type(y_preds_targets)}")
-        with open(f"{self.logDir}/valiResults.csv", 'w', newline='') as csvFile:
+        with open(f"{self.logDir}/{epochNum}_valiResults.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['Predictions', 'Labels'])
             for pred, label in zip(y_preds, labels):
                 writer.writerow([pred, label])
 
-    def logClassification(self, y_preds, y_targs):
+    def logClassification(self, y_preds, y_targs, epochNum=0):
         y_preds_targets = torch.cat((y_preds, y_targs), dim=1)
         print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
-        with open(f"{self.logDir}/validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
+        with open(f"{self.logDir}/{epochNum}_validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['Predictions', '', '', 'Labels'])
             writer.writerow(self.classes + self.classes)
             for row in y_preds_targets:
                 writer.writerow(row.tolist())
     
-    def plotRegRes(self, preds, targets, valAcc):
+    def plotRegRes(self, preds, targets, valAcc, epochNum=0):
         #logger.info(f"Type preds: {type(preds[0])}, targets: {type(targets[0])}")
         #logger.info(f"plot results: {len(preds)}, labels: {len(targets)}")
         plt.figure(figsize=(8, 6))
-        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, Val Acc: {valAcc:.4f}rms")
+        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, epoch: {epochNum}, Val Acc: {valAcc:.4f}rms")
         plt.plot(range(len(preds)), preds, label=f"Predictions")    
         plt.plot(range(len(targets)), targets, label=f"targets")    
         plt.legend()
         #plt.plot(targets, preds)    
         plt.xlabel('Validation Test #')
         plt.ylabel('Speed (m/s)')
-        plt.savefig(f"{self.logDir}/validation_{self.expNum}.jpg")
+        plt.savefig(f"{self.logDir}/{epochNum}_validation_{self.expNum}.jpg")
         #plt.show()
 
-    def plotConfMat(self, y_preds, y_targs, valAcc ):
+    def plotConfMat(self, y_preds, y_targs, valAcc , epochNum=0):
         from sklearn.metrics import confusion_matrix
         import matplotlib.pyplot as plt
         import seaborn  as sns
@@ -460,7 +472,7 @@ class Trainer:
         # save to log
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow(["-------", "Confusion Matrix"])
+            writer.writerow(["-------", "Confusion Matrix", f"Epoch Number: {epochNum}"])
             for row in cm: writer.writerow(row)
 
 
@@ -468,7 +480,7 @@ class Trainer:
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.classes, yticklabels=self.classes)
         plt.xlabel('Predicted Labels')
         plt.ylabel('True Labels')
-        plt.title(f'CM: {self.hyperPeramStr}, val acc: {valAcc:.1f}%')
-        plt.savefig(f"{self.logDir}/validation_{self.expNum}.jpg")
+        plt.title(f'CM: {self.hyperPeramStr}, EpochNum: {epochNum}, val acc: {valAcc:.1f}%')
+        plt.savefig(f"{self.logDir}/{epochNum}_validation_{self.expNum}.jpg")
         #plt.show()
         

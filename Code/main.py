@@ -186,7 +186,7 @@ def getModel(wavelet_name, model_name, dataShape):
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, nCh=nCh, config=configs)
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
@@ -196,9 +196,10 @@ def getModel(wavelet_name, model_name, dataShape):
     
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
-           lossFunction, optimizer, learning_rate, weight_decay, epochs, 
+           lossFunction, optimizer, learning_rate, weight_decay,  
            model_name):
 
+    epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
@@ -351,20 +352,19 @@ for wavelet_base in wavelet_bases:
 
                                             for weight_decay in configs['trainer']['weight_decay']:
 
-                                                for epochs in configs['trainer']['epochs']:
-                                                    for model_name in configs['model']['name']:
+                                                #for epochs in configs['trainer']['epochs']: Moved to validate every nEpochs
+                                                for model_name in configs['model']['name']:
 
-
-                                                        logger.info(f"==============================")
-                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                        logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Epochs: {epochs}")
+                                                    logger.info(f"==============================")
+                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                    logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}")
+   
+                                                    #TODO: just send the cwtClass 
+                                                    if configs['debugs']['runModel']:
+                                                        runExp(expNum=expNum, logScaleData=logScaleData,
+                                                               dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                               lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  
+                                                               model_name=model_name)
     
-                                                        #TODO: just send the cwtClass 
-                                                        if configs['debugs']['runModel']:
-                                                            runExp(expNum=expNum, logScaleData=logScaleData,
-                                                                    dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                    lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs, 
-                                                                    model_name=model_name)
-    
-                                                            expNum += 1
+                                                        expNum += 1
