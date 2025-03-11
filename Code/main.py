@@ -142,19 +142,6 @@ writeLogHdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
     data_preparation.get_data()
-data_preparation.loadDataSet(writeLog=True) #Load the timed dataset even if we are doing a cwt
-
-
-# The hyperperamiters setup for expTracking
-#if configs['cwt']['doCWT']: Put back in when we sort out norm
-cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
-
-
-'''
-thisTimeWindow = 15 #3 # Subjects and runs are in here
-thisChannel = 0 #Ch 0 is all channels
-cwt_class.trackWavelet(data_preparation, thisTimeWindow, thisChannel)
-'''
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
@@ -197,7 +184,7 @@ def getModel(wavelet_name, model_name, dataShape):
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            lossFunction, optimizer, learning_rate, weight_decay,  
-           model_name):
+           batchSize, model_name):
 
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
@@ -214,7 +201,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
 
     logger.info(f"Get Model")
-    batchSize = configs['trainer']['batchSize'] 
     # Add the batch size to the dataloader shape, but don't include the number of items
     if configs['cwt']['doCWT']:
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
@@ -270,101 +256,80 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     del model
 
 
-# Experimens:
-# Wavelet
-# Center Frequency
-# Bandwidth
-# logData: logscale the data or not
-# Loss function
-# Optimiser
-# Learning rate
-# Weight decay
-# Number of epochs
-# TODO:
-# Sliding window size
-# Sliding window overlap
-# Model
-# Model Peramiters: 
-
-
-
-data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
 expNum = 1
 wavelet_bases = ['None']
 if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
-for wavelet_base in wavelet_bases:
-    #logger.info(f"Wavelet: {wavelet_base}")
-    if wavelet_base == 'mexh':
-        centerFreqs = [1]
-        bandwidths = [1]
-    elif wavelet_base == 'fstep': #what is the bw?
-        centerFreqs = configs['cwt']['waveLet_center_freq']
-        bandwidths = [1]
-    elif wavelet_base == 'morl':
-        centerFreqs = [0.8125]
-        bandwidths = [6.0]
-    elif wavelet_base == 'None':
-        centerFreqs = [0] # Dummy to 0... Gotta have something to chew
-        bandwidths = [0]
-    else:
-        centerFreqs = configs['cwt']['waveLet_center_freq']
-        bandwidths = configs['cwt']['waveLet_bandwidth']
 
-    for center_freq in centerFreqs:
-        #logger.info(f"Center Freq: {center_freq}")
-        for bandwidth in bandwidths:
-            # Load the CWT Here
-            logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
-            # Go here even on None just to setup the name
-            #if wavelet_base != 'None': Put back in when we sort norm out
-            cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-            data_preparation.generateCWTDataByWindow(cwt_class=cwt_class)
-
-            for logScaleData in [False]: #Probably not interesting
-
-                for dataScaler in configs['data']['dataScalers']:
-                    if dataScaler == "minMaxNorm": dataScale_values = configs['data']['dataScale_values']
-                    else:                          dataScale_values = [1]
-
-                    for dataScale_value in dataScale_values:
-                        data_preparation.dataNormConst.type = dataScaler
-
-                        #data_preparation.getNormPerams(cwt_class=cwt_class, logScaleData=logScaleData, dataScaler=dataScaler, dataScale_value=dataScale_value)
-                        # Plot the normalized data
-                        #data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=logScaleData)
-
-                        for labelScaler in configs['data']['labelScalers']:
-                            data_preparation.labNormConst.type = labelScaler
-                            if labelScaler == "std": 
-                                labelScale_values = [1]
-                            else:                   labelScale_values = configs['data']['labelScale_values']
-                            for labelScale_value in labelScale_values:
-
-                                if configs['model']['regression']:
-                                    lossFunctions = configs['trainer']['loss_regresh']
-                                else:
-                                    lossFunctions = configs['trainer']['loss_class']
-                                for lossFunction in lossFunctions:
-
-                                    for optimizer in configs['trainer']['optimizer']:
-
-                                        for learning_rate in configs['trainer']['learning_rate']:
-
-                                            for weight_decay in configs['trainer']['weight_decay']:
-
-                                                #for epochs in configs['trainer']['epochs']: Moved to validate every nEpochs
-                                                for model_name in configs['model']['name']:
-
-                                                    logger.info(f"==============================")
-                                                    logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                    logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                    logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}")
-   
-                                                    #TODO: just send the cwtClass 
-                                                    if configs['debugs']['runModel']:
-                                                        runExp(expNum=expNum, logScaleData=logScaleData,
-                                                               dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                               lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  
-                                                               model_name=model_name)
+for batchSize in configs['trainer']['batchSize']:
+    data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
+    # we get data freq rate here, and need it for below
+    # The hyperperamiters setup for expTracking
+    #if configs['cwt']['doCWT']: Put back in when we sort out norm
+    cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
+    data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
+    for wavelet_base in wavelet_bases:
+        #logger.info(f"Wavelet: {wavelet_base}")
+        if wavelet_base == 'mexh':
+            centerFreqs = [1]
+            bandwidths = [1]
+        elif wavelet_base == 'fstep': #what is the bw?
+            centerFreqs = configs['cwt']['waveLet_center_freq']
+            bandwidths = [1]
+        elif wavelet_base == 'morl':
+            centerFreqs = [0.8125]
+            bandwidths = [6.0]
+        elif wavelet_base == 'None':
+            centerFreqs = [0] # Dummy to 0... Gotta have something to chew
+            bandwidths = [0]
+        else:
+            centerFreqs = configs['cwt']['waveLet_center_freq']
+            bandwidths = configs['cwt']['waveLet_bandwidth']
     
+        for center_freq in centerFreqs:
+            #logger.info(f"Center Freq: {center_freq}")
+            for bandwidth in bandwidths:
+                # Load the CWT Here
+                logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
+                # Go here even on None just to setup the name
+                #if wavelet_base != 'None': Put back in when we sort norm out
+                cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+                data_preparation.generateCWTDataByWindow(cwt_class=cwt_class)
+    
+                for logScaleData in [False]: #Probably not interesting
+    
+                    for dataScaler in configs['data']['dataScalers']:
+                        if dataScaler == "minMaxNorm": dataScale_values = configs['data']['dataScale_values']
+                        else:                          dataScale_values = [1]
+    
+                        for dataScale_value in dataScale_values:
+                            data_preparation.dataNormConst.type = dataScaler
+                            for labelScaler in configs['data']['labelScalers']:
+                                data_preparation.labNormConst.type = labelScaler
+                                if labelScaler == "std": 
+                                    labelScale_values = [1]
+                                else:                   labelScale_values = configs['data']['labelScale_values']
+                                for labelScale_value in labelScale_values:
+    
+                                    if configs['model']['regression']:
+                                        lossFunctions = configs['trainer']['loss_regresh']
+                                    else:
+                                        lossFunctions = configs['trainer']['loss_class']
+                                    for lossFunction in lossFunctions:
+                                        for optimizer in configs['trainer']['optimizer']:
+                                            for learning_rate in configs['trainer']['learning_rate']:
+                                                for weight_decay in configs['trainer']['weight_decay']:
+                                                    for model_name in configs['model']['name']:
+        
+                                                        logger.info(f"==============================")
+                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                        logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}")
+          
+                                                        #TODO: just send the cwtClass 
+                                                        if configs['debugs']['runModel']:
+                                                            runExp(expNum=expNum, logScaleData=logScaleData,
+                                                                   dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                   lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  
+                                                                   batchSize = batchSize, model_name=model_name)
+         
                                                         expNum += 1

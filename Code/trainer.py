@@ -451,6 +451,7 @@ class Trainer:
         plt.ylabel('Speed (m/s)')
         plt.savefig(f"{self.logDir}/{epochNum}_validation_{self.expNum}.jpg")
         #plt.show()
+        plt.close()
 
     def plotConfMat(self, y_preds, y_targs, valAcc , epochNum=0):
         from sklearn.metrics import confusion_matrix
@@ -483,4 +484,5 @@ class Trainer:
         plt.title(f'CM: {self.hyperPeramStr}, EpochNum: {epochNum}, val acc: {valAcc:.1f}%')
         plt.savefig(f"{self.logDir}/{epochNum}_validation_{self.expNum}.jpg")
         #plt.show()
+        plt.close()
         

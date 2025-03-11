@@ -425,7 +425,9 @@ class dataLoader:
             self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
             self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
 
-    def loadDataSet(self, dataSetFile=None,writeLog=True ):
+    def loadDataSet(self, dataSetFile=None,writeLog=True, batchSize = None):
+        if batchSize != None: self.batchSize = batchSize
+
         timeD = False
         if dataSetFile == None:
             timeD = True
@@ -443,7 +445,7 @@ class dataLoader:
         #self.dataShape = dataSet.shape
 
         self.createDataloaders(dataSet=dataSet, writeLog=writeLog)
-    
+
     def createDataloaders(self, dataSet, writeLog=True):
         # Split sizes
         trainRatio = configs['data']['trainRatio']
