@@ -9,8 +9,8 @@ debugs:
 
 plts:
     pltDir: "plots"
-    animDir: "/Volumes/Data/thesis/animations"
-    #animDir: "../animations"
+    #animDir: "/Volumes/Data/thesis/animations"
+    animDir: "../animations"
     generatePlots: False
     showFilesForAnimation: False #Show instead of save
 
@@ -30,8 +30,8 @@ plts:
 data:
     trainRatio: .8 # 80% train, 20% of the data for validation
     inputData: "../TestData" # The input data
-    dataOutDir: "/Volumes/Data/thesis/data_out"
-    #dataOutDir: "..data"
+    #dataOutDir: "/Volumes/Data/thesis/data_out"
+    dataOutDir: "..data"
 
     test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
@@ -122,7 +122,7 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
-    batchSize: 1 #8 #For mobilenet timeD
+    batchSize: 16 #8 #For mobilenet timeD
     #batchSize: 64 #256 #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
@@ -137,7 +137,7 @@ trainer:
     weight_decay:  [0.00001]
     #epochs: [40, 45, 50, 55]
     epochs: 100 #Set to upper limit and validate every... (see below)
-    epochValiStart: 25 #30
+    epochValiStart: 1 #30
     validEveryNEpocchs: 5
     seed: 4601
 
