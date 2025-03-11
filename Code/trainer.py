@@ -54,7 +54,7 @@ class Trainer:
         self.weight_decay = weight_decay
         self.epochs = epochs
 
-        self.batchSize = self.configs['trainer']['batchSize']
+        #self.batchSize = self.configs['trainer']['batchSize']
         self.classes = self.configs['data']['classes']
 
         self.regression = self.configs['model']['regression']
@@ -81,7 +81,7 @@ class Trainer:
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr},\n " \
                              f"Model: {self.model.__class__.__name__}" \
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
-                             f"epochs:{self.epochs}, batchSize:{self.batchSize}"  
+                             f"epochs:{self.epochs}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
         #Writh the headder for the validation acc by epoch file
@@ -124,7 +124,9 @@ class Trainer:
         else:
             raise NotImplementedError("Unsupported loss function")
 
-    def train(self ):
+    def train(self, batchSize):
+        self.batchSize = batchSize
+        self.hyperPeramStr = f"{self.hyperPeramStr}, Batch Size: {batchSize}"
         self.model.train()
         lossArr = []
         accArr = []
@@ -211,16 +213,6 @@ class Trainer:
                 train_loss_epoch += loss.item()
                 batch_Time = timer() - batch_StartTime
 
-                '''
-                # Echo each batch
-                info_str = f"epoch: {epoch}, {batchNumber}"
-                pred_str = f"Training Predicted : {out_pred.detach().cpu().numpy()}"
-                lab_argMax_str = f"labels: {labels_argMax.detach().cpu().numpy()}"
-                pred_argMax_str = f"pred: {out_pred_argMax.detach().cpu().numpy()}"
-                percCorr_str = f"correct: {correct_batch}, {100*correct_batch/self.batchSize:.1f}%"
-                batchTime_str = f"Batch Time: {batch_Time:.3f}s"
-                print(f"{info_str} | {lab_argMax_str} | {pred_argMax_str} | {percCorr_str} | {batchTime_str}")
-                '''
                 # Write a file
                 if not self.regression:
                     thisAcc = 100*correct_batch/self.batchSize

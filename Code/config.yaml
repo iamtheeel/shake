@@ -135,7 +135,6 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    #epochs: [40, 45, 50, 55]
     epochs: 200 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
     validEveryNEpocchs: 5
