@@ -224,7 +224,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
 
     logger.info(f"Train")
-    trainLoss, trainAcc = trainer.train()
+    trainLoss, trainAcc = trainer.train(batchSize)
 
     logger.info(f"Run Validation")
     valLoss, valAcc, classAcc = trainer.validation()
