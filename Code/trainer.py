@@ -53,6 +53,7 @@ class Trainer:
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.epochs = epochs
+        
 
         #self.batchSize = self.configs['trainer']['batchSize']
         self.classes = self.configs['data']['classes']
@@ -148,18 +149,15 @@ class Trainer:
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
             for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
-                #logger.info(f" foobar data shape: {data.shape}")
-                #if self.doCWT:
-                #    data = self.cwtClass.cwtTransformBatch(data)
+                #logger.info(f" data shape: {data.shape}")
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
-                    #logger.info(f"asdf {labelsSpeed.shape}")
                     labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
-                    #print(f"Labels shape: {labels.shape}")
+                    #logger.info(f"Labels shape {labelsSpeed.shape}")
                 else:
-                    labels = labelsSubject#.unsqueeze(1) # we want ([batch size,])
+                    labels = labelsSubject # we want ([batch size,])
                     #print(f"labels shape: {labels.shape}")
 
                 data = data.to(self.device)
@@ -385,7 +383,7 @@ class Trainer:
                 y_targs = y_targs.view(y_targs.shape[0], -1)  # Keeps batch size, removes extra dimension
                 print(f"Final pred: {y_preds.shape}, lab: {y_targs.shape} ")
 
-            print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.2f}")
+            print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.4}")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.writer(csvFile, dialect='unix')
