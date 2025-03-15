@@ -120,13 +120,8 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
-<<<<<<< HEAD
-    batchSize: [256] #8 #For mobilenet timeD
-=======
-    batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
-    batchSize: [64, 128, 256] #8 #For mobilenet timeD
->>>>>>> 809c5190677a590b98c4b253b282d55772adf7f7
-    #batchSize: 64 #256 #Should be power of 2
+    #batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
+    batchSize: [8] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -136,20 +131,13 @@ trainer:
 
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
-    learning_rate:  [0.0001]
-    weight_decay: [0.001] #
+    learning_rate:  [0.01, 0.001, 0.0001, 0.00001]
+    weight_decay: [0.01, 0.001, 0.0001, 0.00001] #
     #Best for TimeD LeNet (all batch sizes). Could probably use fine tuning
     #learning_rate: [0.00001] 
     #weight_decay:  [0.00001]
 
-    epochs: 150 #Set to upper limit and validate every... (see below)
-    #learning_rate:  [0.001, 0.0001, 0.00001]
-    #weight_decay: [0.00001, 0.000001, 0.0000001] #
-    #learning_rate:  [0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
-    #weight_decay: [0.001, 0.0001, 0.00001, 0.000001, 0.0000001] #
-    learning_rate: [0.00001] # note: test with smaller values
-    weight_decay:  [0.00001]
-    epochs: 1 #Set to upper limit and validate every... (see below)
+    epochs: 100 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
     validEveryNEpocchs: 5
     seed: 4601
