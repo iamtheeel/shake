@@ -29,7 +29,7 @@ plts:
 data:
     trainRatio: .8 # 80% train, 20% of the data for validation
     inputData: "../TestData" # The input data
-    dataOutDir: "..data_out" # Link on the MAC
+    dataOutDir: "../data_out" # Link on the MAC
 
     test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
@@ -120,7 +120,7 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
-    batchSize: [64, 128, 256] #8 #For mobilenet timeD
+    batchSize: [256] #8 #For mobilenet timeD
     #batchSize: 64 #256 #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
@@ -133,11 +133,11 @@ trainer:
     #optimizer: ["Adam", "SGD"]
     #learning_rate:  [0.001, 0.0001, 0.00001]
     #weight_decay: [0.00001, 0.000001, 0.0000001] #
+    #learning_rate:  [0.001, 0.0001, 0.00001, 0.000001, 0.0000001]
+    #weight_decay: [0.001, 0.0001, 0.00001, 0.000001, 0.0000001] #
     learning_rate: [0.00001] # note: test with smaller values
     weight_decay:  [0.00001]
-    #learning_rate: [0.00001] # note: test with smaller values
-    #weight_decay:  [0.00001]
-    epochs: 1000 #Set to upper limit and validate every... (see below)
+    epochs: 1 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
     validEveryNEpocchs: 5
     seed: 4601
