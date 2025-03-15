@@ -120,12 +120,8 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
-<<<<<<< HEAD
-    batchSize: [256] #8 #For mobilenet timeD
-=======
     batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
     batchSize: [64, 128, 256] #8 #For mobilenet timeD
->>>>>>> 809c5190677a590b98c4b253b282d55772adf7f7
     #batchSize: 64 #256 #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
@@ -158,7 +154,7 @@ model:
     regression: True #Or Clasification
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #Time domain not ready yet
-    regression: True #Or Clasification
+    #name: ["MobileNet_v2"] #Time domain not ready yet
     name: ["leNetV5"]
     #name: ["MobileNet_v2"] #Time domain not ready yet
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
