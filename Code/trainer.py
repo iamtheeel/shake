@@ -138,6 +138,8 @@ class Trainer:
         self.model.train()
         lossArr = []
         accArr = []
+        valLossArr = []
+        valAccArr = []
         train_predsArr =[] # for confusion matrix
 
         fieldnames = ['epoch', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
@@ -238,6 +240,11 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
+            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
+                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
+                valLossArr.append(valLoss)
+                valAccArr.append(valAcc)
+
             batchSize = self.batchSize
             if self.regression:
                 train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
@@ -263,33 +270,24 @@ class Trainer:
                                  'time(s)'  : epoch_runTime
                                  })
                 
-            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
-                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
         # End Epoch
 
-        self.plotTrainingLoss(lossArr=lossArr, accArr=accArr )
+        self.plotLossAcc(lossArr=lossArr, accArr=accArr)
+        self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
 
         return train_loss_epoch, train_acc_epoch
 
-    def plotTrainingLossRegresh(self, lossArr ):
-        plt.figure(figsize=(10,5))
-        plt.title(f"{self.hyperPeramStr}")
-        #plt.title(f"{self.hyperPeramStr}, pad= 20")
-        plt.xlabel("Epoch")
-        plt.ylabel("Training Loss")
-        plt.ylim([0,1])
-        plt.plot(lossArr)    
-        plt.tight_layout() #Tighten up the layout
-        plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
-
-    def plotTrainingLoss(self, lossArr, accArr ):
+    def plotLossAcc(self, lossArr, accArr, validation=False):
         #print(f"Loss shape: {len(lossArr)}")
         nPlots = 2
         fig, axis = plt.subplots(nPlots, 1)
         fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
         axis[0].plot(range(len(lossArr)), lossArr)    
-        axis[0].set_title(f"{self.hyperPeramStr}")
-        axis[0].set_ylabel("Training Loss")
+        if validation: trainOrVal_str = "Validation"
+        else:          trainOrVal_str = "Training"
+
+        axis[0].set_title(f"{trainOrVal_str}: {self.hyperPeramStr}")
+        axis[0].set_ylabel(f"{trainOrVal_str} Loss by Epoch")
         axis[0].get_xaxis().set_visible(False)
 
         axis[1].plot(range(len(accArr)), accArr)    
@@ -297,7 +295,7 @@ class Trainer:
         axis[1].get_xaxis().set_visible(True)
         axis[1].set_xlabel("Epoch Number")
 
-        plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
+        plt.savefig(f"{self.logDir}/loss_acc_{trainOrVal_str}_{self.expNum}.jpg")
         #plt.show()
     
     def validation(self, epochNum=0):

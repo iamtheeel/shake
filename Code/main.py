@@ -172,6 +172,8 @@ def getModel(wavelet_name, model_name, dataShape):
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+    elif model_name == "MobileNet_v2_unFolded":
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=Falce, config=configs)
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     else: 
