@@ -115,6 +115,7 @@ class MobileNet_v2(nn.Module):
             self.timePoints = dataShape[2]
             self.target_width = math.floor(math.sqrt(self.timePoints))
             self.target_height = math.ceil(self.timePoints/self.target_width)
+            self.target_size = self.target_width*self.target_height
             #the new count must be more than the number of timepoints
             logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
             '''
