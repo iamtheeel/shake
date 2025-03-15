@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__
 *.swp
+TestData/
+data_out/
+exp_Track/

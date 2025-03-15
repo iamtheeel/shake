@@ -146,7 +146,7 @@ if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
-expFieldnames = ['Test', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
+expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
@@ -217,18 +217,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             #model = model.to(torch.complex64)
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
-
     logger.info(f"Load Trainer")
-    # Data scaling info?
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
 
-    logger.info(f"Train")
-    trainLoss, trainAcc = trainer.train()
-
-    logger.info(f"Run Validation")
-    valLoss, valAcc, classAcc = trainer.validation()
-    del trainer
+    trainLoss, trainAcc = trainer.train(batchSize)
+    valLoss, valAcc, classAcc = trainer.validation(epochs)
+    
 
     exp_runTime = timer() - exp_StartTime
     # Log the results
@@ -236,6 +231,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         print(f"Writing data: {expTrackFile}")
         writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
         writer.writerow({'Test': expNum,
+                         'BatchSize': batchSize,
                          'Epochs': epochs,
                          'Data Scaler': data_preparation.dataNormConst.type, 
                          'Data Scale': data_preparation.dataNormConst.scale, 
@@ -254,6 +250,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         })
 
     del model
+    del trainer
 
 
 expNum = 1
