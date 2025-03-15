@@ -36,6 +36,45 @@ def reShapeTimeD(self, x):
 
     return x
 
+# Add a reShape for everybody to use
+def reShapeTimeD(self, x):
+    #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
+    thisBatchSize = x.shape[0]
+    if self.timePoints > self.target_size:
+        x = x[:self.target_size]  # Trim excess values
+    
+    # Pad if necessary
+    elif self.timePoints < self.target_size:
+        pad_size = self.target_size - self.timePoints
+        #logger.info(f"Reshaping pad: {pad_size}")
+        #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
+        x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+        #logger.info(f"Reshaped: {x.numel()}")
+
+    # Reshape to (height, width)
+    #x = x.view(self.target_height, self.target_width)
+    x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
+
+    return x
+
+def replace_bn_with_gn(model):
+    for name, module in model.named_children():
+        if isinstance(module, nn.BatchNorm2d):
+            num_channels = module.num_features
+            num_groups = min(32, num_channels)  # Ensure num_groups does not exceed num_channels
+            while num_channels % num_groups != 0 and num_groups > 1: # Ensure num_groups is a divisor of num_channels
+                num_groups -= 1  # Reduce num_groups until it cleanly divides num_channels
+
+            setattr(model, name, nn.GroupNorm(num_groups=num_groups, num_channels=num_channels))
+        else:
+            replace_bn_with_gn(module)
+def add_dropout(model, p=0.3):
+    for name, module in model.named_children():
+        if isinstance(module, nn.Linear):  # Add dropout to FC layers
+            setattr(model, name, nn.Sequential(module, nn.Dropout(p=p)))
+        else:
+            add_dropout(module)
+
 # Start with a supoer simple multi layer perseptron
 class multilayerPerceptron(nn.Module):
     def __init__(self,input_features,num_classes,config):
@@ -110,9 +149,6 @@ class MobileNet_v2(nn.Module):
                                                  )
             '''
 
-        
-
-
 
         #TODO: add a layer, or modify the first to change 2D to 3D
         #if timeDData:
@@ -125,6 +161,15 @@ class MobileNet_v2(nn.Module):
         # For classification
         lastLayerFeatureMap_size = 1280
         self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
+
+        # Large batch and overfitting
+        #replacing batch norm with group norm
+        replace_bn_with_gn(base_model)
+        # Add dropout layers to for overfitting
+        add_dropout(base_model, p=0.5) #0.3, 0.5, make config?
+
+
+
 
     def forward(self, x: torch.Tensor):
         #TODO: 

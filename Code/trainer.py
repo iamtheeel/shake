@@ -79,8 +79,9 @@ class Trainer:
             self.doCWT = True
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 
+        #add if it is folded or no, for time domain
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr},\n " \
-                             f"Model: {self.model.__class__.__name__}" \
+                             f"Model: {self.model.__class__.__name__}, " \ 
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
                              f"epochs:{self.epochs}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
@@ -124,6 +125,12 @@ class Trainer:
             self.testCrit = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError("Unsupported loss function")
+
+    def add_gradient_noise(self, model, std=1e-3):
+        for param in model.parameters():
+            if param.grad is not None:
+                noise = torch.randn_like(param.grad) * std  # Small Gaussian noise
+                param.grad += noise
 
     def train(self, batchSize):
         self.batchSize = batchSize
@@ -174,6 +181,7 @@ class Trainer:
                 out_pred = self.model(data)
                 #logger.info(f"out_pred: {out_pred.shape}, labels: {labels.shape}")
                 loss = self.criterion(out_pred, labels)
+                #self.add_gradient_noise(self.model, std=1e-3)  # Add small noise to gradients
                 loss.backward()
                 self.optimizer.step()
 
