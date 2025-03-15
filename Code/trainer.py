@@ -81,7 +81,7 @@ class Trainer:
 
         #add if it is folded or no, for time domain
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr},\n " \
-                             f"Model: {self.model.__class__.__name__}, " \ 
+                             f"Model: {self.model.__class__.__name__}, " \
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
                              f"epochs:{self.epochs}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
