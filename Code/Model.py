@@ -36,6 +36,27 @@ def reShapeTimeD(self, x):
 
     return x
 
+# Add a reShape for everybody to use
+def reShapeTimeD(self, x):
+    #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
+    thisBatchSize = x.shape[0]
+    if self.timePoints > self.target_size:
+        x = x[:self.target_size]  # Trim excess values
+    
+    # Pad if necessary
+    elif self.timePoints < self.target_size:
+        pad_size = self.target_size - self.timePoints
+        #logger.info(f"Reshaping pad: {pad_size}")
+        #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
+        x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+        #logger.info(f"Reshaped: {x.numel()}")
+
+    # Reshape to (height, width)
+    #x = x.view(self.target_height, self.target_width)
+    x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
+
+    return x
+
 def replace_bn_with_gn(model):
     for name, module in model.named_children():
         if isinstance(module, nn.BatchNorm2d):
