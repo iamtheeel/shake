@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add a reShape for everybody to use
-def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
+def reShapeTimeD(x, outCh, timePoints, target_height, target_width, target_size):
     #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
     thisBatchSize = x.shape[0]
     if timePoints > target_size:
@@ -27,11 +27,11 @@ def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
         pad_size = target_size - timePoints
         #logger.info(f"Reshaping pad: {pad_size}")
         #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
-        x = torch.cat((x, torch.zeros(thisBatchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+        x = torch.cat((x, torch.zeros(thisBatchSize, outCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
         #logger.info(f"Reshaped: {x.numel()}")
 
-    # Reshape to (height, width)
-    x = x.view(thisBatchSize, nCh, target_height, target_width)
+    # Reshape to (batch, ch, height, width)
+    x = x.view(thisBatchSize, outCh, target_height, target_width)
 
     return x
 
@@ -104,8 +104,11 @@ class MobileNet_v2(nn.Module):
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 
         # Modify the first convolution layer to accept nCh channels instead of the default 3
-        
-        base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
+
+        if folded: 
+            base_model.features[0][0] = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
+        else:
+            base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         if(config['cwt']['doCWT']):
             # [Batch, Ch, Frequencies, TimePoints]
             self.timDData = False
@@ -146,7 +149,7 @@ class MobileNet_v2(nn.Module):
         #replacing batch norm with group norm
         replace_bn_with_gn(base_model)
         # Add dropout layers to for overfitting
-        add_dropout(base_model, p=0.5) #0.3, 0.5, make config?
+        #add_dropout(base_model, p=0.5) #0.3, 0.5, make config?
 
 
 
