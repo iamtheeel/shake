@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     def __init__(self,model, device, dataPrep:"dataLoader", fileStru:"fileStruct", configs, expNum, 
-                 cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, epochs):
+                 cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
         self.device = device
 
         
@@ -52,6 +52,7 @@ class Trainer:
         self.optimizerName = optimizer
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
+        self.gradiant_noise = gradiant_noise
         self.epochs = epochs
         
 
@@ -138,6 +139,8 @@ class Trainer:
         self.model.train()
         lossArr = []
         accArr = []
+        valLossArr = []
+        valAccArr = []
         train_predsArr =[] # for confusion matrix
 
         fieldnames = ['epoch', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
@@ -181,7 +184,7 @@ class Trainer:
                 out_pred = self.model(data)
                 #logger.info(f"out_pred: {out_pred.shape}, labels: {labels.shape}")
                 loss = self.criterion(out_pred, labels)
-                #self.add_gradient_noise(self.model, std=1e-3)  # Add small noise to gradients
+                if self.gradiant_noise != 0: self.add_gradient_noise(self.model, std=self.gradiant_noise)  # Add small noise to gradients
                 loss.backward()
                 self.optimizer.step()
 
@@ -238,6 +241,12 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
+            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
+                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
+                valLossArr.append(valLoss)
+                valAccArr.append(valAcc)
+                #print(f" - {epoch} valAccArr: {valAccArr}")
+
             batchSize = self.batchSize
             if self.regression:
                 train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
@@ -263,41 +272,55 @@ class Trainer:
                                  'time(s)'  : epoch_runTime
                                  })
                 
-            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
-                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
         # End Epoch
 
-        self.plotTrainingLoss(lossArr=lossArr, accArr=accArr )
+        self.plotLossAcc(lossArr=lossArr, accArr=accArr)
+        self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
+        print(f"valAccArr: {valAccArr}")
 
         return train_loss_epoch, train_acc_epoch
 
-    def plotTrainingLossRegresh(self, lossArr ):
-        plt.figure(figsize=(10,5))
-        plt.title(f"{self.hyperPeramStr}")
-        #plt.title(f"{self.hyperPeramStr}, pad= 20")
-        plt.xlabel("Epoch")
-        plt.ylabel("Training Loss")
-        plt.ylim([0,1])
-        plt.plot(lossArr)    
-        plt.tight_layout() #Tighten up the layout
-        plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
-
-    def plotTrainingLoss(self, lossArr, accArr ):
+    def plotLossAcc(self, lossArr, accArr, validation=False):
         #print(f"Loss shape: {len(lossArr)}")
         nPlots = 2
         fig, axis = plt.subplots(nPlots, 1)
         fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
+        if validation: 
+            trainOrVal_str = "Validation"
+            plotPerCount = self.configs['trainer']['validEveryNEpocchs']
+        else:          
+            trainOrVal_str = "Training"
+            plotPerCount = 1
+
+        #x_values = range(len(accArr))  # Original x-axis indices
+        #x_labels = [i * plotPerCount for i in x_values]  # Scale x-axis labels
+        #axis[0].plot(x_labels, lossArr)    
         axis[0].plot(range(len(lossArr)), lossArr)    
-        axis[0].set_title(f"{self.hyperPeramStr}")
-        axis[0].set_ylabel("Training Loss")
+        # Define tick positions based on the multiple (plotPerCount)
+        tick_positions = range(0, len(lossArr), plotPerCount)  # Ensure it's within the range of lossArr
+        tick_labels = [i * plotPerCount for i in tick_positions] # Define corresponding tick labels (scaled by plotPerCount)
+
+        # Apply to the x-axis
+        axis[0].set_xticks(tick_positions)  # Set tick positions
+        axis[0].set_xticklabels(tick_labels)  # Set labels to reflect scaling
+        #axis[0].set_xticks(range(0, len(accArr) * plotPerCount, plotPerCount))  # Set x-ticks at intervals
+        #axis[0].set_xticklabels(range(0, len(accArr) * plotPerCount, plotPerCount))  # Update labels
+
+        axis[0].set_title(f"{trainOrVal_str}: {self.hyperPeramStr}")
+        axis[0].set_ylabel(f"{trainOrVal_str} Loss by Epoch")
         axis[0].get_xaxis().set_visible(False)
 
+        #axis[1].plot(x_labels, lossArr)    
         axis[1].plot(range(len(accArr)), accArr)    
+        axis[1].set_xticks(tick_positions)  # Set tick positions
+        axis[1].set_xticklabels(tick_labels)  # Set labels to reflect scaling
+        #axis[1].set_xticks(range(0, len(accArr) * plotPerCount, plotPerCount))  # Set x-ticks at intervals
+        #axis[1].set_xticklabels(range(0, len(accArr) * plotPerCount, plotPerCount))  # Update labels
         axis[1].set_ylabel(self.accStr)
         axis[1].get_xaxis().set_visible(True)
         axis[1].set_xlabel("Epoch Number")
 
-        plt.savefig(f"{self.logDir}/trainingLoss_{self.expNum}.jpg")
+        plt.savefig(f"{self.logDir}/loss_acc_{trainOrVal_str}_{self.expNum}.jpg")
         #plt.show()
     
     def validation(self, epochNum=0):

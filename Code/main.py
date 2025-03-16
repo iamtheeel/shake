@@ -85,6 +85,7 @@ def writeLogHdr(dataConfigs):
         writer.writerow(['stepSize', configs['data']['stepSize']])
         writer.writerow(['batchSize', configs['trainer']['batchSize']])
 
+        writer.writerow(['Do CWT', configs['cwt']['doCWT']])
         writer.writerow(['wavelets', configs['cwt']['wavelet']])
         writer.writerow(['centerFreqs', configs['cwt']['waveLet_center_freq']])
         writer.writerow(['bandwidths', configs['cwt']['waveLet_bandwidth']])
@@ -99,6 +100,7 @@ def writeLogHdr(dataConfigs):
         writer.writerow(['optimizer', configs['trainer']['optimizer']])
         writer.writerow(['learning_rate', configs['trainer']['learning_rate']])
         writer.writerow(['weight_decay', configs['trainer']['weight_decay']])
+        writer.writerow(['gradiant_noise', configs['trainer']['gradiant_noise']])
         writer.writerow(['epochs', configs['trainer']['epochs']])
         writer.writerow(['seed', configs['trainer']['seed']])
 
@@ -106,7 +108,8 @@ def writeLogHdr(dataConfigs):
 
         writer.writerow(['---------'])
 
-def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay):
+def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+                      lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
     logfile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackLog_file}'
 
     with open(logfile, 'a', newline='') as csvFile:
@@ -123,6 +126,7 @@ def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelS
         writer.writerow(['optimizer', optimizer])
         writer.writerow(['learning_rate', learning_rate])
         writer.writerow(['weight_decay', weight_decay])
+        writer.writerow(['gradiant_noise', gradiant_noise])
         writer.writerow(['---------'])
     return logfile 
 
@@ -146,7 +150,7 @@ if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
-expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 
+expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
@@ -172,6 +176,8 @@ def getModel(wavelet_name, model_name, dataShape):
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+    elif model_name == "MobileNet_v2_unFolded":
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=Falce, config=configs)
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     else: 
@@ -183,14 +189,15 @@ def getModel(wavelet_name, model_name, dataShape):
     
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
-           lossFunction, optimizer, learning_rate, weight_decay,  
+           lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise,
            batchSize, model_name):
 
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
-    writeDataTrackHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, lossFunction, optimizer, learning_rate, weight_decay)
+    writeDataTrackHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+                      lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise)
 
 
     # TODO: Set to save the transformed data
@@ -219,7 +226,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
     logger.info(f"Load Trainer")
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
-                           cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, epochs=epochs)
+                           cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
     trainLoss, trainAcc = trainer.train(batchSize)
     valLoss, valAcc, classAcc = trainer.validation(epochs)
@@ -241,6 +248,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                          'Optimizer': optimizer,
                          'Learning Rate': learning_rate,
                          'Weight Decay': weight_decay,
+                         'Gradiant Noise': gradiant_noise,
                          'Train Loss': trainLoss, 
                          f'Train {accStr}': trainAcc, 
                          'Val Loss': valLoss, 
@@ -315,18 +323,19 @@ for batchSize in configs['trainer']['batchSize']:
                                         for optimizer in configs['trainer']['optimizer']:
                                             for learning_rate in configs['trainer']['learning_rate']:
                                                 for weight_decay in configs['trainer']['weight_decay']:
-                                                    for model_name in configs['model']['name']:
+                                                    for gradiant_noise in configs['trainer']['gradiant_noise']:
+                                                        for model_name in configs['model']['name']:
         
-                                                        logger.info(f"==============================")
-                                                        logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                        logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                        logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}")
-          
-                                                        #TODO: just send the cwtClass 
-                                                        if configs['debugs']['runModel']:
-                                                            runExp(expNum=expNum, logScaleData=logScaleData,
-                                                                   dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                   lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  
-                                                                   batchSize = batchSize, model_name=model_name)
-         
-                                                        expNum += 1
+                                                            logger.info(f"==============================")
+                                                            logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                            logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                            logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
+              
+                                                            #TODO: just send the cwtClass 
+                                                            if configs['debugs']['runModel']:
+                                                                runExp(expNum=expNum, logScaleData=logScaleData,
+                                                                       dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                       lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
+                                                                       batchSize = batchSize, model_name=model_name)
+             
+                                                            expNum += 1

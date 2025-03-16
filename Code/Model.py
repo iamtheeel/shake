@@ -16,46 +16,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Add a reShape for everybody to use
-def reShapeTimeD(self, x):
+def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
     #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
     thisBatchSize = x.shape[0]
-    if self.timePoints > self.target_size:
-        x = x[:self.target_size]  # Trim excess values
+    if timePoints > target_size:
+        x = x[:target_size]  # Trim excess values
     
     # Pad if necessary
-    elif self.timePoints < self.target_size:
-        pad_size = self.target_size - self.timePoints
+    elif timePoints < target_size:
+        pad_size = target_size - timePoints
         #logger.info(f"Reshaping pad: {pad_size}")
         #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
-        x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+        x = torch.cat((x, torch.zeros(thisBatchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
         #logger.info(f"Reshaped: {x.numel()}")
 
     # Reshape to (height, width)
-    #x = x.view(self.target_height, self.target_width)
-    x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
+    x = x.view(thisBatchSize, nCh, target_height, target_width)
 
     return x
 
-# Add a reShape for everybody to use
-def reShapeTimeD(self, x):
-    #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
-    thisBatchSize = x.shape[0]
-    if self.timePoints > self.target_size:
-        x = x[:self.target_size]  # Trim excess values
-    
-    # Pad if necessary
-    elif self.timePoints < self.target_size:
-        pad_size = self.target_size - self.timePoints
-        #logger.info(f"Reshaping pad: {pad_size}")
-        #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
-        x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
-        #logger.info(f"Reshaped: {x.numel()}")
-
-    # Reshape to (height, width)
-    #x = x.view(self.target_height, self.target_width)
-    x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
-
-    return x
 
 def replace_bn_with_gn(model):
     for name, module in model.named_children():
@@ -101,13 +80,13 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class MobileNet_v2(nn.Module):
-    def __init__(self, numClasses:int, dataShape, config=None):
+    def __init__(self, numClasses:int, dataShape, folded=True, config=None):
         super().__init__() 
         #TODO: Modify so its the same code for resnet
         '''
         MobileNet
         '''
-        # Load the model from the zoo
+        self.folded = folded
 
         self.seed = config['trainer']['seed']
         self.isRegresh = config['model']['regression']
@@ -136,6 +115,7 @@ class MobileNet_v2(nn.Module):
             self.timePoints = dataShape[2]
             self.target_width = math.floor(math.sqrt(self.timePoints))
             self.target_height = math.ceil(self.timePoints/self.target_width)
+            self.target_size = self.target_width*self.target_height
             #the new count must be more than the number of timepoints
             logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
             '''
@@ -170,11 +150,13 @@ class MobileNet_v2(nn.Module):
 
 
 
-
     def forward(self, x: torch.Tensor):
-        #TODO: 
         # run the new layers if timed
-        if self.timDData: x = x.unsqueeze(-1) # Reshape the data to fit
+        if self.timDData: 
+            if self.folded == False:
+                x = x.unsqueeze(-1) # Reshape the data to fit
+            else:
+                x = reShapeTimeD(x, self.nCh, self.timePoints, self.target_height, self.target_width, self.target_size)
 
         # pass the first layer
         # Reshape the data
@@ -353,32 +335,11 @@ class leNetV5_folded(nn.Module):
 
         self.clasifyer = nn.Sequential(nn.Linear(stage2, numClasses)  )
 
-    def reShape(self, x):
-        #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
-        thisBatchSize = x.shape[0]
-        if self.timePoints > self.target_size:
-            x = x[:self.target_size]  # Trim excess values
-        
-        # Pad if necessary
-        elif self.timePoints < self.target_size:
-            pad_size = self.target_size - self.timePoints
-            #logger.info(f"Reshaping pad: {pad_size}")
-            #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
-            x = torch.cat((x, torch.zeros(thisBatchSize, self.nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
-            #logger.info(f"Reshaped: {x.numel()}")
-
-
-        # Reshape to (height, width)
-        #x = x.view(self.target_height, self.target_width)
-        x = x.view(thisBatchSize, self.nCh, self.target_height, self.target_width)
-
-        return x
-
-
     def forward(self, x: torch.Tensor):
         x = self.convForReshape(x)
 
-        x = self.reShape(x)
+        #x = self.reShape(x)
+        x = reShapeTimeD(x, self.nCh, self.timePoints, self.target_height, self.target_width, self.target_size)
 
         x = self.features(x)
 

@@ -120,8 +120,10 @@ cwt:
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
-    #batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
-    batchSize: [8] #Should be power of 2
+    #batchSize: [8, 16, 32, 64, 128] #8 #For mobilenet timeD, redo 64 and 128 longer
+    #batchSize: [1, 2, 4 ] #8 #For mobilenet timeD 4 failed with mem error
+    batchSize: [64, 128] 
+    #batchSize: [8] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -132,16 +134,18 @@ trainer:
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
     # Best for Mobilnet Time Not folded
-    learning_rate:  [0.00075, 0.001, 0.005, 0.01] # Higher LR
-    weight_decay: [0.00075, 0.001, 0.005 ] # Does not seem to matter as much
-    #learning_rate: [0.00075, 0.001, 0.01, 0.1] 
-    #weight_decay:  [0.0001, 0.00075, 0.001]
+    #learning_rate:  [0.00075, 0.001, 0.005, 0.01] # Higher LR
+    #weight_decay: [0.00075, 0.001, 0.005 ] # Does not seem to matter as much
+    learning_rate: [0.00075] 
+    weight_decay:  [0.005]
 
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
     #learning_rate: [0.00001] 
     #weight_decay:  [0.00001]
 
-    epochs: 100 #Set to upper limit and validate every... (see below)
+    gradiant_noise: [0] #[1e-3]
+
+    epochs: 500 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
     validEveryNEpocchs: 5
     seed: 4601
@@ -149,10 +153,12 @@ trainer:
 model: 
     regression: True #Or Clasification
     #name: ["leNetV5"]
-    name: ["MobileNet_v2"] #Time domain not ready yet
+    #name: ["leNetV5"]
+    #name: ["MobileNet_v2"] #
+    name: ["MobileNet_v2_unFolded"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
-    timeDImgHeight: 64 #240
+    timeDImgHeight: 64 # For leNet
 
     multilayerPerceptron:
         hidden_neurons: 100
