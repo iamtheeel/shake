@@ -17,32 +17,35 @@ logger = logging.getLogger(__name__)
 
 # Add a reShape for everybody to use
 def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
+    ## TODO: OMG, clean up this mess!
+    batchSize = x.shape[0]
     #logger.info(f"Before reshaping: {x.shape}, total elements: {x.numel()}")
+    #logger.info(f"Batch Size: {batchSize}, outch: {nCh}, timePoints: {timePoints}")
     if target_width == 0:
         target_width = math.ceil(x.shape[2] / target_height)
         target_size = target_height *  target_width
         #logger.info(f"Target Width: {target_width}")
         #target_width = x.shape[2] // target_height  # Compute dynamically Returning 0!!
     
-    # Pad if necessary
+    # Never trim, but Pad if necessary
     if timePoints < target_size:
         pad_size = target_size - timePoints
         #logger.info(f"Reshaping pad: {pad_size}")
         #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
         if pad_size > 0:
-            #x = torch.cat((x, torch.zeros(thisBatchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+            #x = torch.cat((x, torch.zeros(batchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
             x = nn.functional.pad(x, (0, max(0, pad_size)), "constant", 0)
             #logger.info(f"Reshaped: {x.numel()}")
         #else:
             #logger.info(f"Warning, neg pad!   {pad_size}")
 
-        # Reshape to (batch, ch, height, width)
-        #logger.info(f"before x.view: {x.shape}, total elements: {x.numel()}")
-        x = x.view(thisBatchSize, nCh, target_height, -1) #target_width)
-        #x = x.view(thisBatchSize, nCh, target_height, target_width)
-        #logger.info(f"After reshaping: {x.shape}, total elements: {x.numel()}")
-        #x = torch.cat((x, torch.zeros(thisBatchSize, outCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
-        #logger.info(f"Reshaped: {x.numel()}")
+    # Reshape to (batch, ch, height, width)
+    #logger.info(f"before x.view: {x.shape}, total elements: {x.numel()}")
+    x = x.view(batchSize, nCh, target_height, -1) #target_width)
+    #x = x.view(batchSize, nCh, target_height, target_width)
+    #logger.info(f"After reshaping: {x.shape}, total elements: {x.numel()}")
+    #x = torch.cat((x, torch.zeros(batchSize, outCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+    #logger.info(f"Reshaped: {x.numel()}")
 
     return x
 
@@ -120,7 +123,6 @@ class MobileNet_v2(nn.Module):
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 
         # Modify the first convolution layer to accept nCh channels instead of the default 3
-<<<<<<< HEAD
         if folded: 
             #self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=32, kernel_size=5, stride=1, padding=2)
             self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=32, kernel_size=15, stride=2, padding=7)
@@ -133,6 +135,7 @@ class MobileNet_v2(nn.Module):
             #self.target_width = math.floor(math.sqrt(self.timePoints))
             #self.target_height = math.ceil(self.timePoints/self.target_width)
             self.target_size = self.target_width*self.target_height
+            logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
         else:
             self.timePoints = dataShape[2]
             base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
@@ -144,7 +147,6 @@ class MobileNet_v2(nn.Module):
             # [Batch, Ch, TimePoints]
             self.timDData = True
             #the new count must be more than the number of timepoints
-            logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
             '''
             base_model.features[0][0] = nn.Conv1d(
                                                   in_channels=self.nCh,
@@ -172,7 +174,6 @@ class MobileNet_v2(nn.Module):
         #replacing batch norm with group norm: a must for time d, unfolded
         #if not folded:
         replace_bn_with_gn(base_model)
-<<<<<<< HEAD
         if dropOut > 0: # Add dropout layers to for overfitting
             #add_dropout(base_model, p=dropOut) #
             #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
@@ -183,11 +184,6 @@ class MobileNet_v2(nn.Module):
         else:
             self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
             #print(self)
-=======
-        # Add dropout layers to for overfitting
-        #add_dropout(base_model, p=0.5) #0.3, 0.5, make config?
->>>>>>> 04d0f15803afa253b660064316a18c35f466609d
-
 
 
     def forward(self, x: torch.Tensor):
