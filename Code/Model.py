@@ -126,6 +126,7 @@ class MobileNet_v2(nn.Module):
             self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=32, kernel_size=15, stride=2, padding=7)
             #self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
             base_model.features[0][0] = nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1, bias=False)
+            #base_model.features[0][0] = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
             self.timePoints = 1653
             self.target_width = 0
             self.target_height = 28 #41 #58 57
@@ -136,13 +137,6 @@ class MobileNet_v2(nn.Module):
             self.timePoints = dataShape[2]
             base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         
-=======
-
-        if folded: 
-            base_model.features[0][0] = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
-        else:
-            base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
->>>>>>> 04d0f15803afa253b660064316a18c35f466609d
         if(config['cwt']['doCWT']):
             # [Batch, Ch, Frequencies, TimePoints]
             self.timDData = False
