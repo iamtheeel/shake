@@ -17,21 +17,34 @@ logger = logging.getLogger(__name__)
 
 # Add a reShape for everybody to use
 def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
+    #logger.info(f"Before reshaping: {x.shape}, total elements: {x.numel()}")
+    if target_width == 0:
+        target_width = math.ceil(x.shape[2] / target_height)
+        target_size = target_height *  target_width
+        #logger.info(f"Target Width: {target_width}")
+        #target_width = x.shape[2] // target_height  # Compute dynamically Returning 0!!
     #logger.info(f"Data shape{x.shape}: tp: {self.timePoints}, desired: {self.target_size}")
     thisBatchSize = x.shape[0]
     if timePoints > target_size:
-        x = x[:target_size]  # Trim excess values
+        x = x[:, :, :target_size]  # Trim excess values
     
     # Pad if necessary
     elif timePoints < target_size:
         pad_size = target_size - timePoints
         #logger.info(f"Reshaping pad: {pad_size}")
         #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
-        x = torch.cat((x, torch.zeros(thisBatchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
-        #logger.info(f"Reshaped: {x.numel()}")
+        if pad_size > 0:
+            #x = torch.cat((x, torch.zeros(thisBatchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+            x = nn.functional.pad(x, (0, max(0, pad_size)), "constant", 0)
+            #logger.info(f"Reshaped: {x.numel()}")
+        #else:
+            #logger.info(f"Warning, neg pad!   {pad_size}")
 
     # Reshape to (height, width)
-    x = x.view(thisBatchSize, nCh, target_height, target_width)
+    #logger.info(f"before x.view: {x.shape}, total elements: {x.numel()}")
+    x = x.view(thisBatchSize, nCh, target_height, -1) #target_width)
+    #x = x.view(thisBatchSize, nCh, target_height, target_width)
+    #logger.info(f"After reshaping: {x.shape}, total elements: {x.numel()}")
 
     return x
 
@@ -47,10 +60,15 @@ def replace_bn_with_gn(model):
             setattr(model, name, nn.GroupNorm(num_groups=num_groups, num_channels=num_channels))
         else:
             replace_bn_with_gn(module)
+
 def add_dropout(model, p=0.3):
     for name, module in model.named_children():
-        if isinstance(module, nn.Linear):  # Add dropout to FC layers
-            setattr(model, name, nn.Sequential(module, nn.Dropout(p=p)))
+        if isinstance(module, nn.Linear):  
+            setattr(model, name, nn.Sequential(nn.Dropout(p=p), module))  # Ensure dropout is first
+        elif isinstance(module, nn.Sequential):  # Check inside Sequential
+            for sub_name, sub_module in module.named_children():
+                if isinstance(sub_module, nn.Linear):
+                    setattr(module, sub_name, nn.Sequential(nn.Dropout(p=p), sub_module))
         else:
             add_dropout(module)
 
@@ -80,7 +98,7 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class MobileNet_v2(nn.Module):
-    def __init__(self, numClasses:int, dataShape, folded=True, config=None):
+    def __init__(self, numClasses:int, dataShape, folded=True, dropOut=0, config=None):
         super().__init__() 
         #TODO: Modify so its the same code for resnet
         '''
@@ -104,18 +122,27 @@ class MobileNet_v2(nn.Module):
         base_model = models.mobilenet_v2(weights=None)  # You can set `True` for pretrained weights
 
         # Modify the first convolution layer to accept nCh channels instead of the default 3
+        if folded: 
+            #self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=32, kernel_size=5, stride=1, padding=2)
+            self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=32, kernel_size=15, stride=2, padding=7)
+            #self.convForReshape = nn.Conv1d(in_channels=self.nCh, out_channels=self.nCh, kernel_size=5, stride=1, padding=2)
+            base_model.features[0][0] = nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1, bias=False)
+            self.timePoints = 1653
+            self.target_width = 0
+            self.target_height = 28 #41 #58 57
+            #self.target_width = math.floor(math.sqrt(self.timePoints))
+            #self.target_height = math.ceil(self.timePoints/self.target_width)
+            self.target_size = self.target_width*self.target_height
+        else:
+            self.timePoints = dataShape[2]
+            base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         
-        base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         if(config['cwt']['doCWT']):
             # [Batch, Ch, Frequencies, TimePoints]
             self.timDData = False
         else:
             # [Batch, Ch, TimePoints]
             self.timDData = True
-            self.timePoints = dataShape[2]
-            self.target_width = math.floor(math.sqrt(self.timePoints))
-            self.target_height = math.ceil(self.timePoints/self.target_width)
-            self.target_size = self.target_width*self.target_height
             #the new count must be more than the number of timepoints
             logger.info(f"Time Points: {self.timePoints}, Width: {self.target_width}, Height: {self.target_height}, new num points: {self.target_height*self.target_width}")
             '''
@@ -140,13 +167,21 @@ class MobileNet_v2(nn.Module):
 
         # For classification
         lastLayerFeatureMap_size = 1280
-        self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
 
         # Large batch and overfitting
-        #replacing batch norm with group norm
+        #replacing batch norm with group norm: a must for time d, unfolded
+        #if not folded:
         replace_bn_with_gn(base_model)
-        # Add dropout layers to for overfitting
-        add_dropout(base_model, p=0.5) #0.3, 0.5, make config?
+        if dropOut > 0: # Add dropout layers to for overfitting
+            #add_dropout(base_model, p=dropOut) #
+            #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
+            self.fc = nn.Sequential(
+                                    nn.Dropout(p=dropOut),  # Explicit dropout before FC
+                                    nn.Linear(lastLayerFeatureMap_size, numOutputs)
+                                )
+        else:
+            self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
+            #print(self)
 
 
 
@@ -156,7 +191,9 @@ class MobileNet_v2(nn.Module):
             if self.folded == False:
                 x = x.unsqueeze(-1) # Reshape the data to fit
             else:
-                x = reShapeTimeD(x, self.nCh, self.timePoints, self.target_height, self.target_width, self.target_size)
+                x = self.convForReshape(x) # Run it through a 1D conve first
+                x = reShapeTimeD(x, 32, self.timePoints, self.target_height, self.target_width, self.target_size)
+                #x = reShapeTimeD(x, self.nCh, self.timePoints, self.target_height, self.target_width, self.target_size)
 
         # pass the first layer
         # Reshape the data
