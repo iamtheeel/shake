@@ -160,6 +160,7 @@ model:
     name: ["MobileNet_v2_unFolded"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
+    #
     timeDImgHeight: 64 #240
     dropOut: [0.5] #Not implemented on leNet
 
