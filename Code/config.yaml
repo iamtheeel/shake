@@ -121,7 +121,7 @@ cwt:
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
     #batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
-    batchSize: [16] #Should be power of 2
+    batchSize: [8] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -132,8 +132,8 @@ trainer:
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
     # Best for Mobilnet Time Not folded
-    learning_rate: [0.00075] 
-    weight_decay:  [0.005]
+    #learning_rate: [0.00075] 
+    #weight_decay:  [0.005]
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
     #learning_rate: [0.00001] 
     #weight_decay:  [0.00001]
@@ -145,24 +145,29 @@ trainer:
     #learning_rate: [0.0002, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009] #Still not converging
     #weight_decay:  [0.00005, 0.0001, 0.0005, 0.001, 0.002]
     #Worked! lr: 0.0005, wd: 0.0001, 0.001
+    #Worked! lr: 0.0006, wd: 0.0005, 0.002
+    #Worked! lr: 0.0007, wd: 0.00005, 0.0001
+    #Worked! lr: 0.0008, wd: 0.0001
+    learning_rate: [0.00065] 
+    weight_decay:  [0.0001]
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 150 #Set to upper limit and validate every... (see below)
+    epochs: 200 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
-    validEveryNEpocchs: 5 #5
+    validEveryNEpocchs: 1 #5
     seed: 4601
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: ["leNetV5"]
-    #name: ["MobileNet_v2"] #
-    name: ["MobileNet_v2_unFolded"] #
+    name: ["MobileNet_v2"] #
+    #name: ["MobileNet_v2_unFolded"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #
     timeDImgHeight: 64 #240
-    dropOut: [0.5] #Not implemented on leNet
+    dropOut: [0.5] #0.5 Not implemented on leNet
 
     multilayerPerceptron:
         hidden_neurons: 100
