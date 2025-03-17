@@ -19,33 +19,31 @@ logger = logging.getLogger(__name__)
 def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
     ## TODO: OMG, clean up this mess!
     batchSize = x.shape[0]
-    #logger.info(f"Before reshaping: {x.shape}, total elements: {x.numel()}")
     #logger.info(f"Batch Size: {batchSize}, outch: {nCh}, timePoints: {timePoints}")
+
+    #logger.info(f"Before reshaping: {x.shape}, total elements: {x.numel()}")
     if target_width == 0:
         target_width = math.ceil(x.shape[2] / target_height)
-        target_size = target_height *  target_width
+        target_size = target_height * target_width
         #logger.info(f"Target Width: {target_width}")
-        #target_width = x.shape[2] // target_height  # Compute dynamically Returning 0!!
     
     # Never trim, but Pad if necessary
-    if timePoints < target_size:
+    if timePoints != target_size:
         pad_size = target_size - timePoints
         #logger.info(f"Reshaping pad: {pad_size}")
-        #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
         if pad_size > 0:
             #x = torch.cat((x, torch.zeros(batchSize, nCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
+            #x = torch.cat((x, torch.zeros(pad_size, dtype=x.dtype)))  # Pad with zeros
             x = nn.functional.pad(x, (0, max(0, pad_size)), "constant", 0)
             #logger.info(f"Reshaped: {x.numel()}")
-        #else:
-            #logger.info(f"Warning, neg pad!   {pad_size}")
+        else:
+            logger.error(f"neg pad!   {pad_size}")
 
     # Reshape to (batch, ch, height, width)
     #logger.info(f"before x.view: {x.shape}, total elements: {x.numel()}")
     x = x.view(batchSize, nCh, target_height, -1) #target_width)
     #x = x.view(batchSize, nCh, target_height, target_width)
     #logger.info(f"After reshaping: {x.shape}, total elements: {x.numel()}")
-    #x = torch.cat((x, torch.zeros(batchSize, outCh, pad_size, device=x.device, dtype=x.dtype)), dim=2)  # Pad with zeros
-    #logger.info(f"Reshaped: {x.numel()}")
 
     return x
 
@@ -159,28 +157,21 @@ class MobileNet_v2(nn.Module):
             '''
 
 
-        #TODO: add a layer, or modify the first to change 2D to 3D
-        #if timeDData:
-
-        startFeature = 0 #Change to 1 to replace the first layer
+        startFeature = 0 #Change to 1 to replace the first layer instead of adding a new layer
         self.features  = base_model.features[startFeature:]
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
 
-        # For classification
-        lastLayerFeatureMap_size = 1280
-
         # Large batch and overfitting
         #replacing batch norm with group norm: a must for time d, unfolded
-        #if not folded:
         replace_bn_with_gn(base_model)
+
+        lastLayerFeatureMap_size = 1280
         if dropOut > 0: # Add dropout layers to for overfitting
             #add_dropout(base_model, p=dropOut) #
             #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc = nn.Sequential(
-                                    nn.Dropout(p=dropOut),  # Explicit dropout before FC
-                                    nn.Linear(lastLayerFeatureMap_size, numOutputs)
-                                )
+            self.fc = nn.Sequential( nn.Dropout(p=dropOut),  # Explicit dropout before FC
+                                     nn.Linear(lastLayerFeatureMap_size, numOutputs) )
         else:
             self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
             #print(self)

@@ -148,18 +148,18 @@ trainer:
     #Worked! lr: 0.0006, wd: 0.0005, 0.002
     #Worked! lr: 0.0007, wd: 0.00005, 0.0001
     #Worked! lr: 0.0008, wd: 0.0001
-    learning_rate: [0.00065] 
-    weight_decay:  [0.0001]
+    learning_rate: [0.0006] 
+    weight_decay:  [0.002]
 
-    gradiant_noise: [0] #[1e-3]
+    gradiant_noise: [1e-3] #[1e-3]
 
     epochs: 200 #Set to upper limit and validate every... (see below)
     epochValiStart: 1 #30
-    validEveryNEpocchs: 1 #5
+    validEveryNEpocchs: 5 #5
     seed: 4601
 
 model: 
-    regression: False #Or Clasification
+    regression: True #Or Clasification
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
     #name: ["MobileNet_v2_unFolded"] #
