@@ -37,7 +37,8 @@ def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
             x = nn.functional.pad(x, (0, max(0, pad_size)), "constant", 0)
             #logger.info(f"Reshaped: {x.numel()}")
         else:
-            logger.error(f"neg pad!   {pad_size}")
+            x = x[:target_size]  # Trim excess values
+            #logger.error(f"neg pad!   {pad_size}")
 
     # Reshape to (batch, ch, height, width)
     #logger.info(f"before x.view: {x.shape}, total elements: {x.numel()}")
