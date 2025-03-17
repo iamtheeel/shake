@@ -276,7 +276,7 @@ class Trainer:
 
         self.plotLossAcc(lossArr=lossArr, accArr=accArr)
         self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
-        print(f"valAccArr: {valAccArr}")
+        #print(f"valAccArr: {valAccArr}")
 
         return train_loss_epoch, train_acc_epoch
 
