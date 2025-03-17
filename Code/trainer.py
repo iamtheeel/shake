@@ -247,15 +247,14 @@ class Trainer:
                 valAccArr.append(valAcc)
                 #print(f" - {epoch} valAccArr: {valAccArr}")
 
-            batchSize = self.batchSize
             if self.regression:
                 train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
+                accArr.append(train_acc_epoch)
             else:
-                train_acc_epoch = 100 * correct_epoch / (batchNumber*batchSize )
+                train_acc_epoch = 100 * correct_epoch / (batchNumber*self.batchSize )
+                accArr.append(train_acc_epoch*100)
             train_loss_epoch = train_loss_epoch/batchNumber
-
             lossArr.append(train_loss_epoch)
-            accArr.append(train_acc_epoch)
         
             #Timing
             epoch_runTime = timer() - epoch_StartTime

@@ -151,13 +151,14 @@ if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
+                 'Model', 'Dropout Layers',
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
     writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
     writer.writeheader()
 
-def getModel(wavelet_name, model_name, dataShape):
+def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
     logger.info(f"Loading model: {model_name}")
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
@@ -177,9 +178,9 @@ def getModel(wavelet_name, model_name, dataShape):
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2_unFolded":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, config=configs)
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs)
     elif model_name == "MobileNet_v2":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, dropOut=dropOut_layers, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
@@ -190,7 +191,7 @@ def getModel(wavelet_name, model_name, dataShape):
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise,
-           batchSize, model_name):
+           batchSize, model_name, dropOut_layers):
 
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
@@ -215,7 +216,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
     logger.info(f"Data Shape loaded data : {dataShape}") # Batch size, nCh, width, height
 
-    model = getModel(cwt_class.wavelet_name, model_name, dataShape)
+    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers)
+    #print(model)
     if cwt_class.wavelet_name != 'None':
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
@@ -249,6 +251,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                          'Learning Rate': learning_rate,
                          'Weight Decay': weight_decay,
                          'Gradiant Noise': gradiant_noise,
+                         'Model': model.__class__.__name__,
+                         'Dropout Layers': dropOut_layers,
                          'Train Loss': trainLoss, 
                          f'Train {accStr}': trainAcc, 
                          'Val Loss': valLoss, 
@@ -325,17 +329,17 @@ for batchSize in configs['trainer']['batchSize']:
                                                 for weight_decay in configs['trainer']['weight_decay']:
                                                     for gradiant_noise in configs['trainer']['gradiant_noise']:
                                                         for model_name in configs['model']['name']:
+                                                            for dropOut_layers in configs['model']['dropOut']:
         
-                                                            logger.info(f"==============================")
-                                                            logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
-                                                            logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
-                                                            logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
+                                                                logger.info(f"==============================")
+                                                                logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
+                                                                logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
+                                                                logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
               
-                                                            #TODO: just send the cwtClass 
-                                                            if configs['debugs']['runModel']:
-                                                                runExp(expNum=expNum, logScaleData=logScaleData,
-                                                                       dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                       lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
-                                                                       batchSize = batchSize, model_name=model_name)
-             
-                                                            expNum += 1
+                                                                #TODO: just send the cwtClass 
+                                                                if configs['debugs']['runModel']:
+                                                                    runExp(expNum=expNum, logScaleData=logScaleData,
+                                                                           dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                           lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
+                                                                           batchSize = batchSize, model_name=model_name, dropOut_layers = dropOut_layers)
+                                                                expNum += 1
