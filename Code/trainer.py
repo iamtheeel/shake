@@ -8,14 +8,16 @@
 ###
 
 from timeit import default_timer as timer
+import numpy as np
+from tqdm import tqdm  #progress bar
+import matplotlib.pyplot as plt
+import csv
+#pyTorch
 import torch
 from torch import nn
 import torch.nn.functional as tFun
-import numpy as np
-from tqdm import tqdm  #progress bar
+import torch.optim as optim
 
-import matplotlib.pyplot as plt
-import csv
 
 #from dataLoader import dataSetWithSubjects
 from cwtTransform import cwt
@@ -104,6 +106,13 @@ class Trainer:
         else:
             raise NotImplementedError("Only SGD is supported for now")
 
+        if self.configs['trainer']['LR_sch'] == 'CosineAnnealingWarmRestarts':
+            eta_min = float(self.configs['trainer']['eta_min'])
+            self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, 
+                                                                            T_0=self.configs['trainer']['T_0'], 
+                                                                            T_mult=self.configs['trainer']['T-mult'], 
+                                                                            eta_min=eta_min)
+
         ## Loss Functions
         #print(f"Selected Loss Function = {self.lossFunctionName}")
         if self.lossFunctionName == "MSE": 
@@ -142,6 +151,8 @@ class Trainer:
         valLossArr = []
         valAccArr = []
         train_predsArr =[] # for confusion matrix
+
+
 
         fieldnames = ['epoch', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
 
@@ -186,7 +197,10 @@ class Trainer:
                 loss = self.criterion(out_pred, labels)
                 if self.gradiant_noise != 0: self.add_gradient_noise(self.model, std=self.gradiant_noise)  # Add small noise to gradients
                 loss.backward()
-                self.optimizer.step()
+                if self.configs['trainer']['LR_sch'] == None:
+                    self.optimizer.step()
+                else:
+                    self.scheduler.step()
 
                 #Batch, input ch, height, width
                 #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}")

@@ -138,6 +138,8 @@ trainer:
     # Best for Mobilnet Time Not folded
     #learning_rate: [0.00075] 
     #weight_decay:  [0.005]
+    learning_rate: [0.002] #Trying scheduler
+    weight_decay:  [0.01]
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
     #learning_rate: [0.00001] 
     #weight_decay:  [0.00001]
@@ -152,8 +154,13 @@ trainer:
     #Worked! lr: 0.0006, wd: 0.0005, 0.002
     #Worked! lr: 0.0007, wd: 0.00005, 0.0001
     #Worked! lr: 0.0008, wd: 0.0001
-    learning_rate: [0.0006] 
-    weight_decay:  [0.002]
+    #learning_rate: [0.0006] 
+    #weight_decay:  [0.002]
+    # Learing rate schetuler use 2x to 3x the lr
+    LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
+    T_0: 10  # Restart every N epochs
+    T-mult: 2  
+    eta_min: 1e-6 # Slow down LR over time
 
     gradiant_noise: [1e-3] #[1e-3]
 
@@ -165,8 +172,8 @@ trainer:
 model: 
     regression: True #Or Clasification
     #name: ["leNetV5"]
-    name: ["MobileNet_v2"] #
-    #name: ["MobileNet_v2_unFolded"] #
+    #name: ["MobileNet_v2"] #
+    name: ["MobileNet_v2_unFolded"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #
