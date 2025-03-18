@@ -105,6 +105,7 @@ def writeLogHdr(dataConfigs):
         writer.writerow(['seed', configs['trainer']['seed']])
 
         writer.writerow(['model', configs['model']['name']])
+        writer.writerow(['dropout Layers', configs['model']['dropOut']])
 
         writer.writerow(['---------'])
 
