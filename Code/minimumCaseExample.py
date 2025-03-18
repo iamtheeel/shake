@@ -14,19 +14,24 @@ dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_per
 # What data are we interested in
 plotTrial = 0  #Indexed from 0
 dataTimeRange_s = [20, 25]
-dataFreqRange_hz = [1, 100]
+dataFreqRange_hz = [1, 5]
 # What data are we interested in
 #chToPlot = [5, 6, 7, 8, 9, 10]
 #chToPlot = list(range(1,20+1)) # all the chns
 chToPlot = [8, 9, 10]
+#Ranges for the plotting
+timeYRange = .02
+freqYRange = .1
 
 # CWT for only 3 ch (rgb)
 cwtChList = [8, 9, 10]
 #The wavelet peramiters
-waveletBase = 'cmorl'
-#waveletBase = 'fstep'
-f0 = 1 # For cmorl, and footstep
-bw = 0.8 # only footstep
+#waveletBase = 'mexh' # Shows low freq well
+#waveletBase = 'morl'
+#waveletBase = 'cmorl'
+waveletBase = 'fstep'
+f0 = 2.14 # For cmorl, and footstep
+bw = 0.8 # only cmorl
 numScales = 64 # How many frequencies to look at
 
 
@@ -159,9 +164,6 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     numTimePts = dataBlockToPlot.shape[1]
     if domainToPlot == "time":
         xAxis_data = np.linspace(xAxisRange[0], xAxisRange[1], numTimePts) #start, stop, number of points
-        print(f"xAxisRange: {xAxisRange}")
-        print(f"numTimePts: {numTimePts}")
-        print(f"{xAxis_data}")
         xAxis_str = f"Time"
         xAxisUnits_str = "(s)"
 
@@ -184,7 +186,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
             yAxis_data = timeD_data
         if domainToPlot == "freq":
             # Calculate the fft
-            # Apply a hanning window to minimize spectral leakate
+            # Apply a hanning window to minimize spectral leakage
             window = np.hanning(len(timeD_data))
             timeD_data = timeD_data - np.mean(timeD_data)  # Center the signal before FFT
             timeD_data_windowed = window*timeD_data
@@ -269,16 +271,12 @@ print(f"Data len pre-cut: {dataBlock_numpy.shape}")
 dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=0, chList=chToPlot, timeRange_sec=dataTimeRange_s)
 print(f"Data len: {dataBlock_sliced.shape}")
 
-
 # Plot the data in the time domain
-range = .02
-#range = np.max(np.abs(dataBlock_sliced))
-dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataTimeRange_s, yAxisRange=[-1*range, range], domainToPlot="time")
-
+#timeYRange = np.max(np.abs(dataBlock_sliced))
+dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
 
 # Plot the data in the frequency domain
-range = 1
-dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataFreqRange_hz, yAxisRange=[0, range], dataRate=dataCapRate_hz, domainToPlot="freq")
+dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataFreqRange_hz, yAxisRange=[0, freqYRange], dataRate=dataCapRate_hz, domainToPlot="freq")
 
 # Generate CTW
 dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=0, chList=cwtChList, timeRange_sec=dataTimeRange_s)
