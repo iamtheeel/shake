@@ -163,9 +163,6 @@ class MobileNet_v2(nn.Module):
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
 
-        # Large batch and overfitting
-        #replacing batch norm with group norm: a must for time d, unfolded
-        replace_bn_with_gn(base_model)
 
         lastLayerFeatureMap_size = 1280
         if dropOut > 0: # Add dropout layers to for overfitting
@@ -177,6 +174,10 @@ class MobileNet_v2(nn.Module):
             self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
             #print(self)
 
+        # Large batch and overfitting
+        #replacing batch norm with group norm: a must for time d, unfolded
+        replace_bn_with_gn(base_model)
+
 
     def forward(self, x: torch.Tensor):
         # run the new layers if timed
@@ -185,11 +186,10 @@ class MobileNet_v2(nn.Module):
                 x = x.unsqueeze(-1) # Reshape the data to fit
             else:
                 x = self.convForReshape(x) # Run it through a 1D conve first
+                # Reshape the data
                 x = reShapeTimeD(x, 32, self.timePoints, self.target_height, self.target_width, self.target_size)
                 #x = reShapeTimeD(x, self.nCh, self.timePoints, self.target_height, self.target_width, self.target_size)
 
-        # pass the first layer
-        # Reshape the data
 
         # Run mobilenet
         x = self.features(x)

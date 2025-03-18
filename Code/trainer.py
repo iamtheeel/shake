@@ -112,6 +112,9 @@ class Trainer:
                                                                             T_0=self.configs['trainer']['T_0'], 
                                                                             T_mult=self.configs['trainer']['T-mult'], 
                                                                             eta_min=eta_min)
+        elif self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9, patience=3, min_lr=eta_min
+)
 
         ## Loss Functions
         #print(f"Selected Loss Function = {self.lossFunctionName}")
@@ -154,7 +157,7 @@ class Trainer:
 
 
 
-        fieldnames = ['epoch', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
+        fieldnames = ['epoch', 'lr', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
 
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
@@ -197,10 +200,7 @@ class Trainer:
                 loss = self.criterion(out_pred, labels)
                 if self.gradiant_noise != 0: self.add_gradient_noise(self.model, std=self.gradiant_noise)  # Add small noise to gradients
                 loss.backward()
-                if self.configs['trainer']['LR_sch'] == None:
-                    self.optimizer.step()
-                else:
-                    self.scheduler.step()
+                self.optimizer.step()
 
                 #Batch, input ch, height, width
                 #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}")
@@ -255,11 +255,24 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
-            if epoch%self.configs['trainer']['validEveryNEpocchs'] ==0 and epoch >= self.configs['trainer']['epochValiStart']:
-                valLoss, valAcc, classAcc = self.validation(epochNum=epoch)
+            valEveryNEpochs = self.configs['trainer']['validEveryNEpocchs']
+            if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau":
+                valEveryNEpochs = 1
+            if epoch%valEveryNEpochs ==0 and epoch >= self.configs['trainer']['epochValiStart']:
+                valLoss, valAcc, classAcc = self.validation(epochNum=epoch) # val acc and loss is printed here
+                self.model.train() # Put the model back in train
                 valLossArr.append(valLoss)
                 valAccArr.append(valAcc)
                 #print(f" - {epoch} valAccArr: {valAccArr}")
+            print(f"Training Epoch: {epoch+1} | LR = {self.optimizer.param_groups[0]['lr']} | " \
+                f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
+                #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
+                f"Time: {epoch_runTime:.1f}s")
+
+            if self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
+                self.scheduler.step(valLoss) # Should be val loss, but use train loss in a pinch
+            elif self.configs['trainer']['LR_sch'] != 'None': # or epoch < 10:
+                self.scheduler.step() 
 
             if self.regression:
                 train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
@@ -274,12 +287,11 @@ class Trainer:
             epoch_runTime = timer() - epoch_StartTime
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
         
-            if epoch%1==0:
-                print(f"Training Epoch: {epoch+1} | Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | Time: {epoch_runTime:.1f}s")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
                 writer.writerow({'epoch'    : epoch,
+                                 'lr'       : self.optimizer.param_groups[0]['lr'],
                                  self.accStr: train_acc_epoch, 
                                  'loss'     : train_loss_epoch,
                                  'time(s)'  : epoch_runTime
