@@ -264,10 +264,6 @@ class Trainer:
                 valLossArr.append(valLoss)
                 valAccArr.append(valAcc)
                 #print(f" - {epoch} valAccArr: {valAccArr}")
-            print(f"Training Epoch: {epoch+1} | LR = {self.optimizer.param_groups[0]['lr']} | " \
-                f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
-                #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
-                f"Time: {epoch_runTime:.1f}s")
 
             if self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
                 self.scheduler.step(valLoss) # Should be val loss, but use train loss in a pinch
@@ -286,6 +282,10 @@ class Trainer:
             #Timing
             epoch_runTime = timer() - epoch_StartTime
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
+            print(f"Training Epoch: {epoch+1} | LR = {self.optimizer.param_groups[0]['lr']} | " \
+                f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
+                #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
+                f"Time: {epoch_runTime:.1f}s")
         
 
             with open(self.logfile, 'a', newline='') as csvFile:
@@ -358,7 +358,7 @@ class Trainer:
         with torch.no_grad():
         #with torch.inference_mode():
             nData = len(self.dataPrep.dataLoader_v)
-            print(f"Test Data len: {nData}")
+            #print(f"Test Data len: {nData}")
 
             for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window"):
                 #if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
@@ -428,7 +428,7 @@ class Trainer:
                 for i in range(len(self.classes)):
                     if classAcc[i] > 0:  # Only calculate if we have samples for this class
                         classAcc[i] = np.sqrt(classAcc[i]/classNum[i])# Per-class RMS error
-                print(f"Class Acc {self.accStr}: {classAcc}")
+                print(f"Class {self.accStr}: {classAcc}")
             else: 
                 y_preds= torch.stack(y_preds, dim=0) # datums, batch, classes
                 y_targs= torch.stack(y_targs, dim=0)

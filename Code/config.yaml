@@ -162,7 +162,7 @@ trainer:
     #LR_sch: None #None to not use
     LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
     T_0: 10       # Restart every N epochs (hop over local minima)
-    T-mult: 1     # A factor by which :math:`T_{i}` increases after a restart. Default: 1
+    T-mult: 2     # A factor by which :math:`T_{i}` increases after a restart. Default: 1
     eta_min: 1e-7 # Minimum learning rate. Default: 0
     #LR_sch: 'ReduceLROnPlateau' #None to not use
 
