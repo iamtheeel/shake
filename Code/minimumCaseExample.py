@@ -13,15 +13,16 @@ dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_per
 
 # What data are we interested in
 plotTrial = 0  #Indexed from 0
-dataTimeRange_s = [20, 25]
-dataFreqRange_hz = [1, 5]
+dataTimeRange_s = [20, 30] # [0 0] for full dataset
+dataFreqRange_hz = [1, 100]
 # What data are we interested in
 #chToPlot = [5, 6, 7, 8, 9, 10]
 #chToPlot = list(range(1,20+1)) # all the chns
-chToPlot = [8, 9, 10]
+chToPlot = [6, 7, 10]
+#chToPlot = [8, 9, 10]
 #Ranges for the plotting
 timeYRange = .02
-freqYRange = .1
+freqYRange = 1
 
 # CWT for only 3 ch (rgb)
 cwtChList = [8, 9, 10]
@@ -86,6 +87,7 @@ def loadData(dataFile):
     print(f"The data is {type(dataFromFile)}")
     print(f"The dataset has: {numTrials} trials, {numSensors} sensors, {numTimePts} timepoints")
     print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {timeLen_s} seconds long")
+    if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
 
     return dataFromFile, dataCapRate_hz
 

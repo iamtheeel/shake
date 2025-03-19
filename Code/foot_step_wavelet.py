@@ -52,7 +52,15 @@ def foot_step_wavelet(t, central_frequency=2.14):
     # # # Option: Add a second, smaller frequency component to affect secondary peaks
     secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
     secondary_freq = 1.43  # A different frequency to modulate the shape of the wavelet
-    signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
+
+
+    ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0
+    t = t/5.0 
+    # MJB: the signal line is totaly different, looks like we are missing the entire second waveform
+    #signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
+    signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
+             secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
+
     
     # Gaussian window decay
     window =0.7 #0.8  # Experiment with a slightly larger window for slower decay
@@ -65,6 +73,7 @@ def foot_step_wavelet(t, central_frequency=2.14):
     signal /= np.sqrt(np.sum(signal**2))
     
     # Normalize to max amplitude of 1
+    #MJB: We definitly don't want this!
     signal /= np.max(np.abs(signal))
     
     return signal
