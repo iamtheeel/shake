@@ -74,7 +74,7 @@ def foot_step_wavelet(t, central_frequency=2.14):
     
     # Normalize to max amplitude of 1
     #MJB: We definitly don't want this!
-    signal /= np.max(np.abs(signal))
+    #signal /= np.max(np.abs(signal))
     
     return signal
 

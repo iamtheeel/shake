@@ -14,7 +14,7 @@ dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_per
 # What data are we interested in
 plotTrial = 0  #Indexed from 0
 dataTimeRange_s = [20, 30] # [0 0] for full dataset
-dataFreqRange_hz = [1, 100]
+dataFreqRange_hz = [1, 5]
 # What data are we interested in
 #chToPlot = [5, 6, 7, 8, 9, 10]
 #chToPlot = list(range(1,20+1)) # all the chns
@@ -31,7 +31,7 @@ cwtChList = [8, 9, 10]
 #waveletBase = 'morl'
 #waveletBase = 'cmorl'
 waveletBase = 'fstep'
-f0 = 2.14 # For cmorl, and footstep
+f0 = 0.1 #2.14 # For cmorl, and footstep
 bw = 0.8 # only cmorl
 numScales = 64 # How many frequencies to look at
 
