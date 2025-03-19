@@ -46,8 +46,6 @@ def foot_step_wavelet(t, central_frequency=2.14):
     A = 1
     phase = 1.27*np.pi # Adjust phase to shift the alignment of peaks 1.27pi
     
-    # Main cosine wave
-    signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
     
     # # # Option: Add a second, smaller frequency component to affect secondary peaks
     secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
@@ -56,7 +54,9 @@ def foot_step_wavelet(t, central_frequency=2.14):
 
     ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0
     t = t/5.0 
-    # MJB: the signal line is totaly different, looks like we are missing the entire second waveform
+    # MJB: the signal line is totaly different, done in 2 parts but looks the same
+    # Main cosine wave
+    #signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
     #signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
     signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
              secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
