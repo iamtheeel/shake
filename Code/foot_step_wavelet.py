@@ -48,11 +48,12 @@ def foot_step_wavelet(t, central_frequency=2.14):
     
     
     # # # Option: Add a second, smaller frequency component to affect secondary peaks
-    secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
+    #secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
+    secondary_amplitude = 1.25  # It is positive in the paper.
     secondary_freq = 1.43  # A different frequency to modulate the shape of the wavelet
 
 
-    ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0
+    ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0, not sure why
     t = t/5.0 
     # MJB: the signal line is totaly different, done in 2 parts but looks the same
     # Main cosine wave
@@ -70,10 +71,10 @@ def foot_step_wavelet(t, central_frequency=2.14):
     signal -= np.mean(signal)
     
     # Normalize to unit energy
-    signal /= np.sqrt(np.sum(signal**2))
+    #signal /= np.sqrt(np.sum(signal**2))
     
     # Normalize to max amplitude of 1
-    #MJB: We definitly don't want this!
+    #MJB: We definitly don't want this! If there are no steps we want it quiet
     #signal /= np.max(np.abs(signal))
     
     return signal
