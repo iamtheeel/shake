@@ -8,13 +8,13 @@
 ###
 
 ### Settings
-# Data
+# Data/_h
 dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5"
 
 # What data are we interested in
 plotTrial = 0  #Indexed from 0
 dataTimeRange_s = [20, 30] # [0 0] for full dataset
-dataFreqRange_hz = [1, 5]
+dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
 # What data are we interested in
 #chToPlot = [5, 6, 7, 8, 9, 10]
 #chToPlot = list(range(1,20+1)) # all the chns
@@ -36,15 +36,14 @@ bw = 0.8 # only cmorl
 numScales = 64 # How many frequencies to look at
 
 
-
 # Librarys needed
-import h5py                      # For loading the data : pip install h5py
-import matplotlib.pyplot as plt  # For plotting the data: pip install matplotlib
-import numpy as np               # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
-import pywt                      # The CWT              : pip install pywavelets
+import h5py                             # For loading the data : pip install h5py
+import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
+import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
+from scipy.signal import spectrogram    # For spectrogram
+import pywt                             # The CWT              : pip install pywavelets
 
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum footstep wavelet, in foot_step_wavelet.py
-
 
 ### 
 # Functions
@@ -88,6 +87,7 @@ def loadData(dataFile):
     print(f"The dataset has: {numTrials} trials, {numSensors} sensors, {numTimePts} timepoints")
     print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {timeLen_s} seconds long")
     if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
+    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
 
     return dataFromFile, dataCapRate_hz
 
@@ -114,6 +114,22 @@ def sliceTheData(dataBlock:np, trial, chList, timeRange_sec):
     # Ruturn the cut up data
     return dataBlock[trial, chList_zeroIndexed, dataPoint_from:dataPoint_to]
 
+def generateSpectragram(data:np, chList, dataRate):
+    # Compute spectrograms for each channel
+    Sxx_list = []
+    for i, ch in enumerate(chList):
+        #print(f" Data Block[i]: {dataBlock_forCWT[i].shape}")
+        timeRes = 2 #seconds
+        #nperseg = 1024 # nDataPoints in each window: Larger = better freq res, lower time res
+        nperseg = int(timeRes * dataCapRate_hz)
+        noverlap = int(nperseg)*.1 # Overlap processing % overlap
+        freqs, times, Sxx = spectrogram(data[i], fs=dataRate, nperseg=nperseg, noverlap=noverlap)
+        Sxx_list.append(Sxx)
+
+    Sxx_np = np.stack(Sxx_list, axis=0)  # Shape: (n_channels, n_frequencies, n_time)
+
+    return Sxx_np, freqs
+
 ## Generate CWT
 def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0):
     # The frequencies wew want to look at
@@ -127,10 +143,9 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0):
     else: 
         waveletName = waveletBase
 
-    frequencies = np.logspace(np.log10(freqRange[1]), np.log10(freqRange[0]), numScales)
+    frequencies = np.logspace(np.log10(freqRange[0]), np.log10(freqRange[1]), numScales)
 
     # Some calculateds
-    #cwtChList_zeroIndex = [ch - 1 for ch in cwtChList]  # Convert to 0-based indexing
     samplePeriod = 1/dataRate
 
     # Get the ceter freq for calculating the scales to send to the CWT
@@ -214,50 +229,25 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
     #plt.savefig(f"overlayed_time.jpg")
+    return xAxis_data # Save for later use
 
 ## 3 Axis Plotters (AKA "Image" Generaters)
-# The axis are rather nasty
-def getYAxis(data_frequencies, yTicks):
-    # Get the y-axis ticks and labels
-    valid_ticks = yTicks.astype(int)[(yTicks >= 0) & (yTicks < len(data_frequencies))]
-    freq_labels = data_frequencies[valid_ticks]
-    return valid_ticks, freq_labels
-
-def getXAxis(data_len, xTicks):
-    # Get the x-axis ticks and labels
-    # Scale x-axis by sample rate to show time in seconds
-    valid_ticks = xTicks.astype(int)[(xTicks >= 0) & (xTicks < data_len)]  # Only positive indices within data width
-
-    #if len(valid_ticks) == 0:  # If filtering removed all values, generate custom ticks
-    #    valid_ticks = np.linspace(0, data_len - 1, num=10, dtype=int)
-
-    time_labels = valid_ticks / dataCapRate_hz
-    return valid_ticks, time_labels
-
-def plotCWT(data, freqs, timeStart_s, waveletName):
+def plot_3D(data, freqs, title, extraBump = 1):
     # Cmor data is real imaginary
     # Plot the magnitude, even for non-complex as that data is positive and negitive
     data_mag = np.abs(data) 
-    # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
-    imageData = np.transpose(data_mag, (0, 2, 1))
-    print(f"CWT tranfomred shape after rearange: {imageData.shape}")  # Should be (64, time, 3)
+    imageData = data_mag
+    #print(f"CWT tranfomred shape after rearange: {imageData.shape}")  # Should be (64, time, 3)
 
     # Normalize
     dataMax = np.max(imageData)
-    dataNorm = imageData/dataMax # we want to plot from 0 to 1
+    dataNorm = extraBump*imageData/dataMax # we want to plot from 0 to 1
 
     plt.figure() # Make a new figure
-    plt.title(f"Wavelet: {waveletName}")
-    plt.imshow(dataNorm, aspect='auto')#, origin='lower')
-
-    validY_ticks, freq_labels = getYAxis(freqs, plt.gca().get_yticks())
-    validX_ticks, time_labels = getXAxis(dataNorm.shape[1], plt.gca().get_xticks())
-    time_labels = time_labels + timeStart_s
-
-    plt.yticks(validY_ticks)
-    plt.xticks(validX_ticks)
-    plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
-    plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
+    plt.title(f"{title}")
+    #plt.imshow(dataNorm, aspect='auto')#, origin='lower')
+    plt.imshow(dataNorm, aspect='auto', origin='lower', 
+               extent=[dataTimeRange_s[0], dataTimeRange_s[1], min(freqs), max(freqs)])
 
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
@@ -275,16 +265,29 @@ print(f"Data len: {dataBlock_sliced.shape}")
 
 # Plot the data in the time domain
 #timeYRange = np.max(np.abs(dataBlock_sliced))
-dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
 
 # Plot the data in the frequency domain
-dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataFreqRange_hz, yAxisRange=[0, freqYRange], dataRate=dataCapRate_hz, domainToPlot="freq")
+freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataFreqRange_hz, yAxisRange=[0, freqYRange], dataRate=dataCapRate_hz, domainToPlot="freq")
 
-# Generate CTW
+
+
+## Generate CTW and spectrogram
 dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=0, chList=cwtChList, timeRange_sec=dataTimeRange_s)
-cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_forCWT, dataRate=dataCapRate_hz, waveletBase=waveletBase, freqRange=dataFreqRange_hz, f0=f0, bw=bw)
 
-# Plot the Spectrogram
-plotCWT(data=cwtData, freqs=cwtFreqs, timeStart_s=dataTimeRange_s[0], waveletName=waveletName)
+## The spectrogram
+# TODO: Only for the freq range in quesiton
+# TODO: add arguments for timeRes and overlap
+spectraGramData, spectraFreqs = generateSpectragram(dataBlock_forCWT, cwtChList, dataCapRate_hz)
+spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
+plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=10)
+
+
+# Generate, then plot the CWT
+if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
+cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_forCWT, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw)
+# Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
+cwtData = np.transpose(cwtData, (0, 2, 1)) 
+plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=3)
 
 plt.show() # SHow all the plots
