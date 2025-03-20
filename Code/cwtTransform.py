@@ -107,10 +107,10 @@ class cwt:
         #max_scale = center_freq / (self.min_freq * self.samplePeriod)
 
         if freqLogScale:
-            self.frequencies = np.logspace(np.log10(self.max_freq), np.log10(self.min_freq), self.numScales)
+            self.frequencies = np.logspace(np.log10(self.min_freq), np.log10(self.max_freq), self.numScales)
             #self.scales = np.logspace(np.log10(min_scale), np.log10(max_scale), self.numScales)
         else:
-            self.frequencies = np.linspace(self.max_freq, self.min_freq, self.numScales) 
+            self.frequencies = np.linspace(self.min_freq, self.max_freq, self.numScales) 
 
         #self.frequencies = center_freq / (self.scales * self.samplePeriod) #not used
         self.scales = center_freq / (self.frequencies * self.samplePeriod)

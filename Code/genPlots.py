@@ -542,23 +542,25 @@ class saveCWT_Time_FFT_images():
         
         return cwtData 
     
-    def plotCWT(self, axs, cwtData):
+    def plotCWT(self, axs, cwtData, times, freqs):
         # We only plot the data from the sensor list4
         #indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
         #cwtData = cwtData[:,:, indices]
 
-        axs[1, 1].imshow(cwtData, aspect='auto')
-        #TODO: Put in function
+        axs[1, 1].imshow(cwtData, aspect='auto', origin='lower', 
+                         extent=[min(times), max(times), min(freqs), max(freqs)]) 
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
+        '''
         valid_ticks, freq_labels = self.cwt_class.getYAxis(self.cwt_class.frequencies, plt.gca().get_yticks())
         #logger.info(f"freq_labels: {freq_labels}")
         plt.gca().set_yticks(valid_ticks)
         plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
 
-        plt.xlabel('Time (s)')
         valid_ticks, time_labels = self.cwt_class.getXAxis(cwtData.shape[1], plt.gca().get_xticks())
         plt.gca().set_xticks(valid_ticks)
         plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
+        '''
+        plt.xlabel('Time (s)')
 
     def generateAndSaveImages(self, logScaleData):
         #dataEnd = self.data_preparation.data_raw.shape[0]
@@ -596,8 +598,8 @@ class saveCWT_Time_FFT_images():
             #cwtData, cwtFreqList = self.calcCWTData(data)
             cwt_Data = self.data_preparation.CWTDataSet.__getitem__(thisWindowNum) # data, label_speed, label_subject, subject, run, sTime
             cwtFreqList = self.cwt_class.frequencies
-            cwtData = self.getCWTData(cwt_Data)
-            self.plotCWT(axs, cwtData) #h, w, 3
+            cwtData = self.getCWTData(cwt_Data )
+            self.plotCWT(axs, cwtData, time, cwtFreqList) #h, w, 3
 
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
