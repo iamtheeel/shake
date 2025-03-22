@@ -11,18 +11,16 @@
 # Data/_h
 #dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
 dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
-chToPlot = [1, 2, 3, 4]
-cwtChList = [1, 2, 3]
-plotTrial = 0  #Indexed from 0
+chToPlot = [2, 3, 4]
+cwtChList = chToPlot #[1, 2, 3]
 dataTimeRange_s = [0, 0] # [0 0] for full dataset
-dataFreqRange_hz = [0.5, 0] # If the second argument is 0, use the nyquist
-#dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
-timeYRange = .02
-freqYRange = .2
+#dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
+dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
+timeYRange = 0.01
+freqYRange = [0.001, 2]
 
 #dataFile = "../Wavelet/Fixed_Speed_Data/data_acquisition_p6.hdf5" # Data from paper
 # What data are we interested in
-#plotTrial = 0  #Indexed from 0
 #dataTimeRange_s = [15, 55] # [0 0] for full dataset
 #dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
 # What data are we interested in
@@ -44,7 +42,7 @@ pltXRange = dataFreqRange_hz #[10, 45]
 waveletBase = 'fstep'
 f0 = 2.14 #10 # For cmorl, and footstep
 bw = 0.8 # only cmorl
-numScales = 512 # How many frequencies to look at
+numScales = 64 # How many frequencies to look at
 
 
 # Librarys needed
@@ -173,6 +171,7 @@ def generateSpectragram(data:np, chList, dataRate):
 
     return Sxx_np, freqs
 
+
 ## Generate CWT
 def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0, log=True):
     # The frequencies wew want to look at
@@ -216,9 +215,21 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0, log=T
     
     return data_coefficients, data_frequencies, waveletName
 
+def applyButterWorth(data, fs):
+    from scipy.signal import butter, filtfilt
+    b, a = butter(N=2, Wn=np.array([0.5, 4])/(0.5*fs), btype='bandpass', analog=False)  # Filter coefficients
+
+    filtData = []
+    print(f"Data type before butterworth: {type(data)}, {data.shape}")
+    for ch in range(data.shape[0]):
+        filtData.append(filtfilt(b, a, data[ch, :]))
+    filtData = np.array(filtData) # Put the data back into numpy
+    print(f"Data type: {type(filtData)}, ")
+    return  filtData
+
 ## Data Plottters
 def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
-                   domainToPlot:str="time", logX=False, logY=False):
+                   domainToPlot:str="time", logX=False, logY=False, title="", save=""):
     """
     Plots the data in 2 axis (time or frequency domain)
 
@@ -238,7 +249,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         xAxis_data = np.fft.rfftfreq(numTimePts, d=1.0/dataRate)
         xAxis_str = f"Frequency"
         xAxisUnits_str = "(Hz)"
-    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}"
+    title_str = f"{xAxis_str} Domain plot of trial: {trial} ch: {plotChList}{title}"
 
     fig, axs = plt.subplots(len(plotChList)) #Make the subplots for how many ch you want
     fig.suptitle(title_str)
@@ -281,11 +292,11 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
-    #plt.savefig(f"overlayed_time.jpg")
+    plt.savefig(f"images/{save}_trial-{trial}_{domainToPlot}.jpg")
     return xAxis_data # Save for later use
 
 ## 3 Axis Plotters (AKA "Image" Generaters)
-def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None):
+def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save=""):
     # Cmor data is real imaginary
     # Plot the magnitude, even for non-complex as that data is positive and negitive
     data_mag = np.abs(data) 
@@ -308,6 +319,8 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None):
 
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
+    
+    plt.savefig(f"images/{save}_trial-{trial}.jpg")
 
     #plt.show() # Open the plot
 
@@ -316,8 +329,6 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None):
 dummyData, dataCapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
 
 #timeYRange = np.max(np.abs(dataBlock_numpy))
-timeYRange = 0.01
-freqYRange = 2
 
 # 2-22.21-APDM-data.xlsx has 27 enterys, so this is probably the data
 index_data_matrix = [21,34, 35, 36,37, 39, 42, 45, 46,
@@ -337,32 +348,55 @@ for i, trial in enumerate(index_data_matrix): # Cycle through the trials
     # Plot the data in the time domain
     #timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+    
+    #Pre Filter the data
+    print(f"Apply Filters and norms")
+    from scipy.signal import wiener
+    dataBlock_sliced = wiener(dataBlock_sliced)
+#
+    # Time Domain Norm to max, do by trial, but will need to ba across the dataset
+    # Note: small changeup, the paper is norm to ch, we are norm to datablock
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    # The scaler scales across colls, we want rows: So transpose the input, and output
+    dataBlock_sliced = scaler.fit_transform(dataBlock_sliced.T).T # Fit and transform the data
+
+    #dataBlock_sliced = dataBlock_sliced - np.mean(dataBlock_sliced)
+    # Now the butterworth:
+    dataBlock_sliced = applyButterWorth(dataBlock_sliced, fs=dataCapRate_hz)
+
+
+    #timeYRange = 1
+    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time",
+                              title=": After TimeD Data Mods", save="postMod")
     
     # Plot the data in the frequency domain
     # TODO: Move the fft outside of the plot
-    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, 
-                              xAxisRange=dataFreqRange_hz, yAxisRange=[0.001, freqYRange], 
-                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=True, logY=True)
+    #freqYRange = [0.001, 2]
+    freqYRange = [0.1, 10]
+    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=False, save="postMod")
 
-    plt.show()
+    ## Generate CTW and spectrogram
+    # We only want 3 ch for visuilizaton
+    # use the same data to prevent confision
+    #dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=cwtChList, timeRange_sec=dataTimeRange_s)
+
+    ## The spectrogram
+    # TODO: Only for the freq range in quesiton
+    #TODO: Cut the data not display the range
+    # TODO: add arguments for timeRes and overlap
+    #spectraGramData, spectraFreqs = generateSpectragram(dataBlock_sliced, cwtChList, dataCapRate_hz)
+    #spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
+    #plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=20, freqScale=dataFreqRange_hz, log=True)
     
-## Generate CTW and spectrogram
-# We only want 3 ch for visuilizaton
-dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=cwtChList, timeRange_sec=dataTimeRange_s)
-
-## The spectrogram
-# TODO: Only for the freq range in quesiton
-#TODO: Cut the data not diespley the range
-# TODO: add arguments for timeRes and overlap
-spectraGramData, spectraFreqs = generateSpectragram(dataBlock_forCWT, cwtChList, dataCapRate_hz)
-spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
-plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=20, freqScale=dataFreqRange_hz, log=True)
-
-# Generate, then plot the CWT
-if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
-cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_forCWT, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
-cwtData = np.transpose(cwtData, (0, 2, 1)) # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
-plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=2)
-
-plt.show() # SHow all the plots
+    # Generate, then plot the CWT
+    if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
+    cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
+    cwtData = np.transpose(cwtData, (0, 2, 1)) # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
+    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=waveletName)
+    
+    #plt.show() # SHow all the plots

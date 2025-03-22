@@ -48,8 +48,8 @@ def foot_step_wavelet(t, central_frequency=2.14):
     
     
     # # # Option: Add a second, smaller frequency component to affect secondary peaks
-    #secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
-    secondary_amplitude = 1.25  # It is positive in the paper.
+    secondary_amplitude = -1.25  # Experiment with smaller amplitude for secondary frequency
+    #secondary_amplitude = 1.25  # It is positive in the paper.
     secondary_freq = 1.43  # A different frequency to modulate the shape of the wavelet
 
 
@@ -70,12 +70,10 @@ def foot_step_wavelet(t, central_frequency=2.14):
     # Subtract the mean to ensure zero mean
     signal -= np.mean(signal)
     
-    # Normalize to unit energy
-    signal /= np.sqrt(np.sum(signal**2))
-    
-    # Normalize to max amplitude of 1
-    #MJB: We definitly don't want this! If there are no steps we want it quiet
-    signal /= np.max(np.abs(signal))
+    #MJB: We don't want to norm here. If there are no steps we want it quiet
+    # We norm to the full dataset.
+    signal /= np.sqrt(np.sum(signal**2)) # Normalize to unit energy
+    signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
     
     return signal
 
