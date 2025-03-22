@@ -54,13 +54,13 @@ def foot_step_wavelet(t, central_frequency=2.14):
 
 
     ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0, not sure why
-    t = t/5.0 
+    #t = t/5.0 
     # MJB: the signal line is totaly different, done in 2 parts but looks the same
     # Main cosine wave
-    #signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
-    #signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
-    signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
-             secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
+    signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
+    signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
+    #signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
+    #         secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
 
     
     # Gaussian window decay
@@ -71,11 +71,11 @@ def foot_step_wavelet(t, central_frequency=2.14):
     signal -= np.mean(signal)
     
     # Normalize to unit energy
-    #signal /= np.sqrt(np.sum(signal**2))
+    signal /= np.sqrt(np.sum(signal**2))
     
     # Normalize to max amplitude of 1
     #MJB: We definitly don't want this! If there are no steps we want it quiet
-    #signal /= np.max(np.abs(signal))
+    signal /= np.max(np.abs(signal))
     
     return signal
 
@@ -460,13 +460,18 @@ def fstWvt_ex(): #MJB, made function so I can import foot_step_wavelet.py
     import os
     import h5py
 
-    data_folder = 'data'
+    print(f"Load Data")
+    #data_folder = '../dataOnFastDrive' # MJB, Renamed for data location
+    data_folder = '../Wavelet/Single Steps Data' # MJB, Renamed for data location
     with h5py.File(os.path.join(data_folder, 'one_step_plate_test.hdf5'), 'r') as hdf:
+        filePerams = hdf['experiment/general_parameters'][:] #MJB
+        dataCapRate_hz =filePerams[0]['value']#.decode('utf-8') # Data cap rate is the first entery (number 0)
+        print(f"Data Cap Rate: {dataCapRate_hz}")
     
         experiment_group = hdf['/experiment']
 
         dataset = experiment_group['data']
-        print(dataset.shape[0])
+        print(f"Data size: {dataset.shape}, {dataset.shape[0]} trials") #MJB
         all_data =[]
         for i in range(dataset.shape[0]):
             data_i = []
@@ -475,6 +480,7 @@ def fstWvt_ex(): #MJB, made function so I can import foot_step_wavelet.py
             all_data.append(data_i)
     
 
+    print(f"Prep Wavelet")
     # Access the Steps Data
     trial_i , sensor_i = 0, 0
     signal =  all_data[trial_i][sensor_i]
@@ -487,10 +493,13 @@ def fstWvt_ex(): #MJB, made function so I can import foot_step_wavelet.py
     scales_hstep, frequencies_hstep= get_scales(wavelet= 'fstep_wavelet', 
                                             min_freq=0.5, max_freq=50, fs=fs, 
                                             nscales=nscales)
+    #print(frequencies_hstep)
+    print(f"Calculate CWT")
     coefficients_hstep, frequencies_hstep = foot_step_cwt(signal, scales_hstep, 
                                                       sampling_period=1/(fs))
 
 
+    print(f"Plot Data")
     fig, ax = plt.subplots(1,1, figsize=(15, 10), sharey=True, sharex=True)
     cwt_image_hstep = ax.imshow(np.abs(coefficients_hstep), aspect='auto', 
                             cmap='viridis',extent=[time[0], time[-1], 
@@ -499,5 +508,6 @@ def fstWvt_ex(): #MJB, made function so I can import foot_step_wavelet.py
     ax.set_title(' Foot-Step CWT Scalogram')
     ax.set_ylabel('Frequency [Hz]')
     fig.colorbar(cwt_image_hstep, ax=ax, label='Coefficients')
+    plt.show()
 
 

@@ -4,36 +4,47 @@
 # MIC Lab
 # Spring, 2025
 ###
-# Minimum Case DataLoad, fft, CWT Example
+# Minimum Case DataLoad, time domain, fft, Spectrogram, CWT Example
 ###
 
 ### Settings
 # Data/_h
-dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5"
-
-# What data are we interested in
+#dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
+dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
+chToPlot = [1, 2, 3, 4]
+cwtChList = [1, 2, 3]
 plotTrial = 0  #Indexed from 0
-dataTimeRange_s = [20, 30] # [0 0] for full dataset
-dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
+dataTimeRange_s = [0, 0] # [0 0] for full dataset
+dataFreqRange_hz = [0.5, 0] # If the second argument is 0, use the nyquist
+#dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
+timeYRange = .02
+freqYRange = .2
+
+#dataFile = "../Wavelet/Fixed_Speed_Data/data_acquisition_p6.hdf5" # Data from paper
+# What data are we interested in
+#plotTrial = 0  #Indexed from 0
+#dataTimeRange_s = [15, 55] # [0 0] for full dataset
+#dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
 # What data are we interested in
 #chToPlot = [5, 6, 7, 8, 9, 10]
 #chToPlot = list(range(1,20+1)) # all the chns
-chToPlot = [6, 7, 10]
+#chToPlot = [6, 7, 10]
 #chToPlot = [8, 9, 10]
+#cwtChList = [6, 7, 10] # CWT for only 3 ch (rgb)
 #Ranges for the plotting
-timeYRange = .02
-freqYRange = 1
+#timeYRange = .02
+#freqYRange = .2
 
-# CWT for only 3 ch (rgb)
-cwtChList = [8, 9, 10]
+pltXRange = dataFreqRange_hz #[10, 45]
+
 #The wavelet peramiters
 #waveletBase = 'mexh' # Shows low freq well
 #waveletBase = 'morl'
 #waveletBase = 'cmorl'
 waveletBase = 'fstep'
-f0 = 0.1 #2.14 # For cmorl, and footstep
+f0 = 2.14 #10 # For cmorl, and footstep
 bw = 0.8 # only cmorl
-numScales = 64 # How many frequencies to look at
+numScales = 512 # How many frequencies to look at
 
 
 # Librarys needed
@@ -50,7 +61,15 @@ from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum foots
 ###
 
 ## Data Loaders
-def loadData(dataFile):
+def print_attrs(name, obj): #From Chatbot
+        print(f"\n📂 Path: {name}")
+        for key, val in obj.attrs.items():
+            print(f"  🔧 Attribute - {key}: {val}")
+        if isinstance(obj, h5py.Dataset):
+            print(f"  📊 Dataset - Shape: {obj.shape}, Dtype: {obj.dtype}")
+
+
+def loadData(dataFile, trial=-1):
     """
     Loads the data form an hdf version 5 file
 
@@ -62,43 +81,63 @@ def loadData(dataFile):
         int: Data Capture Rate
 
     """
-    print(f"Loading: {dataFile}")
+    print(f"Loading file: {dataFile}")
 
     with h5py.File(dataFile, 'r') as h5file:
-        filePerams = h5file['experiment/general_parameters'][:]
-        dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
+        if trial == 0:
+            h5file.visititems(print_attrs)
 
-    print(f"{filePerams}")          #Show the peramiters
-    print(filePerams.dtype.names)   # Show the peramiter field names
+        filePerams = h5file['experiment/general_parameters'][:]
+        if trial >= 0:
+            #print(f"Loading trial: {trial}")
+            dataFromFile = h5file['experiment/data'][trial,:,:] #Load trial in question
+        elif trial == -1: # Load the whole thing
+            print(f"Loading the full dataset")
+            dataFromFile = h5file['experiment/data'][:] #Load all the rows of data to the block, will not work without the [:]
+        # Otherwize, we are just after the peramiters
 
     #Extract the data capture rate from the file
     dataCapRate_hz =filePerams[0]['value']#.decode('utf-8') # Data cap rate is the first entery (number 0)
     dataCapUnits = filePerams[0]['units'].decode('utf-8')
-    print(f"Data Cap Rate ({filePerams[0]['parameter'].decode('utf-8')}): {dataCapRate_hz} {dataCapUnits}")
+    if trial <=0:
+        print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
+        print(filePerams.dtype.names)   # Show the peramiter field names
+        print(f"Data Cap Rate ({filePerams[0]['parameter'].decode('utf-8')}): {dataCapRate_hz} {dataCapUnits}")
     
-    # Look at the shape of the data
-    print(f"Data type: {type(dataFromFile)}, shape: {dataFromFile.shape}")
+        # Look at the shape of the data
+        print(f"Data type: {type(dataFromFile)}, shape: {dataFromFile.shape}")
+
     # We happen to know that:
-    numTrials = dataFromFile.shape[0]
-    numSensors = dataFromFile.shape[1]
-    numTimePts = dataFromFile.shape[2]
-    timeLen_s   = (numTimePts-1)/dataCapRate_hz # How far apart is each time point
-    print(f"The data is {type(dataFromFile)}")
-    print(f"The dataset has: {numTrials} trials, {numSensors} sensors, {numTimePts} timepoints")
-    print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {timeLen_s} seconds long")
-    if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
-    if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
+    if trial < 0:
+        numTrials = dataFromFile.shape[0]
+        numSensors = dataFromFile.shape[1]
+        numTimePts = dataFromFile.shape[2]
+        print(f"The dataset has: {numTrials} trials, {numSensors} sensors, {numTimePts} timepoints")
+
+    else:
+        numSensors = dataFromFile.shape[0]
+        numTimePts = dataFromFile.shape[1]
+        if trial == 0:
+            print(f"The dataset has: {numSensors} sensors, {numTimePts} timepoints")
+
+    if trial <=0:
+        # Now that we know which is the timepoints
+        timeLen_s   = (numTimePts-1)/dataCapRate_hz # How far apart is each time point
+        if dataTimeRange_s[1] == 0: dataTimeRange_s[1] = int(timeLen_s)
+        if dataFreqRange_hz[1] == 0: dataFreqRange_hz[1] = dataCapRate_hz/2
+        print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {timeLen_s} seconds long")
 
     return dataFromFile, dataCapRate_hz
 
 ## Data slicers
-def sliceTheData(dataBlock:np, trial, chList, timeRange_sec):
+def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
     Cuts the data by:
         ch
     
     Args:
         dataBlock: the raw data [Trial, ch, timePoints]
+        trial: if -1, then the data is already pre-cut for trial
 
     Returns:
         numpy: the cut data
@@ -106,20 +145,24 @@ def sliceTheData(dataBlock:np, trial, chList, timeRange_sec):
 
     # The ch list
     chList_zeroIndexed = [ch - 1 for ch in chList]  # Convert to 0-based indexing
+    print(f"ChList index: {chList_zeroIndexed}")
 
     # The time range
     dataPoint_from = int(timeRange_sec[0]*dataCapRate_hz)
     dataPoint_to = int(timeRange_sec[1]*dataCapRate_hz)
 
     # Ruturn the cut up data
-    return dataBlock[trial, chList_zeroIndexed, dataPoint_from:dataPoint_to]
+    if trial > 0:
+        return dataBlock[trial, chList_zeroIndexed, dataPoint_from:dataPoint_to]
+    else:
+        return dataBlock[chList_zeroIndexed, dataPoint_from:dataPoint_to]
 
 def generateSpectragram(data:np, chList, dataRate):
     # Compute spectrograms for each channel
     Sxx_list = []
     for i, ch in enumerate(chList):
         #print(f" Data Block[i]: {dataBlock_forCWT[i].shape}")
-        timeRes = 2 #seconds
+        timeRes = 1 #seconds
         #nperseg = 1024 # nDataPoints in each window: Larger = better freq res, lower time res
         nperseg = int(timeRes * dataCapRate_hz)
         noverlap = int(nperseg)*.1 # Overlap processing % overlap
@@ -131,7 +174,7 @@ def generateSpectragram(data:np, chList, dataRate):
     return Sxx_np, freqs
 
 ## Generate CWT
-def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0):
+def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0, log=True):
     # The frequencies wew want to look at
     if waveletBase == "cmorl":
         if f0 == 0 or bw ==0:
@@ -143,7 +186,10 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0):
     else: 
         waveletName = waveletBase
 
-    frequencies = np.logspace(np.log10(freqRange[0]), np.log10(freqRange[1]), numScales)
+    if log:
+        frequencies = np.logspace(np.log10(freqRange[0]), np.log10(freqRange[1]), numScales)
+    else:
+        frequencies = np.linspace(freqRange[0], freqRange[1], numScales)
 
     # Some calculateds
     samplePeriod = 1/dataRate
@@ -164,11 +210,15 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0):
                                                                 sampling_period=samplePeriod, f_0=f0)
     else:
         [data_coefficients, data_frequencies] = pywt.cwt(data, scales, wavelet=wavelet, sampling_period=samplePeriod)
+
+    #print(data_frequencies)
+    #print(frequencies)
     
     return data_coefficients, data_frequencies, waveletName
 
 ## Data Plottters
-def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, domainToPlot:str="time"):
+def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisRange, dataRate:int=0, 
+                   domainToPlot:str="time", logX=False, logY=False):
     """
     Plots the data in 2 axis (time or frequency domain)
 
@@ -216,14 +266,17 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         print(f"Ch {thisCh} Min: {np.min(yAxis_data)}, Max: {np.max(yAxis_data)}, Mean: {np.mean(yAxis_data)}")
         axs[i].plot(xAxis_data, yAxis_data)
     
-        # Set the ylimit
-        axs[i].set_ylim(yAxisRange)
+        # Set the Axis limits and scale
         axs[i].set_xlim(xAxisRange) 
+        axs[i].set_ylim(yAxisRange)
+        if logX: axs[i].set_xscale('log')  # Set log scale
+        if logY: axs[i].set_yscale('log')  # Set log scale
 
         # Label the axis
         axs[i].set_ylabel(f'Ch {plotChList[i]}', fontsize=8)
         if i < len(plotChList) - 1:
             axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
+
     #Only show the x-axis on the last plot
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
@@ -232,7 +285,7 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     return xAxis_data # Save for later use
 
 ## 3 Axis Plotters (AKA "Image" Generaters)
-def plot_3D(data, freqs, title, extraBump = 1):
+def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None):
     # Cmor data is real imaginary
     # Plot the magnitude, even for non-complex as that data is positive and negitive
     data_mag = np.abs(data) 
@@ -248,6 +301,10 @@ def plot_3D(data, freqs, title, extraBump = 1):
     #plt.imshow(dataNorm, aspect='auto')#, origin='lower')
     plt.imshow(dataNorm, aspect='auto', origin='lower', 
                extent=[dataTimeRange_s[0], dataTimeRange_s[1], min(freqs), max(freqs)])
+    
+    if log: plt.yscale('log')
+    if freqScale != None:
+        plt.ylim(freqScale)
 
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
@@ -256,38 +313,56 @@ def plot_3D(data, freqs, title, extraBump = 1):
 
 #### Do the stuff
 # Load the data 
-dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dataFile)
+dummyData, dataCapRate_hz = loadData(dataFile=dataFile, trial=0 ) # Just get the peramiters
 
-# Get the parts of the data we are interested in:
-print(f"Data len pre-cut: {dataBlock_numpy.shape}")
-dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=0, chList=chToPlot, timeRange_sec=dataTimeRange_s)
-print(f"Data len: {dataBlock_sliced.shape}")
+#timeYRange = np.max(np.abs(dataBlock_numpy))
+timeYRange = 0.01
+freqYRange = 2
 
-# Plot the data in the time domain
-#timeYRange = np.max(np.abs(dataBlock_sliced))
-timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+# 2-22.21-APDM-data.xlsx has 27 enterys, so this is probably the data
+index_data_matrix = [21,34, 35, 36,37, 39, 42, 45, 46,
+                     22,23, 24, 25, 26, 27, 28, 30,
+                     50, 51, 53, 54, 57, 58, 60, 61, 62, 64]
 
-# Plot the data in the frequency domain
-freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, xAxisRange=dataFreqRange_hz, yAxisRange=[0, freqYRange], dataRate=dataCapRate_hz, domainToPlot="freq")
+#for trial in range(5243): # Cycle through the trials
+#for trial in range(dataBlock_numpy.shape[0]): # Cycle through the trials
+for i, trial in enumerate(index_data_matrix): # Cycle through the trials
+    dataBlock_numpy, dataCapRate_hz = loadData(dataFile=dataFile, trial=trial)
+    # Get the parts of the data we are interested in:
+    print(f"Data len pre-cut: {dataBlock_numpy.shape}")
+    dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s)
+    #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
+    print(f"Data len: {dataBlock_sliced.shape}")
+    
+    # Plot the data in the time domain
+    #timeYRange = np.max(np.abs(dataBlock_sliced))
+    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time")
+    
+    # Plot the data in the frequency domain
+    # TODO: Move the fft outside of the plot
+    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=plotTrial, 
+                              xAxisRange=dataFreqRange_hz, yAxisRange=[0.001, freqYRange], 
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=True, logY=True)
 
-
-
+    plt.show()
+    
 ## Generate CTW and spectrogram
-dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=0, chList=cwtChList, timeRange_sec=dataTimeRange_s)
+# We only want 3 ch for visuilizaton
+dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=cwtChList, timeRange_sec=dataTimeRange_s)
 
 ## The spectrogram
 # TODO: Only for the freq range in quesiton
+#TODO: Cut the data not diespley the range
 # TODO: add arguments for timeRes and overlap
 spectraGramData, spectraFreqs = generateSpectragram(dataBlock_forCWT, cwtChList, dataCapRate_hz)
 spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
-plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=10)
-
+plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=20, freqScale=dataFreqRange_hz, log=True)
 
 # Generate, then plot the CWT
 if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
-cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_forCWT, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw)
-# Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
-cwtData = np.transpose(cwtData, (0, 2, 1)) 
-plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=3)
+cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_forCWT, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
+cwtData = np.transpose(cwtData, (0, 2, 1)) # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
+plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=2)
 
 plt.show() # SHow all the plots
