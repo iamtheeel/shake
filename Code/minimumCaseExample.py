@@ -11,7 +11,7 @@
 # Data/_h
 #dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
 dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
-chToPlot = [2, 3, 4]
+chToPlot = [1, 2, 3, 4]
 cwtChList = chToPlot #[1, 2, 3]
 dataTimeRange_s = [0, 0] # [0 0] for full dataset
 #dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
@@ -217,12 +217,15 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0, log=T
 
 def applyButterWorth(data, fs):
     from scipy.signal import butter, filtfilt
+    # 0.1 makes the dip slower and higher freq
     b, a = butter(N=2, Wn=np.array([0.5, 4])/(0.5*fs), btype='bandpass', analog=False)  # Filter coefficients
 
     filtData = []
     print(f"Data type before butterworth: {type(data)}, {data.shape}")
     for ch in range(data.shape[0]):
-        filtData.append(filtfilt(b, a, data[ch, :]))
+        filtData.append(filtfilt(b, a, data[ch, :])) 
+        #filtData.append(filtfilt(b, a, data[ch, :], padlen=1000))  Makes worse
+        #filtData.append(filtfilt(b, a, data[ch, :], method='gust'))  Makes edge effects worse
     filtData = np.array(filtData) # Put the data back into numpy
     print(f"Data type: {type(filtData)}, ")
     return  filtData
@@ -292,11 +295,12 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
-    plt.savefig(f"images/{save}_trial-{trial}_{domainToPlot}.jpg")
+    plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
+    plt.close()
     return xAxis_data # Save for later use
 
 ## 3 Axis Plotters (AKA "Image" Generaters)
-def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save=""):
+def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="", ch=""):
     # Cmor data is real imaginary
     # Plot the magnitude, even for non-complex as that data is positive and negitive
     data_mag = np.abs(data) 
@@ -308,9 +312,13 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="
     dataNorm = extraBump*imageData/dataMax # we want to plot from 0 to 1
 
     plt.figure() # Make a new figure
-    plt.title(f"{title}")
+    plt.title(f"{title}, trial:{trial}, ch: {ch}")
     #plt.imshow(dataNorm, aspect='auto')#, origin='lower')
-    plt.imshow(dataNorm, aspect='auto', origin='lower', 
+    if ch == "":
+        plt.imshow(dataNorm, aspect='auto', origin='lower', 
+               extent=[dataTimeRange_s[0], dataTimeRange_s[1], min(freqs), max(freqs)])
+    else: # Single ch
+        plt.imshow(dataNorm, aspect='auto', origin='lower', cmap='viridis',
                extent=[dataTimeRange_s[0], dataTimeRange_s[1], min(freqs), max(freqs)])
     
     if log: plt.yscale('log')
@@ -320,7 +328,8 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
     
-    plt.savefig(f"images/{save}_trial-{trial}.jpg")
+    plt.savefig(f"images/{save}_trial-{trial}_ch{ch}.jpg")
+    plt.close()
 
     #plt.show() # Open the plot
 
@@ -349,6 +358,10 @@ for i, trial in enumerate(index_data_matrix): # Cycle through the trials
     #timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
+    freqYRange = [0.001, 0.1]
+    freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+                              xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=False, save="original")
     
     #Pre Filter the data
     print(f"Apply Filters and norms")
@@ -361,12 +374,12 @@ for i, trial in enumerate(index_data_matrix): # Cycle through the trials
     scaler = MinMaxScaler()
     # The scaler scales across colls, we want rows: So transpose the input, and output
     dataBlock_sliced = scaler.fit_transform(dataBlock_sliced.T).T # Fit and transform the data
+    dataBlock_sliced = dataBlock_sliced - np.mean(dataBlock_sliced) # Remove the offset
 
-    #dataBlock_sliced = dataBlock_sliced - np.mean(dataBlock_sliced)
     # Now the butterworth:
     dataBlock_sliced = applyButterWorth(dataBlock_sliced, fs=dataCapRate_hz)
 
-
+    # Plot the post Transfromed Data
     #timeYRange = 1
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time",
@@ -374,11 +387,11 @@ for i, trial in enumerate(index_data_matrix): # Cycle through the trials
     
     # Plot the data in the frequency domain
     # TODO: Move the fft outside of the plot
-    #freqYRange = [0.001, 2]
     freqYRange = [0.1, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
-                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=False, save="postMod")
+                              dataRate=dataCapRate_hz, domainToPlot="freq", logX=False, logY=False,# save="postMod")
+                              title=": After TimeD Data Mods", save="postMod")
 
     ## Generate CTW and spectrogram
     # We only want 3 ch for visuilizaton
@@ -395,8 +408,10 @@ for i, trial in enumerate(index_data_matrix): # Cycle through the trials
     
     # Generate, then plot the CWT
     if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
-    cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
-    cwtData = np.transpose(cwtData, (0, 2, 1)) # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
-    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=waveletName)
+    for i, ch in enumerate(chToPlot):
+        cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced[i], freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
+        # Don't transpose for single ch data
+        #cwtData = np.transpose(cwtData, (0, 2, 1)) # Imshow wants height, width, ch, but it comes in as lines, ch, timepoints
+        plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=waveletName, ch=ch)
     
     #plt.show() # SHow all the plots
