@@ -75,7 +75,6 @@ class HDF5Dataset(Dataset):
     def __getitem__(self, idx):
         with h5py.File(self.file_path, "r") as f:
             data = torch.tensor(f["data"][idx], dtype=torch.float32)
-            #label = torch.tensor(f["labels"][idx], dtype=torch.float32)
             label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
             label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
             subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
@@ -201,7 +200,8 @@ class dataLoader:
             #print(f"speeds: {speed}")
 
             if configs['plts']['generatePlots']:
-                self.plotTime_FreqData(data=subjectData, freqYLim=2, subject=subjectName, speed=speed, folder=f"../../FullRunPlots/Subject-{subjectName}", fromRaw=True)
+                yLim = configs['plts']['fulLenFreqYLim']
+                self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
 
             # Window the data
             windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectName, speed=speed)
@@ -299,13 +299,6 @@ class dataLoader:
             h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
             h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
             h5dataFile.attrs["chList"] = self.dataConfigs.chList
-
-    #def loadPeramiters(self):
-    #    dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-    #    with open(f"{dataSaveDir_str}/dataConfigs.pkl", 'rb') as f:
-    #        #This will load the ch list from the saved file
-    #        self.dataConfigs = pickle.load(f)
-    #    logger.info(f"Loaded data configs from {dataSaveDir_str}/dataConfigs.pkl")
 
     import h5py
 
@@ -420,10 +413,10 @@ class dataLoader:
 
             fMin = configs['cwt']['fMin']
             fMax = configs['cwt']['fMax']
-            self.dataPlotter.plotInLineTime(dataRow, fileN, f"Time {title}" )
-            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[fMin, fMax], show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotInLineFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yLim = [0, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotTime(dataRow, fileN, f"Time {title}" )
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[fMin, fMax], xInLog=True, yInLog=True, yLim=[0.001, freqYLim],show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
 
     def loadDataSet(self, dataSetFile=None,writeLog=True, batchSize = None):
         if batchSize != None: self.batchSize = batchSize
@@ -967,16 +960,24 @@ class dataLoader:
         # Plot the windowed data
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
-            self.plotTime_FreqData(data=self.data_raw, freqYLim=0.5, folder="plots_byWindow")
+            yLim = configs['plts']['windowedFreqYLim']
+            self.plotTime_FreqData(data=self.data_raw, freqYLim=yLim, folder="plots_byWindow")
 
     def writeToCWTDataFile(self, filename, data, label_speed, label_subject, subject, run, startTime):
         # Create HDF5 file with expandable datasets
         label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
+        #logger.info(f"Data type: {type(data)}, shape {data.shape} ")
+        if np.iscomplexobj(data):
+            data = np.abs(data)
+            ## TODO: Save the complex data
+
+        dataShape = data.shape
         with h5py.File(filename, "a") as cwtDataFile:
             if "data" not in cwtDataFile:
-                dataShape = data.shape
                 # Create datasets with `maxshape=(None, ...)` to allow dynamic resizing
-                cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[2], dataShape[1], dataShape[2]), dtype="float32", chunks=True)
+                    #cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[2], dataShape[1], dataShape[2]), dtype="complex64", chunks=True)
+                cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[0], dataShape[1], dataShape[2]), dtype="float32", chunks=True)
+
                 cwtDataFile.create_dataset("labelsSpeed", shape=(0,1), maxshape=(None,1), dtype="float32", chunks=True)
                 cwtDataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
                 cwtDataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
@@ -992,6 +993,8 @@ class dataLoader:
             sTimes_ds = cwtDataFile["sTimes"]
 
             # Resize datasets to accommodate the new entry
+            #new_index = data_ds.shape[0]  # current number of trials
+            #data_ds.resize(new_index + 1, axis=0)
             data_ds.resize(data_ds.shape[0] + 1, axis=0)
             label_speed_ds.resize(label_speed_ds.shape[0] + 1, axis=0)
             label_subject_ds.resize(label_subject_ds.shape[0] + 1, axis=0)
@@ -1000,6 +1003,10 @@ class dataLoader:
             sTimes_ds.resize(sTimes_ds.shape[0] + 1, axis=0)
     
             # Append new data
+            #new_index = data_ds.shape[0] - 1
+            #data_ds[new_index] = data
+            #data_ds[new_index:new_index+1, ...] = data[None, ...]
+
             data_ds[-1] = data
             label_speed_ds[-1] = label_speed
             label_subject_ds[-1] = label_subject

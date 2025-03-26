@@ -428,13 +428,13 @@ class Trainer:
                 for i in range(len(self.classes)):
                     if classAcc[i] > 0:  # Only calculate if we have samples for this class
                         classAcc[i] = np.sqrt(classAcc[i]/classNum[i])# Per-class RMS error
-                print(f"Class {self.accStr}: {classAcc}")
+                print(f"Each Class: {self.accStr}: {classAcc}")
             else: 
                 y_preds= torch.stack(y_preds, dim=0) # datums, batch, classes
                 y_targs= torch.stack(y_targs, dim=0)
                 y_preds = y_preds.view(y_preds.shape[0], -1)  # [datusm*batch, classes]Keeps batch size, removes extra dimension
                 y_targs = y_targs.view(y_targs.shape[0], -1)  # Keeps batch size, removes extra dimension
-                print(f"Final pred: {y_preds.shape}, lab: {y_targs.shape} ")
+                print(f"pred: {y_preds.shape}, lab: {y_targs.shape} ")
 
             print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.4}")
 

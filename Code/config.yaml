@@ -10,7 +10,7 @@ debugs:
 plts:
     pltDir: "plots"
     animDir: "../animations" #Link on my MAC
-    generatePlots: False
+    generatePlots: True
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
@@ -25,6 +25,9 @@ plts:
     #min: -0.04518992181415571, max: 0.042370559493933264
     yLim_timeD: [-0.02, 0.02]
     #yLim: 0 #Find the limit
+
+    fulLenFreqYLim:  10
+    windowedFreqYLim:  1 #0.5
 
 data:
     trainRatio: .8 # 80% train, 20% of the data for validation
@@ -46,16 +49,19 @@ data:
     #sensorChList: [1, 2, 3, 4, 5, 6, 7, 10, 11, 14, 15, 16, 17, 18, 19, 20 ] # Just the Z chans
     #sensorChList: [[1], [2], [3], [4], [5], [6], [7], [8, 9, 10], [11, 12, 13], [14], [15], [16], [17], [18], [19], [20] ]
 
-    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 0 #20 # Limit the number of windows to load: 0 to load all
+    limitRuns: 0 #1 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all
 
+    ## Depricated
     #stompSens: [5, 6]
     #stompSens: [5, 6, 7]
     stompSens: [5, 6, 7]
+    ## Use stomp from file
     stompThresh: "stompTimes.csv" #1.5 #If 0, then no stomp detection
+
     dataThresh: 2 # If 0, then no, non-walking detection
 
-    windowLen: 2 #2 #sec
+    windowLen: 5 #2 #sec
     stepSize: 1 #1 #sec
 
 
@@ -92,19 +98,19 @@ cwt:
     doCWT: False #Roll this in to "wavelet"
     saveCWT: True
 
-    logScaleFreq: True
-    numScales: 64 #240
+    logScaleFreq: False
+    numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
-    wavelet: ["fstep"] #"None" for no CWT
+    wavelet: ["cmorl"] #"None" for no CWT
     #wavelet: ["morl", "cmorl"] # f0 = 0.8125, bw = 6.0
     #wavelet: ["cmor", "fstep" ]
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
-    waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep 0.5 to 10hz
-    waveLet_bandwidth: [1]  #
+    #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep 0.5 to 10hz
+    #waveLet_bandwidth: [1]  #
     #waveLet_center_freq:  [0.8125] #morl center freq
-    #waveLet_center_freq:  [10] # best for cmorl
-    #waveLet_bandwidth: [0.8]  # best vor cmorl
+    waveLet_center_freq:  [10] # best for cmorl
+    waveLet_bandwidth: [0.8]  # best vor cmorl
     #Bandwidth nopt used for fstep
     #waveLet_bandwidth: [6.0] 
     # Norms to each ch/data if normTo_max is 0
@@ -124,8 +130,8 @@ trainer:
     #batchSize: [1, 2, 4 ] #8 #For mobilenet timeD 4 failed with mem error
     #batchSize: [64, 128] 
 
-    #batchSize: [1, 2, 4, 8, 16, 32, 64, 128] #8 #For mobilenet timeD
-    batchSize: [8] #Should be power of 2
+    batchSize: [1, 8, 16, 32] #8 #For mobilenet timeD
+    #batchSize: [8] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -136,8 +142,8 @@ trainer:
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
     # Best for Mobilnet Time Not folded
-    learning_rate: [0.00075] 
-    weight_decay:  [0.005]
+    learning_rate: [0.0001] #[0.00075] 
+    weight_decay:  [0.001]  #[0.005]
     #learning_rate: [0.002] #Trying scheduler
     #weight_decay:  [0.01]
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
@@ -159,8 +165,8 @@ trainer:
     #learning_rate: [0.0006] 
     #weight_decay:  [0.002]
     # Learing rate schetuler use 2x to 3x the lr
-    #LR_sch: None #None to not use
-    LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
+    LR_sch: None #None to not use
+    #LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
     T_0: 10       # Restart every N epochs (hop over local minima)
     T-mult: 2     # A factor by which :math:`T_{i}` increases after a restart. Default: 1
     eta_min: 1e-7 # Minimum learning rate. Default: 0
@@ -169,15 +175,15 @@ trainer:
     gradiant_noise: [0] #[1e-3]
 
     epochs: 250 #Set to upper limit and validate every... (see below)
-    epochValiStart: 1 #30
+    epochValiStart: 0
     validEveryNEpocchs: 1
     seed: 4601
 
 model: 
     regression: True #Or Clasification
     #name: ["leNetV5"]
-    #name: ["MobileNet_v2"] #
-    name: ["MobileNet_v2_unFolded"] #
+    #name: ["MobileNet_v2_folded"] # Don't spend time here, we are doing fantastic in the time domain
+    name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #

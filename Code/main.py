@@ -178,9 +178,9 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
             model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
-    elif model_name == "MobileNet_v2_unFolded":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs)
     elif model_name == "MobileNet_v2":
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs)
+    elif model_name == "MobileNet_v2_folded":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, dropOut=dropOut_layers, config=configs)
     else: 
         print(f"{model_name} is not a model that we have")
@@ -303,7 +303,7 @@ for batchSize in configs['trainer']['batchSize']:
                 # Go here even on None just to setup the name
                 #if wavelet_base != 'None': Put back in when we sort norm out
                 cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-                data_preparation.generateCWTDataByWindow(cwt_class=cwt_class)
+                data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
     
                 for logScaleData in [False]: #Probably not interesting
     

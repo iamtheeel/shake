@@ -156,7 +156,7 @@ class dataPlotter_class():
         plt.close(fig)
 
 
-    def plotInLineTime(self, acclData, saveStr, plotTitle_str, show=False):
+    def plotTime(self, acclData, saveStr, plotTitle_str, show=False):
         xData = getTime(acclData.shape[1], self.samRate)
         data = acclData
 
@@ -165,23 +165,60 @@ class dataPlotter_class():
         yLim = self.yLim_time
         self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, show=False)
 
-    def plotInLineFreq(self, imageDir, acclData, saveStr, plotTitle_str, xlim, yLim = None, xInLog = False, show=False):
+    def plotFreq(self, imageDir, acclData, saveStr, plotTitle_str, xlim, yLim = None, xInLog = False, yInLog=False, show=False):
         #logger.info(f"{imageDir}")
         xlimStr = f"fmin-{xlim[0]}_fmax-{xlim[1]}"
         self.freqDDir = f"{imageDir}_{xlimStr}"
-        if xInLog: self.freqDDir = f"{self.freqDDir}_log"
-        checkFor_CreateDir(self.freqDDir, echo=False)
+        if xInLog: self.freqDDir = f"{self.freqDDir}_xLog"
+        if yInLog: self.freqDDir = f"{self.freqDDir}_yLog"
 
         xData = self.fftClass.getFreqs(self.samRate, acclData.shape[1])
         data = acclData
 
         xlabel = "Frequency (Hz)"
-        fileName = f"{self.freqDDir}/{saveStr}_{xlimStr}.jpg"
         if yLim == None: yLim = self.yLim_freq
-        self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=xlim, isFreq=True, xInLog=xInLog, show=False)
+        thisDir = self.freqDDir+'_inLine'
+        checkFor_CreateDir(thisDir, echo=False)
+        fileName = f"{thisDir}/{saveStr}_{xlimStr}.jpg"
+        self.plotInLine(data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=xlim, isFreq=True, xInLog=xInLog, yInLog=yInLog, show=False)
+
+        thisDir = self.freqDDir+'_ovrLay'
+        checkFor_CreateDir(thisDir, echo=False)
+        fileName = f"{thisDir}/{saveStr}_{xlimStr}.jpg"
+        self.plotOverLay(data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=xlim, isFreq=True, xInLog=xInLog, yInLog=yInLog, show=False)
+
+    def plotOverLay(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, yInLog=False,show=False):
+        self.colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
+        plt.figure(figsize=(15, 10))
+
+        plt.title(f"{plotTitle_str}")
+        for thisChNum, chData in enumerate(data):
+            thisCh = sensorChList[thisChNum]
+            if isFreq:
+                windowedData = self.fftClass.appWindow(chData, window="Hanning")
+                freqData = self.fftClass.calcFFT(windowedData) #Mag, phase
+                chData = freqData[0]
+            thisColor = self.colorList[sensorChList.index(thisCh)%len(self.colorList)]
+            plt.plot(xData, chData, label=f"ch {thisCh}", color=thisColor) #Col, row
+
+        plt.xlabel(f"{xlabel}")
+        plt.ylabel(f"Acceleration")
+        plt.ylim(yLim)
+        if xLim != None: plt.xlim(xLim)
+        plt.grid(True)
+        if xInLog: plt.xscale('log')
+        if yInLog: plt.yscale('log')
+        plt.legend()
+
+        if show:
+            plt.show()
+        else:
+            #print(f"FileName: {fileName}")
+            plt.savefig(fileName)
+        plt.close()
 
 
-    def plotInLine(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, show=False):
+    def plotInLine(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, yInLog=False,show=False):
         #print(f"data shape: {data.shape}")
         fig, axs = plt.subplots(data.shape[0], figsize=(12,12)) #figsize in inches?
         #Start and end the plot at x percent of the page, no space between each plot
@@ -202,9 +239,11 @@ class dataPlotter_class():
             #print(f"rowLen: {row.shape}, {time.shape}")
             axs[thisRow].plot(xData, chData)
             if xInLog: axs[thisRow].set_xscale('log')
+            if yInLog: axs[thisRow].set_yscale('log')
             axs[thisRow].set_ylabel(f'Ch {sensorChList[thisRow]}', fontsize=8)
             #axs[thisRow].set_ylabel(f'S#{sensor}, Ch{sensorChList[sensor-1]}', fontsize=8)
     
+            #logger.info(f"Ylim: {yLim}")
             axs[thisRow].set_ylim(yLim)
             if xLim != None:
                 axs[thisRow].set_xlim(xLim)
@@ -400,7 +439,7 @@ class saveCWT_Time_FFT_images():
         if self.normTo_max == 0: 
             if data_preparation.dataNormConst.type == "std":
                 fudge = 2 #1
-            else: fudge = 4
+            else: fudge = 2
             self.normTo_max = data_preparation.dataNormConst.max 
             if self.complexInput:
                 self.normTo_max = np.max(np.abs(data_preparation.dataNormConst.max)) # We plot in mag
@@ -485,37 +524,27 @@ class saveCWT_Time_FFT_images():
 
     def plotFreqD(self, fftData, freqList, axs, thisColor, asLogScale):
         # Plot the Frequency domain data
-            if asLogScale: #Is the mag log scale?
-                # Set x-axis to log scale for frequency plot
-                axs[1, 0].set_xscale('log')
-                axs[1, 0].set_xlim([0.01, 1])
-            else:
-                axs[1, 0].set_xlim([0, 0.5])
-            axs[1, 0].invert_xaxis()
+        if asLogScale: #Is the mag log scale?
+            # Set x-axis to log scale for frequency plot
+            axs[1, 0].set_xscale('log')
+            axs[1, 0].set_xlim([0.01, 1])
+        else:
+            axs[1, 0].set_xlim([0, 1.0])
+        axs[1, 0].invert_xaxis()
 
-            # Set minimum frequency to 10 Hz
-            bottom = self.cwt_class.min_freq
-            top = self.cwt_class.max_freq
-            if self.cwt_class.useLogScaleFreq:
-                axs[1, 0].set_yscale('log')
-            axs[1, 0].set_ylim(bottom=bottom, top=top)
-            axs[1, 0].plot(fftData, freqList, color=thisColor)
-            axs[1, 0].set_ylabel('Frequency (Hz)')
+        # Set minimum frequency to 10 Hz
+        bottom = self.cwt_class.min_freq
+        top = self.cwt_class.max_freq
+        if self.cwt_class.useLogScaleFreq:
+            axs[1, 0].set_yscale('log')
+        axs[1, 0].set_ylim(bottom=bottom, top=top)
+        axs[1, 0].plot(fftData, freqList, color=thisColor)
+        axs[1, 0].set_ylabel('Frequency (Hz)')
 
-            # Add minor grid lines
-            axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
-            axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
+        # Add minor grid lines
+        axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
+        axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
 
-            '''
-            #Set the position of the frequency plot to match the CWT plot
-            shift = 0.0 # 0.033  # Amount to shift up
-            pos = axs[1,0].get_position()
-            new_height = pos.height - shift  # Reduce height by shift amount
-            axs[1,0].set_position([pos.x0, pos.y0 + shift, pos.width, new_height])
-            #textstr = f'Bottom of plot shifted up by {shift*100:.1f}% to match-ish CWT plot'
-            props = dict(boxstyle='square', alpha=0.5, facecolor='white')
-            axs[1, 0].text(0.05, -0.15, textstr, transform=axs[1, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
-            '''
 
     def getCWTData(self, cwtDataSet):
         # Get the list of ch indexes for the data we want
@@ -550,16 +579,7 @@ class saveCWT_Time_FFT_images():
         axs[1, 1].imshow(cwtData, aspect='auto', origin='lower', 
                          extent=[min(times), max(times), min(freqs), max(freqs)]) 
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
-        '''
-        valid_ticks, freq_labels = self.cwt_class.getYAxis(self.cwt_class.frequencies, plt.gca().get_yticks())
-        #logger.info(f"freq_labels: {freq_labels}")
-        plt.gca().set_yticks(valid_ticks)
-        plt.gca().set_yticklabels([f"{f:.1f}" for f in freq_labels])
-
-        valid_ticks, time_labels = self.cwt_class.getXAxis(cwtData.shape[1], plt.gca().get_xticks())
-        plt.gca().set_xticks(valid_ticks)
-        plt.gca().set_xticklabels([f"{t:.1f}" for t in time_labels])
-        '''
+        if configs['cwt']['logScaleFreq']: plt.yscale('log')
         plt.xlabel('Time (s)')
 
     def generateAndSaveImages(self, logScaleData):
