@@ -223,7 +223,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
             # and conv2d is not implemented :(
-            model = model.to(torch.complex128)
+            logger.info(f"TODO, put model in complex format!!")
+            #model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 

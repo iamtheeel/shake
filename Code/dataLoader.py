@@ -414,6 +414,7 @@ class dataLoader:
             fMin = configs['cwt']['fMin']
             fMax = configs['cwt']['fMax']
             self.dataPlotter.plotTime(dataRow, fileN, f"Time {title}" )
+            #self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[0, fMax], xInLog=False, yInLog=True, yLim=[0.001, freqYLim],show=False) #, subjectNumber, 0, "ByRun")
             self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[fMin, fMax], xInLog=True, yInLog=True, yLim=[0.001, freqYLim],show=False) #, subjectNumber, 0, "ByRun")
             self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
             self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
@@ -967,9 +968,8 @@ class dataLoader:
         # Create HDF5 file with expandable datasets
         label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
         #logger.info(f"Data type: {type(data)}, shape {data.shape} ")
-        if np.iscomplexobj(data):
-            data = np.abs(data)
-            ## TODO: Save the complex data
+        #if np.iscomplexobj(data): data = np.abs(data)
+        ## TODO: Save the complex data
 
         dataShape = data.shape
         with h5py.File(filename, "a") as cwtDataFile:
@@ -1079,7 +1079,8 @@ class dataLoader:
             max = np.max(thisCwtData_raw)
             sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
 
-            if np.iscomplexobj(cwt_class.wavelet_fun):
+            if np.iscomplexobj(data):
+            #if np.iscomplexobj(cwt_class.wavelet_fun):
                 real = np.real(thisCwtData_raw)
                 imag = np.imag(thisCwtData_raw)
 
@@ -1120,7 +1121,8 @@ class dataLoader:
             cwtData_raw = np.transpose(cwtData_raw, (1, 2, 0, 3))           # we want: windows, ch, freqs, timepoints
             cwtTransformTime = time() - timeStart
 
-        if np.iscomplexobj(cwt_class.wavelet_fun):
+        if np.iscomplexobj(data):
+        #if np.iscomplexobj(cwt_class.wavelet_fun):
             mean = mean_Real + 1j * mean_Imag
             std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
         else:

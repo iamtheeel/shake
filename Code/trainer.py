@@ -173,7 +173,7 @@ class Trainer:
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
             for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
-                #logger.info(f" data shape: {data.shape}")
+                #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
@@ -282,7 +282,7 @@ class Trainer:
             #Timing
             epoch_runTime = timer() - epoch_StartTime
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
-            print(f"Training Epoch: {epoch+1} | LR = {self.optimizer.param_groups[0]['lr']} | " \
+            print(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
                 f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
                 #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
                 f"Time: {epoch_runTime:.1f}s")
@@ -458,7 +458,7 @@ class Trainer:
 
         with open(f"{self.logDir}/valiResults_byEpoch.csv", 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow([epochNum, finalValLoss, test_acc])
+            writer.writerow([epochNum, finalValLoss, test_acc, classAcc])
 
         return finalValLoss, test_acc, classAcc
 

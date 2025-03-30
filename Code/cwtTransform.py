@@ -143,7 +143,10 @@ class cwt:
         # Keep only every nth column (time point) from the results?
         #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
         #self.data_coefficients = data[:, ::step_size]
-        #logger.info(f"Coefficients: type: {type(transformedData[0][0])}, shape: {transformedData.shape},  shape: {data_coefficients.shape}") #each dataum is a numpy.complex128
+        #logger.info(f"Coefficients: type: {type(data_coefficients[0][0])},  shape: {data_coefficients.shape}") #each dataum is a numpy.complex128
+
+        ## TODO: allow for complex data
+        if np.iscomplexobj(data_coefficients): data_coefficients = np.abs(data_coefficients)
 
         return data_coefficients, data_frequencies
         

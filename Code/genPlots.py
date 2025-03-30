@@ -89,43 +89,6 @@ def plotRegreshDataLoader(dataLoader):
     plt.ylabel('Speed (m/s)')
     plt.show()
 
-def plotOverlay(acclData, runStr, plotTitle_str, sFreq):
-    #print(f"plotOver: data shape: {acclData.shape}")
-    time = getTime(acclData.shape[1], sFreq)
-
-    plt.figure(figsize=(15, 10))
-
-    #for i in range(0,nSensors-1):
-    #sens = 0
-    markers = ['o', '^', 'v', 's', 'D', 'x', '+', '*']
-    for sens, row in enumerate(acclData):
-        thisMarker = markers[sens%len(markers)]
-        #if sens == 0: thisSens = 'total'
-        if sens >= len(chList): thisSens = 'all'
-        else:         thisSens = chList[sens]
-        plt.plot(time, row, label=f"ch {thisSens}")
-        #plt.plot(time, row, label=f"ch {thisSens}", marker= thisMarker)
-
-        #plt.plot(time, acclData[i])
-        #plt.plot(time, accelerometer_data)
-    plt.legend(loc="center left")
-    plt.title(f"{plotTitle_str}\n")
-    #plt.title(f"Accelerometer Data: Trial {trialNum+1}, Sensor {accelNum+1}")
-    plt.xlabel("Time (seconds)")
-    plt.ylabel("Acceleration")
-    plt.ylim(yLim)
-    plt.grid(True)
-
-    # Save the plots
-    pltSaveDir = Path(f"{plotDir}/overLay")
-    pltSaveDir.mkdir(parents=True, exist_ok=True)
-    fileName = f"{pltSaveDir}/{runStr}_overlayed.jpg"
-    print(f"Saving: {fileName}")
-    plt.savefig(f"{pltSaveDir}/{runStr}_overlayed.jpg")
-    #plt.show()
-
-    plt.close
-
 class dataPlotter_class():
     def __init__(self):
         self.fftClass = jFFT_cl()
@@ -189,7 +152,7 @@ class dataPlotter_class():
 
     def plotOverLay(self, data, plotTitle_str, xData, xlabel, yLim, fileName, xLim=None, isFreq=False, xInLog=False, yInLog=False,show=False):
         self.colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
-        plt.figure(figsize=(15, 10))
+        plt.figure(figsize=(15, 7))
 
         plt.title(f"{plotTitle_str}")
         for thisChNum, chData in enumerate(data):
@@ -201,13 +164,15 @@ class dataPlotter_class():
             thisColor = self.colorList[sensorChList.index(thisCh)%len(self.colorList)]
             plt.plot(xData, chData, label=f"ch {thisCh}", color=thisColor) #Col, row
 
-        plt.xlabel(f"{xlabel}")
+        xFontSize = 20
+        plt.xlabel(f"{xlabel}", fontsize=xFontSize)
         plt.ylabel(f"Acceleration")
         plt.ylim(yLim)
         if xLim != None: plt.xlim(xLim)
         plt.grid(True)
         if xInLog: plt.xscale('log')
         if yInLog: plt.yscale('log')
+        plt.xticks(fontsize=xFontSize)  # Set the x-axis tick label font size
         plt.legend()
 
         if show:
@@ -476,6 +441,7 @@ class saveCWT_Time_FFT_images():
         # Adjust subplot sizes - make left plots smaller
         # Make right plots wider and bottom plots taller
         gs = fig.add_gridspec(2, 2, width_ratios=[1, 3], height_ratios=[1, 3])
+        #gs = fig.add_gridspec(2, 2, width_ratios=[1, 3], height_ratios=[1, 3])
         # Set positions for all subplots based on the gridspec
         for i in range(2):
             for j in range(2):
@@ -521,6 +487,8 @@ class saveCWT_Time_FFT_images():
         axs[0, 1].set_ylim([-0.015, 0.015])
         axs[0, 1].plot(time, chData, color=thisColor) #Col, row
         axs[0, 1].set_ylabel(f'Amplitude (accl)', fontsize=8)
+        axs[0, 1].tick_params(axis='x', labelsize=20)  # Set the x-axis tick label font size
+
 
     def plotFreqD(self, fftData, freqList, axs, thisColor, asLogScale):
         # Plot the Frequency domain data
@@ -571,7 +539,7 @@ class saveCWT_Time_FFT_images():
         
         return cwtData 
     
-    def plotCWT(self, axs, cwtData, times, freqs):
+    def plotCWT(self, axs, cwtData, times, freqs ):
         # We only plot the data from the sensor list4
         #indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
         #cwtData = cwtData[:,:, indices]
@@ -579,8 +547,37 @@ class saveCWT_Time_FFT_images():
         axs[1, 1].imshow(cwtData, aspect='auto', origin='lower', 
                          extent=[min(times), max(times), min(freqs), max(freqs)]) 
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
-        if configs['cwt']['logScaleFreq']: plt.yscale('log')
-        plt.xlabel('Time (s)')
+        #if configs['cwt']['logScaleFreq']: plt.yscale('log')
+        if configs['cwt']['logScaleFreq']: axs[1, 1].set_yscale('log')
+        fontSize = 20
+        axs[1, 1].tick_params(axis='x', labelsize=fontSize)
+        axs[1, 1].tick_params(axis='y', labelsize=fontSize)
+        axs[1, 1].set_xlabel('Time (s)', fontsize=fontSize)
+        xlabel_obj = axs[1, 1].set_ylabel('Frequency (Hz)', fontsize=fontSize)
+        xlabel_obj.set_clip_on(False)
+        '''
+        pos = axs[1, 1].get_position()
+
+        shrink_factor = 0.95
+        shift_factor  = 0.05
+        
+        new_height = pos.height * shrink_factor
+        new_y      = pos.y0 + shift_factor * pos.height
+
+        # 3) Apply the new position
+        axs[1, 1].set_position([pos.x0, new_y, pos.width, new_height])
+        '''
+
+        #axs[1, 1].xaxis.set_label_coords(0.5, 0.01)
+        #pos = axs[1, 1].get_position()  # Get the current position [x0, y0, width, height]
+        #axs[1, 1].set_position([pos.x0, pos.y0 + 0.05, pos.width, pos.height])
+
+        #plt.xticks(fontsize=fontSize)  # Set the x-axis tick label font size
+        #plt.yticks(fontsize=fontSize)  # Set the x-axis tick label font size
+        #plt.xlabel('Time (s)', fontsize=fontSize)
+        #plt.ylabel('Frequency (Hz)', fontsize=fontSize)
+        #plt.tight_layout()                   # Helps ensure labels aren’t clipped
+
 
     def generateAndSaveImages(self, logScaleData):
         #dataEnd = self.data_preparation.data_raw.shape[0]
@@ -621,6 +618,19 @@ class saveCWT_Time_FFT_images():
             cwtData = self.getCWTData(cwt_Data )
             self.plotCWT(axs, cwtData, time, cwtFreqList) #h, w, 3
 
+            ## Adjust the plots for the larger font
+            shrink_factor = 0.9
+            pos = axs[0, 1].get_position()
+            top = pos.y0 + pos.height  # the top edge of the subplot
+            new_height = pos.height * shrink_factor
+            new_y = top - new_height  # adjust the bottom edge so the top remains in place
+            axs[0, 1].set_position([pos.x0, new_y, pos.width, new_height])
+
+            shrink_factor = 0.97
+            #self.shrinkAndScale(axs[0,1], shrink_factor=shrink_factor) # Time Plot
+            self.shrinkAndScale(axs[1,1], shrink_factor=shrink_factor) # CWT Plot
+            self.shrinkAndScale(axs[1,0], shrink_factor=shrink_factor) # FFT Plot
+
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
             fileName = f"{thisWindowNum:04d}_ch-{pltCh_Str}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
@@ -634,3 +644,10 @@ class saveCWT_Time_FFT_images():
             plt.close(fig)
 
             #procTime.endTime(echo=True, echoStr=f"Finished with dataNum: {dataumNumber}")
+
+    def shrinkAndScale(self, axs, shrink_factor):
+        shift_factor  = 1 - shrink_factor
+        pos = axs.get_position() # The cwt plot
+        new_height = pos.height * shrink_factor
+        new_y      = pos.y0 + shift_factor * pos.height
+        axs.set_position([pos.x0, new_y, pos.width, new_height]) # 3) 
