@@ -256,8 +256,7 @@ class Trainer:
 
             ## Now in Epoch
             valEveryNEpochs = self.configs['trainer']['validEveryNEpocchs']
-            if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau":
-                valEveryNEpochs = 1
+            if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau": valEveryNEpochs = 1
             if epoch%valEveryNEpochs ==0 and epoch >= self.configs['trainer']['epochValiStart']:
                 valLoss, valAcc, classAcc = self.validation(epochNum=epoch) # val acc and loss is printed here
                 self.model.train() # Put the model back in train
