@@ -63,13 +63,11 @@ if debug == False:
 import platform
 machine = platform.machine()
 logger.info(f"machine: {machine}")
-if machine == "aarch64":
-    device = "tpu"
-else:
-    import torch
-    device = "cpu"
-    if torch.cuda.is_available(): device = "cuda"
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
+logger.info(f"Importing torch")
+import torch
+device = "cpu"
+if torch.cuda.is_available(): device = "cuda"
+if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
 logger.info(f"device: {device}")
 
 def saveSumary(model, dataShape):
@@ -154,7 +152,7 @@ fileStructure.setExpTrack_dir(dateTime_str=dateTime_str)
 Data Preparation
 """
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, fileStructure)
+data_preparation = dataLoader(configs, fileStructure, device)
 writeLogHdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
