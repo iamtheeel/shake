@@ -30,6 +30,18 @@ from cwtTransform import cwt
 #from genPlots import saveMovieFrames
 from utils import checkFor_CreateDir
 
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--local_rank', type=int, default=0)
+args = parser.parse_args()
+
+torch.cuda.set_device(args.local_rank)
+
+print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
+
+
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
