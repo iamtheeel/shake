@@ -53,35 +53,43 @@ class HDF5Dataset(Dataset):
     def __init__(self, file_path ):
         self.file_path = file_path
         self.h5_file = None  # Will be opened in `__getitem__`
+        self._init_file()
 
         # Open file to get dataset size
-        with h5py.File(self.file_path, "r") as f:
-            self.length = len(f["data"])  # Number of samples
-            self.shape = f["data"].shape
+        #with h5py.File(self.file_path, "r", swmr=True) as f:
+        f = self.h5_file
+        self.length = len(f["data"])  # Number of samples
+        self.shape = f["data"].shape
 
-            #Stats
-            self.data_min = f["data"].attrs["min"]
-            self.data_max = f["data"].attrs["max"]
-            self.data_mean = f["data"].attrs["mean"]
-            self.data_std = f["data"].attrs["std"]
-            self.lab_min = f["labelsSpeed"].attrs["min"]
-            self.lab_max = f["labelsSpeed"].attrs["max"]
-            self.lab_mean = f["labelsSpeed"].attrs["mean"]
-            self.lab_std = f["labelsSpeed"].attrs["std"]
+        #Stats
+        self.data_min = f["data"].attrs["min"]
+        self.data_max = f["data"].attrs["max"]
+        self.data_mean = f["data"].attrs["mean"]
+        self.data_std = f["data"].attrs["std"]
+        self.lab_min = f["labelsSpeed"].attrs["min"]
+        self.lab_max = f["labelsSpeed"].attrs["max"]
+        self.lab_mean = f["labelsSpeed"].attrs["mean"]
+        self.lab_std = f["labelsSpeed"].attrs["std"]
 
     def __len__(self):
         return self.length
 
-    def __getitem__(self, idx):
-        with h5py.File(self.file_path, "r") as f:
-            data = torch.tensor(f["data"][idx], dtype=torch.float32)
-            label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
-            label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
-            subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
-            run = torch.tensor(f["runs"][idx], dtype=torch.long)
-            sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
+    def _init_file(self):
+        if self.h5_file is None:
+            self.h5_file = h5py.File(self.file_path, "r")
 
-            #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
+    def __getitem__(self, idx):
+        self._init_file()
+        f  = self.h5_file
+        #with h5py.File(self.file_path, "r") as f:
+        data = torch.tensor(f["data"][idx], dtype=torch.float32)
+        label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
+        label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
+        subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
+        run = torch.tensor(f["runs"][idx], dtype=torch.long)
+        sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
+
+        #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
         return data, label_speed, label_subject, subject, run, sTime
     
     def getConfig(self):
@@ -93,9 +101,10 @@ class HDF5Dataset(Dataset):
         return config
 
 class dataLoader:
-    def __init__(self, config, fileStruct:"fileStruct"):
+    def __init__(self, config, fileStruct:"fileStruct", device):
         print(f"\n")
         logger.info(f"--------------------  Get Data   ----------------------")
+        self.device = device
         self.regression = config['model']['regression']
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
@@ -451,9 +460,17 @@ class dataLoader:
         dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
         dataSet_v.indices.sort() # put the validation data back in order
 
-        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
-        #self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=4, persistent_workers=True, shuffle=True)
-        self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+        if self.device == "mps":
+            self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
+            self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+        else:
+            nWorkers = 8
+            self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, 
+                                num_workers=nWorkers, persistent_workers=True, pin_memory=True, 
+                                shuffle=True)
+            self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, 
+                                num_workers=nWorkers, persistent_workers=True, pin_memory=True, 
+                                shuffle=False)
 
         if writeLog: self.logDataShape()
     

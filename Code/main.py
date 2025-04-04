@@ -30,6 +30,18 @@ from cwtTransform import cwt
 #from genPlots import saveMovieFrames
 from utils import checkFor_CreateDir
 
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--local_rank', type=int, default=0)
+args = parser.parse_args()
+
+torch.cuda.set_device(args.local_rank)
+
+print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
+
+
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
@@ -51,13 +63,11 @@ if debug == False:
 import platform
 machine = platform.machine()
 logger.info(f"machine: {machine}")
-if machine == "aarch64":
-    device = "tpu"
-else:
-    import torch
-    device = "cpu"
-    if torch.cuda.is_available(): device = "cuda"
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
+logger.info(f"Importing torch")
+import torch
+device = "cpu"
+if torch.cuda.is_available(): device = "cuda"
+if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
 logger.info(f"device: {device}")
 
 def saveSumary(model, dataShape):
@@ -142,7 +152,7 @@ fileStructure.setExpTrack_dir(dateTime_str=dateTime_str)
 Data Preparation
 """
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, fileStructure)
+data_preparation = dataLoader(configs, fileStructure, device)
 writeLogHdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):

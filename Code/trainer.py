@@ -17,6 +17,7 @@ import torch
 from torch import nn
 import torch.nn.functional as tFun
 import torch.optim as optim
+import time
 
 
 #from dataLoader import dataSetWithSubjects
@@ -155,7 +156,7 @@ class Trainer:
         valAccArr = []
         train_predsArr =[] # for confusion matrix
 
-
+        print(f"Model device: {next(self.model.parameters()).device}")
 
         fieldnames = ['epoch', 'lr', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
 
@@ -172,7 +173,10 @@ class Trainer:
             epoch_squared_diff = []
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
+            batchStartTime = time.time()
             for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
+                dataLoadTime = time.time() - batchStartTime
+                #logger.info(f"Data Load time: {dataLoadTime}")
                 #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
@@ -185,6 +189,7 @@ class Trainer:
                     #print(f"labels shape: {labels.shape}")
 
                 data = data.to(self.device)
+                #print(f"Data device: {data.device}")
                 labels = labels.to(self.device)
 
                 batchNumber +=1
@@ -252,6 +257,9 @@ class Trainer:
 
                 #print(f"Run correct: {thisTestCorr}, loss: {loss.item()}")
                 train_predsArr.append(out_pred) #for confusion matrix
+
+                batchStartTime = time.time()
+
                 #End  Batch
 
             ## Now in Epoch
