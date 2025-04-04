@@ -72,7 +72,7 @@ data:
     #scalers: ["meanNorm", "std", "minMaxNorm"]
     dataScale_values: [1]   #
     labelScale_values: [1] 
-    dataMax: 1 #0 for calculate
+    dataMax: 1 #0 on plot only
     #scale: 100 # Classification
 
 cwt:

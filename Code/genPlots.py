@@ -487,7 +487,8 @@ class saveCWT_Time_FFT_images():
         axs[0, 1].set_ylim([-0.015, 0.015])
         axs[0, 1].plot(time, chData, color=thisColor) #Col, row
         axs[0, 1].set_ylabel(f'Amplitude (accl)', fontsize=8)
-        axs[0, 1].tick_params(axis='x', labelsize=20)  # Set the x-axis tick label font size
+        axs[0, 1].tick_params(axis='x')  # Set the x-axis tick label font size
+        #axs[0, 1].tick_params(axis='x', labelsize=20)  # Set the x-axis tick label font size
 
 
     def plotFreqD(self, fftData, freqList, axs, thisColor, asLogScale):
@@ -508,6 +509,7 @@ class saveCWT_Time_FFT_images():
         axs[1, 0].set_ylim(bottom=bottom, top=top)
         axs[1, 0].plot(fftData, freqList, color=thisColor)
         axs[1, 0].set_ylabel('Frequency (Hz)')
+        axs[1, 0].set_xlabel('Amplidude (Accleration RMS)')
 
         # Add minor grid lines
         axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
@@ -619,12 +621,14 @@ class saveCWT_Time_FFT_images():
             self.plotCWT(axs, cwtData, time, cwtFreqList) #h, w, 3
 
             ## Adjust the plots for the larger font
+            '''
             shrink_factor = 0.9
             pos = axs[0, 1].get_position()
             top = pos.y0 + pos.height  # the top edge of the subplot
             new_height = pos.height * shrink_factor
             new_y = top - new_height  # adjust the bottom edge so the top remains in place
             axs[0, 1].set_position([pos.x0, new_y, pos.width, new_height])
+            '''
 
             shrink_factor = 0.97
             #self.shrinkAndScale(axs[0,1], shrink_factor=shrink_factor) # Time Plot

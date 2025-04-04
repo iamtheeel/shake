@@ -1084,7 +1084,7 @@ class dataLoader:
 
         #for i, data in tqdm(enumerate(timeData), total=len(timeData), desc="Calculating CWT", unit="Transform"):
         for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
-                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc="Generateing CWT Data", unit="Window" ):
+                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc="Generating CWT Data", unit="Window" ):
             #logger.info(f"Transforming data: {i}, {data.shape}")
             data = data_tensor.numpy()
             thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
@@ -1186,7 +1186,7 @@ class dataLoader:
         norm.std = std
         self.logScaler(self.logfile, norm, data=True)
 
-
+    '''
     def getNormPerams(self, cwt_class:"cwt", logScaleData, dataScaler, dataScale_value):
         print(f"\n")
         logger.info(f" -------------- Get the norm/std peramiters | logScaleData: {logScaleData}   ---------------")
@@ -1224,3 +1224,5 @@ class dataLoader:
             self.dataNormConst.type = dataScaler
             with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
             logger.info(f"Saved norm/std peramiters to {fileName}")
+
+    '''
