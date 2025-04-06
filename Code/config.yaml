@@ -101,7 +101,7 @@ cwt:
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
-    wavelet: ["mexh"] #"None" for no CWT
+    wavelet: ["cmor"] #"None" for no CWT
     #wavelet: ["morl", "cmorl"] # f0 = 0.8125, bw = 6.0
     #wavelet: ["cmor", "fstep" ]
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
