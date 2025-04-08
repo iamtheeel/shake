@@ -37,9 +37,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 
-torch.cuda.set_device(args.local_rank)
-
-print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
 
 
 from ConfigParser import ConfigParser
@@ -66,7 +63,10 @@ logger.info(f"machine: {machine}")
 logger.info(f"Importing torch")
 import torch
 device = "cpu"
-if torch.cuda.is_available(): device = "cuda"
+if torch.cuda.is_available(): 
+    device = "cuda"
+    torch.cuda.set_device(args.local_rank)
+    print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
 if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
 logger.info(f"device: {device}")
 

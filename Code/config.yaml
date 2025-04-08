@@ -99,7 +99,6 @@ cwt:
     #wavelet: ["cmor", "fstep" ]
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep 0.5 to 10hz
-    #waveLet_bandwidth: [1]  #
     #waveLet_center_freq:  [0.8125] #morl center freq
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
@@ -134,8 +133,8 @@ trainer:
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
     # Best for Mobilnet Time Not folded
-    learning_rate: [0.0001] #[0.00075] 
-    weight_decay:  [0.001]  #[0.005]
+    learning_rate: [0.00005] #[0.00075] 
+    weight_decay:  [0.002, 0.001, 0.0005]  #[0.005]
     #learning_rate: [0.002] #Trying scheduler
     #weight_decay:  [0.01]
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
