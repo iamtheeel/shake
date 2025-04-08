@@ -290,7 +290,7 @@ for batchSize in configs['trainer']['batchSize']:
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")
-        if wavelet_base == 'mexh':
+        if wavelet_base == 'ricker':
             centerFreqs = [1]
             bandwidths = [1]
         elif wavelet_base == 'fstep': #what is the bw?

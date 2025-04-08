@@ -63,7 +63,7 @@ class cwt:
         self.f0= f0
         self.bw = bw
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
-        if wavelet_base == "mexh" or  wavelet_base=="morl" or wavelet_base == 'None':
+        if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base == 'None':
             self.wavelet_name = wavelet_base
         elif wavelet_base == "fstep": #No arguments, arguments handled seperately
             self.wavelet_name = f"{wavelet_base}-{f0}"
@@ -81,7 +81,10 @@ class cwt:
             self.wavelet = FootStepWavelet(central_frequency=f0)
         else:
             #Center freq and bw are imbedded in the name, or not used
-            self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
+            if self.wavelet_base == 'ricker':
+                self.wavelet = pywt.ContinuousWavelet('mexh') # mexh is probimatic, lets re-name to ricker
+            else:
+                self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         self.level = 8 #Number of iterations, for descrete wavelets
         self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
 
@@ -168,13 +171,13 @@ class cwt:
         # Get the wavelet function values
         complexInput = False
         if np.iscomplexobj(self.wavelet_fun): complexInput = True
-        #if self.wavelet_name == "mexh" : complexInput = False
 
         # Plot the time Domain
         expStr = ""
         titleStr = f"{expStr}{self.wavelet_base}"
+
         if self.f0 != 0 or self.bw !=0:
-            if self.wavelet_base != 'mexh' or self.wavelet_base != 'morl':
+            if self.wavelet_base != 'ricker' or self.wavelet_base != 'morl':
                 if self.wavelet_base == 'fstep':
                     titleStr = f"{titleStr}, f0={self.f0}"
                 else:

@@ -4,7 +4,8 @@ from PIL import Image
 
 # === Load image ===
 dir = "/Volumes/Data/thesis/publish/2_gradShowCase_2025/images"
-img = "IMG_7573.png"
+#img = "IMG_7573.png"
+img = "cmorl10-0.8_preFilt_trial-0_ch.jpg"
 img = Image.open(f"{dir}/{img}").convert("RGB")
 
 # === Resize with correct aspect ===
@@ -31,9 +32,9 @@ def build_facecolors(channel, color_mask):
     return rgb
 
 # === Offsets (X, Y, Z) with overlap ===
-slide_x = -0.4  
-slide_y = 0.2
-slide_z = 0.2
+slide_x = - 1.01
+slide_y = 0.01
+slide_z = 0.01
 
 offSet_x = int(W * slide_x)
 offSet_y = int(H * slide_y)
@@ -52,6 +53,7 @@ for channel, color, z_off, y_off, x_off in zip(
     [b, g, r],            # red now on top
     [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
         z_offsets, y_offsets, x_offsets):
+        #z_offsets, y_offsets, x_offsets):
 
     facecolors = build_facecolors(channel, color)
     Z = np.full_like(channel, z_off)
@@ -77,7 +79,8 @@ ax.set_box_aspect((x_total, y_total, z_total))
 fig.set_size_inches(7, 7)  # or 5, 5 — whatever looks good
 
 # === Final view settings ===
-ax.view_init(elev=105, azim=-95)
+ax.view_init(elev=90, azim=-90)
+#ax.view_init(elev=105, azim=-95)
 ax.axis("off")
 plt.tight_layout()
 plt.show()

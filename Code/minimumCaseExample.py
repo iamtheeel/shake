@@ -12,7 +12,7 @@
 #dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
 #chToPlot = [1, 2, 3, 4]
 #cwtChList = chToPlot #[1, 2, 3]
-dataTimeRange_s = [10, 20] # [0 0] for full dataset
+dataTimeRange_s = [10.75, 15.75] # [0 0] for full dataset
 #dataTimeRange_s = [0, 0] # [0 0] for full dataset
 #dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
 #dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
@@ -40,11 +40,12 @@ pltXRange = dataFreqRange_hz #[10, 45]
 #The wavelet peramiters
 #waveletBase = 'mexh' # Shows low freq well
 #waveletBase = 'morl'
-#waveletBase = 'cmorl'
-waveletBase = 'fstep'
-f0 = 2.14 #10 # For cmorl, and footstep
+waveletBase = 'cmorl'
+#waveletBase = 'fstep'
+#f0 = 2.14 #10 # For footstep
+f0 = 10 # For cmorl
 bw = 0.8 # only cmorl
-numScales = 128 # How many frequencies to look at
+numScales = 256 # How many frequencies to look at
 
 
 # Librarys needed
@@ -334,7 +335,9 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
     
-    plt.savefig(f"images/{save}_trial-{trial}_ch{ch}.jpg")
+    fileName = f"images/{save}_trial-{trial}_ch{ch}.jpg"
+    print(f"Saving file: {fileName}")
+    plt.savefig(fileName)
     plt.close()
 
     #plt.show() # Open the plot
@@ -373,11 +376,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True, save="original")
-    '''
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
-    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName} PreFilter", extraBump=1, save=f"{waveletName}_preFilt", log=logFreq)
-    '''
+    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName} PreFilter", extraBump=6, save=f"{waveletName}_preFilt", log=logFreq)
     
     #Pre Filter the data
     print(f"Apply Filters and norms")
@@ -429,8 +430,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
         plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName} {ch}", extraBump=1, save=waveletName, ch=ch, log=logFreq)
     ''' 
     # Combined plot
+    print(f"Generate and plot the CWT Data")
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
     plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
     
-    #plt.show() # SHow all the plots
+    plt.show() # SHow all the plots
