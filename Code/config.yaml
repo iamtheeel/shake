@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
 plts:
     pltDir: "plots"
     animDir: "../animations" #Link on my MAC
-    generatePlots: False
+    generatePlots: True
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
@@ -42,8 +42,8 @@ data:
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 1 #0 #1 #2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 1 #0 #15 #20 # Limit the number of windows to load: 0 to load all
+    limitRuns: 1 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 2 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     #stompSens: [5, 6]
@@ -94,13 +94,14 @@ cwt:
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
-    wavelet: ["ricker"] #"None" for no CWT
-    #wavelet: ["morl", "cmorl"] # f0 = 0.8125, bw = 6.0
+    #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
+    wavelet: ["fstep"] # f0 = 0.8125, bw = 6.0
+    #wavelet: ["cmorl"] # f0 = 0.8125, bw = 6.0
     #wavelet: ["cmor", "fstep" ]
-    #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
+    waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
     #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_center_freq:  [0.8125] #morl center freq
-    waveLet_center_freq:  [10] # best for cmorl
+    #waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #Bandwidth nopt used for fstep
     #waveLet_bandwidth: [6.0] 

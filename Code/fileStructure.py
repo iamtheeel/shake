@@ -180,11 +180,6 @@ class fileStruct:
         dataFolder = f"{dataFolder}_winLen-{configs['data']['windowLen']}"
         dataFolder = f"{dataFolder}_step-{configs['data']['stepSize']}"
 
-        runLimit = configs['data']['limitRuns']
-        if runLimit > 0: dataFolder = f"{dataFolder}_runLim-{runLimit}"
-        winLimit = configs['data']['limitWindowLen']
-        if winLimit > 0: self.dataFolder = f"{dataFolder}_winCountLim-{winLimit}"
-
         stompThresh = configs['data']['stompThresh'] 
         if isinstance(stompThresh, str):
             dataFolder = f"{dataFolder}_StompThresh-File"

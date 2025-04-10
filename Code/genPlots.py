@@ -376,6 +376,9 @@ def plotRunFFT(data, samRate, subject, timeStart, name):
 
 class saveCWT_Time_FFT_images():
     def __init__(self, data_preparation:"dataLoader", cwt_class:"cwt", expDir):
+        self.axisFontSize = 20
+        self.colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
+
         print(f"\n")
         logger.info(f"----------     Generate Plots  ----------------")
         self.data_preparation = data_preparation
@@ -432,28 +435,30 @@ class saveCWT_Time_FFT_images():
 
     def setupFigure(self):
         # Set plot configureations
-        self.colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
         # Set up the plot axis
         fig, axs = plt.subplots(2, 2, figsize=(16,12)) #w, h figsize in inches?
-        fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.05, left = 0.10, right=0.99) 
 
-        # Adjust subplot sizes - make left plots smaller
-        # Make right plots wider and bottom plots taller
-        gs = fig.add_gridspec(2, 2, width_ratios=[1, 3], height_ratios=[1, 3])
-        #gs = fig.add_gridspec(2, 2, width_ratios=[1, 3], height_ratios=[1, 3])
-        # Set positions for all subplots based on the gridspec
-        for i in range(2):
-            for j in range(2):
-                axs[i,j].set_position(gs[i,j].get_position(fig))
-        
-        axs[0, 0].get_xaxis().set_visible(False)
-        axs[0, 0].get_yaxis().set_visible(False)
+        #Manualy set the spacing for full controll
+        fig, axs = plt.subplots(2, 2,
+                        figsize=(16, 12),
+                        gridspec_kw={
+                            'width_ratios': [1, 3],
+                            'height_ratios': [1, 3],
+                            'wspace': 0.00, # Space between the plots
+                            'hspace': 0.00,
+                            'left': 0.07,
+                            'right': 0.98,
+                            'top': 0.96,
+                            'bottom': 0.05
+                        })
+
 
         return fig, axs
     
     def setUpInfoBox(self, axs, run, timeWindow, subjectLabel):
         # Add text box with run info
+
         normStr = f'norm: {self.data_preparation.dataNormConst.type}'
         if self.data_preparation.dataNormConst.scale != 1:
             normStr = f"{normStr}, {self.data_preparation.dataNormConst.scale}"
@@ -467,7 +472,6 @@ class saveCWT_Time_FFT_images():
                   f'cwt: {self.cwt_class.wavelet_name}\n' \
                   f'{normStr}\n' \
                   f'Solution: {self.regClasStr}'
-        
 
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         axs[0, 0].text(0.05, 0.95, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
@@ -480,18 +484,31 @@ class saveCWT_Time_FFT_images():
         props = dict(boxstyle='round', facecolor='white', alpha=0.5)
         axs[0, 0].text(0.05, 0.50, textstr, transform=axs[0, 0].transAxes, fontsize=10, verticalalignment='top', bbox=props)
         '''
+        axs[0, 0].get_xaxis().set_visible(False) # Hide the info box axis
+        axs[0, 0].get_yaxis().set_visible(False)
 
-    def plotTimeD(self, chData, time, axs, thisColor):
+    def setTimeD_Plot(self, time, axs):
         # Flip x-axis direction
-        axs[0, 1].set_xlim(0, time[-1] + (time[1] - time[0]))
-        axs[0, 1].set_ylim([-0.015, 0.015])
-        axs[0, 1].plot(time, chData, color=thisColor) #Col, row
-        axs[0, 1].set_ylabel(f'Amplitude (accl)', fontsize=8)
-        axs[0, 1].tick_params(axis='x')  # Set the x-axis tick label font size
-        #axs[0, 1].tick_params(axis='x', labelsize=20)  # Set the x-axis tick label font size
+        #axs[0,1].plot(time, chData, color=thisColor) #Col, row
+        axs[0,1].set_xlim(0, time[-1] + (time[1] - time[0]))
+        axs[0,1].set_ylim([-0.015, 0.015])
+
+        # Put the axis label on the info box
+        axs[0,1].set_ylabel(f'Amplitude (accl)', fontsize=self.axisFontSize)
+        axs[0,1].tick_params(axis='y')  # Set the x-axis tick label font size
+        axs[0,1].tick_params(axis='y', labelsize=self.axisFontSize)  # Set the x-axis tick label font size
+        #axs[0,1].tick_params(axis='y', which='both', left=False, right=False, labelleft=False) # Turn OFF ticks and labels
+
+        # Turn on minor ticks so the grid knows where to go
+        axs[0,1].minorticks_on()
+        axs[0,1].tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False) # Turn OFF ticks and labels
+        # Turn ON grid lines
+        axs[0,1].grid(True, which='major', linestyle='-', alpha=0.4)
+        axs[0,1].grid(True, which='minor', linestyle=':', alpha=0.2)
 
 
-    def plotFreqD(self, fftData, freqList, axs, thisColor, asLogScale):
+
+    def setFreqD_Plot(self, axs, asLogScale):
         # Plot the Frequency domain data
         if asLogScale: #Is the mag log scale?
             # Set x-axis to log scale for frequency plot
@@ -506,14 +523,22 @@ class saveCWT_Time_FFT_images():
         top = self.cwt_class.max_freq
         if self.cwt_class.useLogScaleFreq:
             axs[1, 0].set_yscale('log')
-        axs[1, 0].set_ylim(bottom=bottom, top=top)
-        axs[1, 0].plot(fftData, freqList, color=thisColor)
-        axs[1, 0].set_ylabel('Frequency (Hz)')
-        axs[1, 0].set_xlabel('Amplidude (Accleration RMS)')
 
-        # Add minor grid lines
-        axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2)
-        axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4)
+
+        axs[1, 0].set_ylim(bottom=bottom, top=top)
+        axs[1, 0].set_ylabel('Frequency (Hz)', fontsize=self.axisFontSize)
+        axs[1, 0].tick_params(axis='y', labelsize=self.axisFontSize)
+
+        # Hide the 0.0 as it intersects with the time 0
+        ticks = axs[1, 0].get_xticks()
+        filtered_ticks = [t for t in ticks if not np.isclose(t, 0.0)] # Filter out the 0.00 value (or anything close to it)
+        axs[1, 0].set_xticks(filtered_ticks) # Reapply filtered ticks
+
+        axs[1, 0].set_xlabel('Amplidude (Accleration RMS)', fontsize=self.axisFontSize)
+        axs[1, 0].tick_params(axis='x', labelsize=self.axisFontSize)
+
+        axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2) # Add minor grid lines
+        axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4) # Add major gridlines
 
 
     def getCWTData(self, cwtDataSet):
@@ -546,19 +571,25 @@ class saveCWT_Time_FFT_images():
         #indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
         #cwtData = cwtData[:,:, indices]
 
-        axs[1, 1].imshow(cwtData, aspect='auto', origin='lower', 
-                         extent=[min(times), max(times), min(freqs), max(freqs)]) 
+        dt = times[1] - times[0]
+        extent = [min(times), max(times) + dt, min(freqs), max(freqs)]
+        axs[1, 1].imshow(cwtData, aspect='auto', origin='lower', extent=extent)
+                         #extent=[min(times), max(times), min(freqs), max(freqs)]) 
+        
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
         #if configs['cwt']['logScaleFreq']: plt.yscale('log')
         if configs['cwt']['logScaleFreq']: axs[1, 1].set_yscale('log')
         fontSize = 20
+        #axs[1, 1].set_xlim(0, time[-1] + (time[1] - time[0])) # add the end data point.
         axs[1, 1].tick_params(axis='x', labelsize=fontSize)
-        axs[1, 1].tick_params(axis='y', labelsize=fontSize)
         axs[1, 1].set_xlabel('Time (s)', fontsize=fontSize)
-        xlabel_obj = axs[1, 1].set_ylabel('Frequency (Hz)', fontsize=fontSize)
-        xlabel_obj.set_clip_on(False)
+        #ylabel_obj = axs[1, 1].set_ylabel('Frequency (Hz)', fontsize=fontSize)
+        #ylabel_obj.set_clip_on(False)
+        #axs[1, 1].tick_params(axis='y', labelsize=fontSize)
+        axs[1,1].axes.get_yaxis().set_visible(False)
         '''
-        pos = axs[1, 1].get_position()
+        pos = axs[1, 1].get_position():w
+
 
         shrink_factor = 0.95
         shift_factor  = 0.05
@@ -601,17 +632,21 @@ class saveCWT_Time_FFT_images():
             for thisChNum, chData in enumerate(data):
                 thisCh = sensorChList[thisChNum]
                 if thisCh in self.chPlotList:
-
                     thisColor = self.colorList[self.chPlotList.index(thisCh)%len(self.colorList)]
                     #The upper left is information about the data
                     # It has the ch list and legend
-                    axs[0, 0].plot(0, label=f"ch {thisCh}", color=thisColor) #Col, row
+                    axs[0, 0].plot(0, label=f"ch {thisCh}", color=thisColor) #Dummy plot for legend
 
-                    self.plotTimeD(chData=chData, time=time, axs=axs, thisColor=thisColor)
-                    self.plotFreqD(fftData=fftData[thisChNum], freqList=freqList, axs=axs, thisColor=thisColor, asLogScale=logScaleData)
+                    axs[0, 1].plot(time, chData, label=f"ch {thisCh}", color=thisColor) 
+                    axs[1, 0].plot(fftData[thisChNum], freqList, color=thisColor)
             #End Ch Data
-
-            axs[0, 0].legend() #loc="lower center") #Display the ch list on our info window
+            axs[0, 1].legend(frameon=True,
+                             facecolor='white',
+                             edgecolor='black',
+                             framealpha=1,
+                             fancybox=False) #loc="lower center") #Display the ch list on our info window
+            self.setTimeD_Plot(time=time, axs=axs)
+            self.setFreqD_Plot(axs=axs, asLogScale=logScaleData)
 
             # Plot the CWT Data
             #cwtData, cwtFreqList = self.calcCWTData(data)
@@ -629,9 +664,8 @@ class saveCWT_Time_FFT_images():
             new_y = top - new_height  # adjust the bottom edge so the top remains in place
             axs[0, 1].set_position([pos.x0, new_y, pos.width, new_height])
             '''
-
             shrink_factor = 0.97
-            #self.shrinkAndScale(axs[0,1], shrink_factor=shrink_factor) # Time Plot
+            # see above self.shrinkAndScale(axs[0,1], shrink_factor=shrink_factor) # Time Plot
             self.shrinkAndScale(axs[1,1], shrink_factor=shrink_factor) # CWT Plot
             self.shrinkAndScale(axs[1,0], shrink_factor=shrink_factor) # FFT Plot
 

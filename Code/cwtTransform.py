@@ -93,7 +93,6 @@ class cwt:
         logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
-
         self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
 
     def setFreqScale(self, freqLogScale=True):
@@ -169,21 +168,26 @@ class cwt:
 
     def plotWavelet(self, sRate=0, show = False, save = True):
         # Get the wavelet function values
+        tFontSize = 28
         complexInput = False
         if np.iscomplexobj(self.wavelet_fun): complexInput = True
 
         # Plot the time Domain
         expStr = ""
-        titleStr = f"{expStr}{self.wavelet_base}"
+        if self.wavelet_base == "fstep":
+            titleStr = f"Wavelet: {expStr}cust"
+        else:
+            titleStr = f"Wavelet: {expStr}{self.wavelet_base}"
+        print(f"wavelet base: {self.wavelet_base}")
 
-        if self.f0 != 0 or self.bw !=0:
-            if self.wavelet_base != 'ricker' or self.wavelet_base != 'morl':
-                if self.wavelet_base == 'fstep':
-                    titleStr = f"{titleStr}, f0={self.f0}"
-                else:
-                    titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
+        if self.wavelet_base != 'ricker' and self.wavelet_base != 'morl':
+            if self.wavelet_base == 'fstep':
+                titleStr = f"{titleStr}, f0={self.f0}"
+            else:
+                titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
+        print(f"title str: {titleStr}")
         plt.figure(figsize=(10, 8))
-        plt.title(f'{titleStr}')
+        plt.title(f'{titleStr}', fontsize=tFontSize)
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
         if np.iscomplexobj(self.wavelet_fun):
             plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
@@ -221,7 +225,7 @@ class cwt:
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
-        fig.suptitle(f'{titleStr}, Data Sample Rate: {sRate}Hz')
+        fig.suptitle(f'{titleStr}, Data Sample Rate: {sRate}Hz', fontsize=tFontSize)
         axs[0].plot(freqList, fftData[0])
         axs[0].set_yscale('log')
         axs[0].set_ylabel(f"Magnigude (dB)")

@@ -31,18 +31,13 @@ from cwtTransform import cwt
 from utils import checkFor_CreateDir
 
 import argparse
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 
-
-
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
 configs = config.get_config()
-
 
 from fileStructure import fileStruct
 fileStructure = fileStruct()
@@ -195,6 +190,13 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
     else: 
         print(f"{model_name} is not a model that we have")
         exit()
+
+    '''
+    from torchviz import make_dot
+    x = torch.randn(dataShape)
+    y = model(x)
+    make_dot(y, params=dict(model.named_parameters())).render("modelFile", format="png")
+    '''
     return model
 
 
