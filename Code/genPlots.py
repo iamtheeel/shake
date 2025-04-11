@@ -636,15 +636,16 @@ class saveCWT_Time_FFT_images():
                     #The upper left is information about the data
                     # It has the ch list and legend
                     axs[0, 0].plot(0, label=f"ch {thisCh}", color=thisColor) #Dummy plot for legend
-
                     axs[0, 1].plot(time, chData, label=f"ch {thisCh}", color=thisColor) 
                     axs[1, 0].plot(fftData[thisChNum], freqList, color=thisColor)
+                    # CWT is handled as an image
             #End Ch Data
-            axs[0, 1].legend(frameon=True,
+            axs[0, 0].legend(frameon=True,
                              facecolor='white',
                              edgecolor='black',
                              framealpha=1,
-                             fancybox=False) #loc="lower center") #Display the ch list on our info window
+                             fancybox=False,
+                             loc="lower left") #Display the ch list on our info window
             self.setTimeD_Plot(time=time, axs=axs)
             self.setFreqD_Plot(axs=axs, asLogScale=logScaleData)
 
