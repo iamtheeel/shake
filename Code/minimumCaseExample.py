@@ -14,6 +14,7 @@
 #cwtChList = chToPlot #[1, 2, 3]
 dataTimeRange_s = [10.75, 15.75] # [0 0] for full dataset
 #dataTimeRange_s = [0, 0] # [0 0] for full dataset
+
 #dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
 #dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
 
@@ -161,19 +162,19 @@ def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     else:
         return dataBlock[chList_zeroIndexed, dataPoint_from:dataPoint_to]
 
-def generateSpectragram(data:np, chList, dataRate):
+def generateSpectragram(data:np, chList, dataRate, timeRes= 1, overlap=0.5):
     # Compute spectrograms for each channel
     Sxx_list = []
     for i, ch in enumerate(chList):
         #print(f" Data Block[i]: {dataBlock_forCWT[i].shape}")
-        timeRes = 1 #seconds
-        #nperseg = 1024 # nDataPoints in each window: Larger = better freq res, lower time res
-        nperseg = int(timeRes * dataCapRate_hz)
-        noverlap = int(nperseg)*.1 # Overlap processing % overlap
+        # nDataPoints in each window: Larger = better freq res, lower time res
+        nperseg = int(timeRes * dataRate) 
+        noverlap = int(nperseg)*overlap # Overlap processing % overlap
         freqs, times, Sxx = spectrogram(data[i], fs=dataRate, nperseg=nperseg, noverlap=noverlap)
         Sxx_list.append(Sxx)
 
     Sxx_np = np.stack(Sxx_list, axis=0)  # Shape: (n_channels, n_frequencies, n_time)
+    #Sxx_np = np.log10(Sxx_np)
 
     return Sxx_np, freqs
 
@@ -302,8 +303,8 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
 
-    plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
-    plt.close()
+    #plt.savefig(f"images/{save}_{domainToPlot}_trial-{trial}.jpg")
+    #plt.close()
     return xAxis_data # Save for later use
 
 ## 3 Axis Plotters (AKA "Image" Generaters)
@@ -334,13 +335,13 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="
 
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
-    
+
+    '''
     fileName = f"images/{save}_trial-{trial}_ch{ch}.jpg"
     print(f"Saving file: {fileName}")
     plt.savefig(fileName)
     plt.close()
-
-    #plt.show() # Open the plot
+    ''' 
 
 #### Do the stuff
 # Load the data 
@@ -376,9 +377,22 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True, save="original")
+
+    # Generate and plot the CWT
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
-    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName} PreFilter", extraBump=6, save=f"{waveletName}_preFilt", log=logFreq)
+    plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
+
+    ## The spectrogram
+    # TODO: Only for the freq range in quesiton
+    #TODO: Cut the data not display the range
+    # TODO: add arguments for timeRes and overlap
+    spectraGramData, spectraFreqs = generateSpectragram(dataBlock_sliced, cwtChList, dataCapRate_hz, timeRes=1, overlap=0.99)
+    spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
+    plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=10, freqScale=dataFreqRange_hz, log=False)
+
+    plt.show() # Open the plots
+    exit()
     
     #Pre Filter the data
     print(f"Apply Filters and norms")
@@ -410,25 +424,6 @@ for i, trial in enumerate(trialList): # Cycle through the trials
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True,# save="postMod")
                               title=": After TimeD Data Mods", save="postMod")
 
-    ## Generate CTW and spectrogram
-    # We only want 3 ch for visuilizaton
-    # use the same data to prevent confision
-    #dataBlock_forCWT = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=cwtChList, timeRange_sec=dataTimeRange_s)
-
-    ## The spectrogram
-    # TODO: Only for the freq range in quesiton
-    #TODO: Cut the data not display the range
-    # TODO: add arguments for timeRes and overlap
-    #spectraGramData, spectraFreqs = generateSpectragram(dataBlock_sliced, cwtChList, dataCapRate_hz)
-    #spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
-    #plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=20, freqScale=dataFreqRange_hz, log=True)
-    '''
-    # Generate, then plot the CWT
-    if dataFreqRange_hz[0] == 0: dataFreqRange_hz[0] = 0.1 # CWT can't handle fMin = 0
-    for i, ch in enumerate(chToPlot):
-        cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced[i], freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
-        plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName} {ch}", extraBump=1, save=waveletName, ch=ch, log=logFreq)
-    ''' 
     # Combined plot
     print(f"Generate and plot the CWT Data")
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)

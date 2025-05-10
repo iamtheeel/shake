@@ -534,7 +534,7 @@ class saveCWT_Time_FFT_images():
         filtered_ticks = [t for t in ticks if not np.isclose(t, 0.0)] # Filter out the 0.00 value (or anything close to it)
         axs[1, 0].set_xticks(filtered_ticks) # Reapply filtered ticks
 
-        axs[1, 0].set_xlabel('Amplidude (Accleration RMS)', fontsize=self.axisFontSize)
+        axs[1, 0].set_xlabel('Amplitude (Accleration RMS)', fontsize=self.axisFontSize)
         axs[1, 0].tick_params(axis='x', labelsize=self.axisFontSize)
 
         axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2) # Add minor grid lines
