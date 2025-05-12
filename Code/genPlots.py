@@ -399,7 +399,9 @@ class saveCWT_Time_FFT_images():
         #logger.info(f"Saving plots in: {self.animDir}")
 
         self.complexInput = False
-        if np.iscomplexobj(cwt_class.wavelet_fun): self.complexInput = True
+        if cwt_class.wavelet_base != 'spectroGram':
+            if np.iscomplexobj(cwt_class.wavelet_fun): self.complexInput = True
+
         #Renorm the data
         self.normTo_max = configs['cwt']['normTo_max'] 
         self.normTo_min = configs['cwt']['normTo_min'] 
@@ -417,6 +419,7 @@ class saveCWT_Time_FFT_images():
             else:
                 self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
             self.normTo_max = np.abs(self.normTo_max)
+            logger.info(f"max: {self.normTo_max}")
             self.normTo_max = self.normTo_max/fudge
         ### For CWT we plot the magnitude
         # For non complex tranforms this is still the abs
@@ -570,6 +573,7 @@ class saveCWT_Time_FFT_images():
         # We only plot the data from the sensor list4
         #indices = [sensorChList.index(ch) for ch in self.chPlotList if ch in sensorChList]
         #cwtData = cwtData[:,:, indices]
+        #logger.info(f"freqs: {freqs}")
 
         dt = times[1] - times[0]
         extent = [min(times), max(times) + dt, min(freqs), max(freqs)]
@@ -616,7 +620,7 @@ class saveCWT_Time_FFT_images():
         #dataEnd = self.data_preparation.data_raw.shape[0]
         #for dataumNumber in tqdm(range(0, dataEnd), desc="Generating CWT, FFT Plots For Movie", unit="Plot"):
         for thisWindowNum, (data_torch, label_speed, subjectLabel, subject, run, timeWindow) in  \
-                  tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Generateing CWT Data", unit="Window" ):
+                  tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Plotting CWT/Spectragram Data", unit="Window" ):
 
             data = data_torch.numpy()
             #data, run, timeWindow, subjectLabel = self.data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels

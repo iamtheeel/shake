@@ -201,10 +201,9 @@ class fileStruct:
         '''
         '''
         waveletFolder_name = f"{cwtClass.wavelet_name}"
-        if cwtClass.wavelet_name != 'None':
+        if cwtClass.wavelet_name != 'None' and cwtClass.wavelet_name != 'spectroGram':
             waveletFolder_name = f"{waveletFolder_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
-
-        waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
+            waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
 
         if cwtClass.useLogScaleFreq: 
             logScFreq_st = "_logScaleFreq"

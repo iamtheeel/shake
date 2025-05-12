@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
 plts:
@@ -39,11 +39,11 @@ data:
     #test: "Test_4" #Multiple people variyed pace, no labels
 
     classes: ['No Step', '001', '002', '003']
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    chList: [6, 5, 4] # Try for 3 color plot
+    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     #stompSens: [5, 6]
@@ -134,15 +134,15 @@ trainer:
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
     # Best for Mobilnet Time Not folded
-    learning_rate: [0.00005] #[0.00075] 
-    weight_decay:  [0.002, 0.001, 0.0005]  #[0.005]
+    #learning_rate: [0.00005] #[0.00075] 
+    #weight_decay:  [0.002, 0.001, 0.0005]  #[0.005]
     #learning_rate: [0.002] #Trying scheduler
     #weight_decay:  [0.01]
     #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
-    #learning_rate: [0.00001] 
+    learning_rate: [0.0001] 
     #weight_decay:  [0.00001]
     #learning_rate: [0.0001] # Try with optimiser
-    #weight_decay:  [0.0001]
+    weight_decay:  [0.001]
     # Time D folded Mobilnet
     #learning_rate:  [0.00005, 0.000075, 0.0001, 0.00025, 0.0005, 0.00075] # Not converging
     #weight_decay: [0.0005, 0.00075, 0.001, 0.0025, 0.005, 0.0075] # # Not converging

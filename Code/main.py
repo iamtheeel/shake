@@ -231,7 +231,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers)
     #print(model)
-    if cwt_class.wavelet_name != 'None':
+    if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
             # and conv2d is not implemented :(
@@ -301,7 +301,7 @@ for batchSize in configs['trainer']['batchSize']:
         elif wavelet_base == 'morl':
             centerFreqs = [0.8125]
             bandwidths = [6.0]
-        elif wavelet_base == 'None':
+        elif wavelet_base == 'None' or wavelet_base == 'spectroGram':
             centerFreqs = [0] # Dummy to 0... Gotta have something to chew
             bandwidths = [0]
         else:
@@ -315,8 +315,11 @@ for batchSize in configs['trainer']['batchSize']:
                 logScaleFreq = configs['cwt']['logScaleFreq'] #keep as var in case we want to add to exp tracker
                 # Go here even on None just to setup the name
                 #if wavelet_base != 'None': Put back in when we sort norm out
-                cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-                data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
+                #if wavelet_base == 'spectroGram':
+                #    data_preparation.generateSpectraDataByWindow()
+                if wavelet_base != 'None':
+                    cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+                    data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
     
                 for logScaleData in [False]: #Probably not interesting
     

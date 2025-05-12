@@ -166,7 +166,7 @@ def generateSpectragram(data:np, chList, dataRate, timeRes= 1, overlap=0.5):
     # Compute spectrograms for each channel
     Sxx_list = []
     for i, ch in enumerate(chList):
-        #print(f" Data Block[i]: {dataBlock_forCWT[i].shape}")
+        print(f" Data Block[i]: {data[i].shape}")
         # nDataPoints in each window: Larger = better freq res, lower time res
         nperseg = int(timeRes * dataRate) 
         noverlap = int(nperseg)*overlap # Overlap processing % overlap

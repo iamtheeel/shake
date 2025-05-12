@@ -12,6 +12,7 @@ import numpy as np
 import copy
 import os
 from tqdm import tqdm  #progress bar
+from scipy.signal import spectrogram    # For spectrogram
 
 import torch
 import torch.nn.functional as tFun
@@ -1033,28 +1034,60 @@ class dataLoader:
 
 
     def generateCWTDataByWindow(self, cwt_class:"cwt", logScaleData:bool=False):
-            logger.info(f"  -----------------------   Generate CWT Data  -------------------------")
+            logger.info(f"  -----------------------   Generate CWT/Spectrogram Data  -------------------------")
             # plot the cwt data
-            if configs['cwt']['doCWT']:
-                waveletDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir
-                subFolder =waveletDir.waveletDir_name # We set up this dir when we inited the CWT
+            waveletDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir
+            subFolder =waveletDir.waveletDir_name # We set up this dir when we inited the CWT
 
-                # Generate the CWT data
-                cwtFile = f"{waveletDir.waveletDir_name}/{waveletDir.cwtDataSet_Name}"
-                logger.info(f"Checking for: {cwtFile}")
-                filePath = Path(cwtFile)
-                if filePath.exists() == False:
-                    self.generateCWT_calcNormTerms(cwt_class=cwt_class, saveFile=cwtFile)
+            # Generate the CWT data
+            cwtFile = f"{waveletDir.waveletDir_name}/{waveletDir.cwtDataSet_Name}"
+            logger.info(f"Checking for: {cwtFile}")
+            filePath = Path(cwtFile)
+            if filePath.exists() == False:
+                self.generateCWT_calcNormTerms(cwt_class=cwt_class, saveFile=cwtFile)
 
-                self.loadDataSet(dataSetFile=cwtFile, writeLog=True ) 
-                logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
+            self.loadDataSet(dataSetFile=cwtFile, writeLog=True ) 
+            logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
 
-                # Plot the saved images
-                if configs['plts']['generatePlots']:
-                    timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
-                    if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
-                        dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
-                        dataPlotter.generateAndSaveImages(logScaleData)
+            # Plot the saved images
+            if configs['plts']['generatePlots']:
+                timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
+                if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
+                    dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
+                    dataPlotter.generateAndSaveImages(logScaleData)
+
+    def specGramTransform(self, data, debug=False):
+        timeRes = 1
+        overlap = 0.95
+        if debug:
+            logger.info(f"SpectroGram Transform: sRate: {self.dataConfigs.sampleRate_hz}")
+            logger.info(f"Transforming data: {type(data)}")
+            #print(f"data block: {data.shape}")
+            #print(f"N Ch: {data.shape[0]}")
+        Sxx_list = []
+        #for i, ch in enumerate(chList):
+        for i  in range(0, data.shape[0]):
+            #print(f" Data Block[i]: {i} {data[1].shape}")
+            # nDataPoints in each window: Larger = better freq res, lower time res
+            nperseg = int(timeRes * self.dataConfigs.sampleRate_hz) 
+            noverlap = int(nperseg)*overlap # Overlap processing % overlap
+            freqs, times, Sxx = spectrogram(data[i], fs=self.dataConfigs.sampleRate_hz, nperseg=nperseg, noverlap=noverlap)
+            Sxx_list.append(Sxx)
+
+        Sxx_np = np.stack(Sxx_list, axis=0)  # Shape: (n_channels, n_frequencies, n_time)
+
+        # Trim the data to our fMin and fMax
+        fMin = configs['cwt']['fMin']
+        fMax = configs['cwt']['fMax']
+        freq_mask = (freqs >= fMin) & (freqs <= fMax)
+        freqs_trimmed = freqs[freq_mask]
+        Sxx_np_trimmed = Sxx_np[:, freq_mask, :]  # preserves shape: (n_channels, n_selected_freqs, n_time)
+
+        #logger.info(f"freqList: {freqs}")
+        #logger.info(f"freqList trimmed: {freqs_trimmed}")
+        #logger.info(f"Sxx shape: {Sxx_np_trimmed.shape}")
+
+        return Sxx_np_trimmed, freqs_trimmed
 
 
     #TODO: Move to cwt
@@ -1082,12 +1115,15 @@ class dataLoader:
         variance_Imag = 0
         nElements = 0
 
-        #for i, data in tqdm(enumerate(timeData), total=len(timeData), desc="Calculating CWT", unit="Transform"):
         for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
                   tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc="Generating CWT Data", unit="Window" ):
-            #logger.info(f"Transforming data: {i}, {data.shape}")
             data = data_tensor.numpy()
-            thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
+            #logger.info(f"Transforming data: {i}, {data.shape}")
+            if cwt_class.wavelet_name == 'spectroGram':
+                thisCwtData_raw, cwtFrequencies = self.specGramTransform(data, debug=False)
+                cwt_class.frequencies = cwtFrequencies
+            else:
+                thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
             #logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
             self.writeToCWTDataFile(saveFile, thisCwtData_raw, label_speed, label_subject, subject, run, startTime)
 
@@ -1097,7 +1133,6 @@ class dataLoader:
             sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
 
             if np.iscomplexobj(data):
-            #if np.iscomplexobj(cwt_class.wavelet_fun):
                 real = np.real(thisCwtData_raw)
                 imag = np.imag(thisCwtData_raw)
 
@@ -1139,7 +1174,6 @@ class dataLoader:
             cwtTransformTime = time() - timeStart
 
         if np.iscomplexobj(data):
-        #if np.iscomplexobj(cwt_class.wavelet_fun):
             mean = mean_Real + 1j * mean_Imag
             std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
         else:
@@ -1185,44 +1219,3 @@ class dataLoader:
         norm.mean = mean
         norm.std = std
         self.logScaler(self.logfile, norm, data=True)
-
-    '''
-    def getNormPerams(self, cwt_class:"cwt", logScaleData, dataScaler, dataScale_value):
-        print(f"\n")
-        logger.info(f" -------------- Get the norm/std peramiters | logScaleData: {logScaleData}   ---------------")
-        self.dataNormConst.type = dataScaler
-        self.dataNormConst.scale = dataScale_value
-
-        dataNormDir = self.fileStruct.setDataNorm_dir(self.dataNormConst, logScaleData)
-
-        dataNormDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir.dataNormDir
-        fileName = f"{dataNormDir.dataNormDir_name}/{dataNormDir.normPeramsFile_name}"
-        logger.info(f"Looking for: {fileName}")
-        if os.path.isfile(fileName):
-            logger.info(f"Loading norm/std perams from: {fileName}")
-            with open(fileName, 'rb') as f:
-                self.dataNormConst = pickle.load(f)
-            #logger.info(f"Loaded Norm stats from file | min: {self.dataNormConst.min}, max: {self.dataNormConst.max}, mean: {self.dataNormConst.mean}, std: {self.dataNormConst.std} ")
-            logger.info(f"Loaded Norm stats from file: {self.dataNormConst}")
-
-            ###### Fudge
-            #self.dataNormConst.type = "std"
-            #with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
-            ######
-        else: # Calculate the terms
-            #min, max, mean, std
-            logger.info(f"Calculating norm/std perams")
-            if configs['cwt']['doCWT']:
-                configMax = configs['data']['dataMax']
-                print(f"configMax: {configMax}")
-                # Transform the data one at a time to get the norm/std peramiters (e.x. min, max, mean, std)
-                if configMax == 0: #This takes forever, only do it if nessisary
-                    self.calculateCWTDataNormTerms(cwt_class=cwt_class, oneShot=False, saveNormPerams=True ) 
-                else: 
-                    self.dataNormConst.max = configMax
-
-            self.dataNormConst.type = dataScaler
-            with open(fileName, 'wb') as f: pickle.dump(self.dataNormConst, f)
-            logger.info(f"Saved norm/std peramiters to {fileName}")
-
-    '''

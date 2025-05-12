@@ -63,7 +63,7 @@ class cwt:
         self.f0= f0
         self.bw = bw
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
-        if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base == 'None':
+        if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None':
             self.wavelet_name = wavelet_base
         elif wavelet_base == "fstep": #No arguments, arguments handled seperately
             self.wavelet_name = f"{wavelet_base}-{f0}"
@@ -74,8 +74,9 @@ class cwt:
 
 
         self.fileStructure.setCWT_dir(self) 
-        if self.wavelet_name == 'None':return #Now that we have the name, we can skip the rest on None
-
+        if self.wavelet_name == 'None' or self.wavelet_name == 'spectroGram':
+            logger.info(f"wavelet_name: {self.wavelet_name}")
+            return #Now that we have the name, we can skip the rest on None
 
         if self.wavelet_base == 'fstep':
             self.wavelet = FootStepWavelet(central_frequency=f0)
@@ -126,7 +127,7 @@ class cwt:
         # Perform continuous wavelet transform using the defined wavelet
         if debug:
             logger.info(f"cwtTransform: wavelet: {self.wavelet_name}")
-        #logger.info(f"Transforming data: {type(data)}")
+            logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
         if self.wavelet_base == 'fstep':
