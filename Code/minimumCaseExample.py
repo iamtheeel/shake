@@ -12,17 +12,24 @@
 #dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
 #chToPlot = [1, 2, 3, 4]
 #cwtChList = chToPlot #[1, 2, 3]
-dataTimeRange_s = [10.75, 15.75] # [0 0] for full dataset
-#dataTimeRange_s = [0, 0] # [0 0] for full dataset
+#dataTimeRange_s = [10.75, 15.75] # [0 0] for full dataset
+dataTimeRange_s = [0, 0] # [0 0] for full dataset
 
 #dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
 #dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
 
 #dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
-dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
+#dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
+#dataFile = "/home/josh/winShare/joshTest_1652.hdf5"
+dataFile = "/home/josh/winShare/joshTest_1652_2.hdf5"
+#dataFile = "/home/josh/winShare/joshTest_413.hdf5"
+#dataFile = "/home/josh/winShare/joshTest_413_413.hdf5"
+#dataFile = "/home/josh/winShare/joshTest_413_1652.hdf5"
+
 # What data are we interested in
 #dataTimeRange_s = [15, 55] # [0 0] for full dataset
-dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
+dataFreqRange_hz = [1, 0] # If the second argument is 0, use the nyquist
+#dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
 #dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
 logFreq = False
 # What data are we interested in
@@ -55,7 +62,7 @@ import matplotlib.pyplot as plt         # For plotting the data: pip install mat
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
 from scipy.signal import spectrogram    # For spectrogram
 import pywt                             # The CWT              : pip install pywavelets
-
+#scikit-learn
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum footstep wavelet, in foot_step_wavelet.py
 
 ### 
@@ -100,8 +107,8 @@ def loadData(dataFile, trial=-1):
 
     #Extract the data capture rate from the file
     # Data cap rate is the first entery (number 0)
-    #dataCapRate_hz =filePerams[0]['value']  # Some files needs decode, others can't have it
-    dataCapRate_hz =int(filePerams[0]['value'].decode('utf-8'))  # Some files needs decode, others can't have it
+    dataCapRate_hz =filePerams[0]['value']  # Some files needs decode, others can't have it
+    #dataCapRate_hz =int(filePerams[0]['value'].decode('utf-8'))  # Some files needs decode, others can't have it
 
     dataCapUnits = filePerams[0]['units'].decode('utf-8')
     if trial <=0:
@@ -378,6 +385,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True, save="original")
 
+    #plt.show() # Open the plots
+    #exit()
+
     # Generate and plot the CWT
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
@@ -391,8 +401,6 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     spectraGramData = np.transpose(spectraGramData, (1, 2, 0)) #Needs to be [h, w, ch] for plot
     plot_3D(spectraGramData, freqs=spectraFreqs, title="Spectragram", extraBump=10, freqScale=dataFreqRange_hz, log=False)
 
-    plt.show() # Open the plots
-    exit()
     
     #Pre Filter the data
     print(f"Apply Filters and norms")
