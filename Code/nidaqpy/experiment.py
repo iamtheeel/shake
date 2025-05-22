@@ -832,8 +832,6 @@ class Experiment():
             elif not self.voltage_check_module and not out_sensors: #no voltage tests and no output channel
                 plt.figure(3)
                 for sensor, counter in zip(self.sensors,range(len(self.sensors)-self.__ncam__)): #TODO: same, stop looking into cameras
-                    print(f"t: {len(t)}")
-                    print(f"record: {len(record[:,counter])}")
                     plt.plot(t,record[:,counter], label = '%s'%sensor['serial'])
         
                 plt.xlabel('Time (s)')
