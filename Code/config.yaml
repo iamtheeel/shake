@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
 
 plts:
@@ -38,8 +38,11 @@ data:
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
 
+    downSample: 4 # Downsample by n-times
+
     classes: ['No Step', '001', '002', '003']
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    chList: [8, 7, 6, 5, 1] # for testing
     #chList: [6, 5, 4] # Try for 3 color plot
 
     limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
