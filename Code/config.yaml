@@ -4,30 +4,31 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
 
 plts:
     pltDir: "plots"
     animDir: "../animations" #Link on my MAC
-    generatePlots: True
+    generatePlots: False
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
-    rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList
+    rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList (Must be in chList)
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
     #saveOverlay: False
     #saveInline: False
     
     #yLim: [1, 3]
-    yLim_freqD: [0, 0.2]
+    yLim_freqD: [0.00001, 0.01]
     #min: -0.04518992181415571, max: 0.042370559493933264
     yLim_timeD: [-0.02, 0.02]
     #yLim: 0 #Find the limit
 
-    fulLenFreqYLim:  10
-    windowedFreqYLim:  1 #0.5
+    #fulLenFreqYLim:  10
+    #windowedFreqYLim:  .01 #0.5
+    #freqYLim:  .01 #0.5
 
 data:
     trainRatio: .8 # 80% train, 20% of the data for validation
@@ -41,19 +42,17 @@ data:
     downSample: 4 # Downsample by n-times
 
     classes: ['No Step', '001', '002', '003']
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    chList: [8, 7, 6, 5, 1] # for testing
+    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 4] # Try for 3 color plot
 
     limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
-    #stompSens: [5, 6]
     stompSens: [5, 6, 7]
     ## Use stomp from file
     stompThresh: "stompTimes.csv" #1.5 #If 0, then no stomp detection
-
     dataThresh: 2 # If 0, then no, non-walking detection
 
     windowLen: 5 #2 #sec
@@ -94,12 +93,13 @@ cwt:
     saveCWT: True
 
     logScaleFreq: False
+    logScale: False
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
     #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
-    wavelet: ["spectroGram"] 
-    #wavelet: ["cmorl"] 
+    #wavelet: ["spectroGram"] 
+    wavelet: ["cmorl"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
@@ -117,7 +117,6 @@ cwt:
     normTo_min: 0 #1.81
     #normTo_max: 8.708692765932984 #Max for log scale
     #normTo_max: 8.92159461776423 #Max for log scale
-    logScale: False
 
 trainer:
     # 16 too big on Mac, or at least with firefox running (note: retry after dataloader fix)
@@ -182,7 +181,7 @@ model:
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #
-    timeDImgHeight: 64 #240
+    timeDImgHeight: 64 #240 Only on LeNet Folded
     dropOut: [0] #0.5 Not implemented on leNet
 
     multilayerPerceptron:

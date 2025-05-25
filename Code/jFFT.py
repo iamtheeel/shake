@@ -53,7 +53,8 @@ class jFFT_cl:
         return self.riToMF(fftDataBlock_ri)
 
     def riToMF(self, realImagData):
-        data_mag = numpy.abs(realImagData)
+        import numpy as np
+        data_mag = numpy.abs(realImagData) /np.sqrt(realImagData.size) #Parseval's theorem
         data_pha = numpy.angle(realImagData)
         data_mf = numpy.stack((data_mag, data_pha))
 

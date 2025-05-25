@@ -513,12 +513,13 @@ class saveCWT_Time_FFT_images():
 
     def setFreqD_Plot(self, axs, asLogScale):
         # Plot the Frequency domain data
+        yLim = configs['plts']['yLim_freqD']
         if asLogScale: #Is the mag log scale?
             # Set x-axis to log scale for frequency plot
             axs[1, 0].set_xscale('log')
-            axs[1, 0].set_xlim([0.01, 1])
+            axs[1, 0].set_xlim(yLim)
         else:
-            axs[1, 0].set_xlim([0, 1.0])
+            axs[1, 0].set_xlim([0, yLim[1]])
         axs[1, 0].invert_xaxis()
 
         # Set minimum frequency to 10 Hz
@@ -538,7 +539,7 @@ class saveCWT_Time_FFT_images():
         axs[1, 0].set_xticks(filtered_ticks) # Reapply filtered ticks
 
         axs[1, 0].set_xlabel('Amplitude (Accleration RMS)', fontsize=self.axisFontSize)
-        axs[1, 0].tick_params(axis='x', labelsize=self.axisFontSize)
+        #axs[1, 0].tick_params(axis='x', labelsize=self.axisFontSize)
 
         axs[1, 0].grid(True, which='minor', linestyle=':', alpha=0.2) # Add minor grid lines
         axs[1, 0].grid(True, which='major', linestyle='-', alpha=0.4) # Add major gridlines

@@ -45,7 +45,7 @@ class expTrackFiles_class:
 
         #Files
         #modelInfo_file:str = ""  # <modelName>_modelInfo.txt
-        expTrackLog_file:str ="" #run-<num>_log.csv
+        expTrackSum_fileName:str ="" #run-<num>_summary.csv
         # trining loss figure
         # Validation results figure
         # Validateion results sumary
@@ -59,7 +59,6 @@ class dataDirFiles_class:
 
     #Time Domain Data Dir (<Regresion or Classification>_<list of channesl>_<Run Count limit>_<Stomp Thresh>_<Data thresh>):
     class saveDataDir_class:
-        chListDir_name:str = ""
         #The dir name
         #saveDataFolder_name:str = ""
         saveDataDir_name:str = ""
@@ -140,8 +139,8 @@ class fileStruct:
         self.expTrackFiles.expTrack_sumary_file = f"{dateTime_str}_DataTrack_Sumary.csv"
 
         # The individual experiments
-        self.expTrackFiles.expNumDir.expTrackSum_file = f"{dateTime_str}_DataTrack_Log.csv"
-        self.expTrackFiles.expNumDir.expTrackLog_file = f"{dateTime_str}_DataTrack_Sumary.csv"
+        self.expTrackFiles.expNumDir.expTrackLog_fileName = f"{dateTime_str}_DataTrack_Log.csv"
+        self.expTrackFiles.expNumDir.expTrackSum_fileName = f"{dateTime_str}_DataTrack_Sumary.csv"
 
         self.makeDir(self.expTrackFiles.expTrackDir_name)
         logger.info(f"Experiment Track Dir: {self.expTrackFiles.expTrackDir_name}")
@@ -158,15 +157,15 @@ class fileStruct:
         #Set up a string for saving the dataset so we can see if we have already loaded this set
 
         chList_str = "_".join(map(str, configs['data']['chList']))
-        #TODO: add more info:
-        # windows limit, runs limit
+        downSample_Str = ""
+        downSample = configs['data']['downSample']
+        if downSample > 1:
+            downSample_Str = f"_DownSample-{downSample}x"
 
-        dataFolder = f"chList-{chList_str}"
+        dataFolder = f"chList-{chList_str}{downSample_Str}"
 
         self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.dataOutDir_name}/{dataFolder}"
         #self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
-        self.makeDir(self.dataDirFiles.saveDataDir.chListDir_name)
-        logger.info(f"Ch list folder: {self.dataDirFiles.saveDataDir.chListDir_name}")
 
     
     def setWindowedData_dir(self):

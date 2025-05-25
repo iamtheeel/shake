@@ -111,6 +111,7 @@ class dataLoader:
         torch.manual_seed(self.seed)
         # Load up the dataset info
         self.inputData = config['data']['inputData']# Where the data is
+        self.downSample = config['data']['downSample']# Where the data is
         self.test = config['data']['test']         # e.x. "Test_2"
         self.batchSize = config['trainer']['batchSize']
 
@@ -210,7 +211,7 @@ class dataLoader:
             #print(f"speeds: {speed}")
 
             if configs['plts']['generatePlots']:
-                yLim = configs['plts']['fulLenFreqYLim']
+                yLim = configs['plts']['yLim_freqD']
                 self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
 
             # Window the data
@@ -424,10 +425,10 @@ class dataLoader:
             fMin = configs['cwt']['fMin']
             fMax = configs['cwt']['fMax']
             self.dataPlotter.plotTime(dataRow, fileN, f"Time {title}" )
-            #self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[0, fMax], xInLog=False, yInLog=True, yLim=[0.001, freqYLim],show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[fMin, fMax], xInLog=True, yInLog=True, yLim=[0.001, freqYLim],show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
-            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yInLog=True, yLim = [0.001, freqYLim], show=False) #, subjectNumber, 0, "ByRun")
+            #self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[0, fMax], xInLog=False, yInLog=True, yLim=freqYLim,show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[fMin, fMax], xInLog=True, yInLog=True, yLim=freqYLim,show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=False, yInLog=True, yLim = freqYLim, show=False) #, subjectNumber, 0, "ByRun")
+            self.dataPlotter.plotFreq(freqDImageDir, dataRow, fileN, f"Freq {title}", xlim=[10, self.dataConfigs.sampleRate_hz/2],  xInLog=True, yInLog=True, yLim = freqYLim, show=False) #, subjectNumber, 0, "ByRun")
 
     def loadDataSet(self, dataSetFile=None,writeLog=True, batchSize = None):
         if batchSize != None: self.batchSize = batchSize
@@ -477,7 +478,7 @@ class dataLoader:
     
 
     def windowData(self, data:np.ndarray, subject, speed):
-        logger.info(f"Window length: {self.windowLen}, step: {self.stepSize}, data len: {data.shape}")
+        logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
         # Strip the head/tails
 
         dataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
@@ -634,19 +635,42 @@ class dataLoader:
                 except NameError: accelerometer_data = thisChData
 
             #logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
+            if self.downSample > 1:
+                accelerometer_data = self.downSampleData(accelerometer_data)
 
             # Get just the sensors we want
             if self.dataConfigs.sampleRate_hz == 0: 
                 # get the peramiters if needed
                 # ex: Sample Freq
                 self.getDataInfo(file) # get the sample rate from the file
+                if self.downSample > 1: # keep all the downsample calcs in one place
+                    self.dataConfigs.sampleRate_hz /= self.downSample
+                    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
                 #logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
-                self.windowLen = self.windowLen_s * self.dataConfigs.sampleRate_hz
-                self.stepSize  = self.stepSize_s  * self.dataConfigs.sampleRate_hz
+                self.dataConfigs.dataLen_pts = accelerometer_data.shape[2]
+                self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
+                self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
                 #logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
 
         return accelerometer_data 
+
+    def downSampleData(self, data):
+        from scipy.signal import decimate
+
+        #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
+        #logger.info(f"Before downsample shape: {np.shape(data)} ")
+        nTrials, nCh, timePoints = data.shape
+        downSampled_data = np.empty((nTrials, nCh, timePoints // self.downSample))  
+        for trial in range(nTrials):
+            for ch in range(nCh):
+                downSampled_data[trial, ch] = decimate(data[trial, ch], 
+                                                       self.downSample, 
+                                                       ftype='iir', 
+                                                       zero_phase=True)
+
+        logger.info(f"After downsample shape: {np.shape(downSampled_data)} ")
+        return downSampled_data
 
     def getSubjectLabel(self, subjectNumber, vals):
         #Vals is currently the RMS ratio of the data to the baseline
@@ -737,12 +761,11 @@ class dataLoader:
         logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
         dataBlockSize = file['experiment/data'].shape 
-        self.dataConfigs.dataLen_pts = dataBlockSize[2]
         #logger.info(f"File Size: {dataBlockSize}")
-        #nSensors = 19 # There are 20 acceleromiters
+        #self.dataConfigs.dataLen_pts = dataBlockSize[2] # do in getSubjecteData after downsample
         self.dataConfigs.nSensors = dataBlockSize[1]
         self.dataConfigs.nTrials = dataBlockSize[0]
-        #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}, dataPoints: {self.dataLen_pts} ")
+        #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}")
 
 
     # If you don't send the normClass, it will calculate based on the data
@@ -971,7 +994,9 @@ class dataLoader:
         for ch, chData in enumerate(data):
             windowedData = fftClass.appWindow(chData, window="Hanning")
             freqData = fftClass.calcFFT(windowedData) #Mag, phase
-            fftData[ch] = freqData[0]
+            fftData[ch] = freqData[0] # nomed to parseval in jFFT
+            #fftData[ch] = freqData[0] / np.sqrt(len(freqData[0])) # Parsevals's theorem
+            #fftData[ch] = freqData[0] * self.downSample # Correct for downsampleing
 
         return freqList, fftData
 
@@ -979,7 +1004,7 @@ class dataLoader:
         # Plot the windowed data
         generatePlots = self.configs['plts']['generatePlots']
         if generatePlots:
-            yLim = configs['plts']['windowedFreqYLim']
+            yLim = configs['plts']['yLim_freqD']
             self.plotTime_FreqData(data=self.data_raw, freqYLim=yLim, folder="plots_byWindow")
 
     def writeToCWTDataFile(self, filename, data, label_speed, label_subject, subject, run, startTime):

@@ -79,46 +79,68 @@ def saveSumary(model, dataShape):
         sys.stdout = sys.__stdout__
 
 # Write a log
-def writeLogHdr(dataConfigs):
-    logfile = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
-    with open(logfile, 'w', newline='') as csvFile:
+def writeDataTrackSum_hdr(dataConfigs):
+    dataTrackSum_fileName = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
+    # Write from config.yaml
+    with open(dataTrackSum_fileName, 'w', newline='') as csvFile:
+        writer.writerow([f'--------- from config.yaml ----------'])
+        writer.writerow([f'', '--------- data '])
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['Test', configs['data']['test']])
         writer.writerow(['Data Path', configs['data']['inputData']])
         writer.writerow(['Ch List', dataConfigs.chList])
+        writer.writerow(['Classes', configs['data']['classes']])
+
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
-        writer.writerow(['batchSize', configs['trainer']['batchSize']])
 
-        writer.writerow(['Do CWT', configs['cwt']['doCWT']])
-        writer.writerow(['wavelets', configs['cwt']['wavelet']])
-        writer.writerow(['centerFreqs', configs['cwt']['waveLet_center_freq']])
-        writer.writerow(['bandwidths', configs['cwt']['waveLet_bandwidth']])
+        writer.writerow(['stompThresh', configs['data']['stompThresh'], "If not file, use:", configs['data']['stompSens']])
+        writer.writerow(['dataThresh', configs['data']['dataThresh']])
 
-        writer.writerow(['dataScalers', configs['data']['dataScalers']])
-        writer.writerow(['labelScalers', configs['data']['labelScalers']])
-        writer.writerow(['dataScale_values', configs['data']['dataScale_values']])
-        writer.writerow(['labelScale_values', configs['data']['labelScale_values']])
+        writer.writerow(['dataScalers', configs['data']['dataScalers'], configs['data']['dataScale_values']])
+        writer.writerow(['labelScalers', configs['data']['labelScalers'], configs['data']['labelScale_values']])
+
+        writer.writerow(['limitRuns', configs['data']['limitRuns']])
+        writer.writerow(['limitWindowLen', configs['data']['limitWindowLen']])
+
+        writer.writerow(['Down Sample Factor', configs['data']['downSample']])
     
+
+        writer.writerow([f'', '--------- CWT '])
+        writer.writerow(['Do CWT', configs['cwt']['doCWT']])
+        writer.writerow(['log scale freq', configs['cwt']['logScaleFreq']])
+        writer.writerow(['log scale data', configs['cwt']['logScale']])
+        writer.writerow(['Num Scales', configs['cwt']['numScales']])
+        writer.writerow(['Freq range', configs['cwt']['fMin'], configs['cwt']['fMax']])
+
+        writer.writerow(['wavelets/center freq/Bandwidth', configs['cwt']['wavelet'], configs['cwt']['waveLet_center_freq'], configs['cwt']['waveLet_bandwidth']])
+        writer.writerow(['Norm to min/max', configs['cwt']['normTo_min'], configs['cwt']['normTo_max'] ])
+
+
+        writer.writerow([f'', '--------- trainer '])
+        writer.writerow(['batchSize', configs['trainer']['batchSize']])
         writer.writerow(['Regression loss', configs['trainer']['loss_regresh']])
         writer.writerow(['Clasification loss', configs['trainer']['loss_class']])
         writer.writerow(['optimizer', configs['trainer']['optimizer']])
         writer.writerow(['learning_rate', configs['trainer']['learning_rate']])
         writer.writerow(['weight_decay', configs['trainer']['weight_decay']])
+        writer.writerow(['Learning rate sch: T_0/T-mult/eta_min', configs['trainer']['LR_sch'], configs['trainer']['T_0'], configs['trainer']['T-mult'], configs['trainer']['eta_min']])
         writer.writerow(['gradiant_noise', configs['trainer']['gradiant_noise']])
         writer.writerow(['epochs', configs['trainer']['epochs']])
         writer.writerow(['seed', configs['trainer']['seed']])
 
+        writer.writerow([f'', '--------- model '])
         writer.writerow(['model', configs['model']['name']])
         writer.writerow(['dropout Layers', configs['model']['dropOut']])
 
-        writer.writerow(['---------'])
+        writer.writerow(['--------- end configs -----------'])
+    #The rest of the file is written in dataLoader
 
-def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+def writeExpSum_hdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
                       lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
-    logfile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackLog_file}'
+    expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackSum_fileName}'
 
-    with open(logfile, 'a', newline='') as csvFile:
+    with open(expTrackSum_fileName, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['wavelet', cwt_class.wavelet_base])
         writer.writerow(['wavelet_center_freq', cwt_class.f0])
@@ -134,7 +156,7 @@ def writeDataTrackHdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelS
         writer.writerow(['weight_decay', weight_decay])
         writer.writerow(['gradiant_noise', gradiant_noise])
         writer.writerow(['---------'])
-    return logfile 
+    #return logfile 
 
 torch.manual_seed(configs['trainer']['seed'])
 torch.backends.cudnn.deterministic = True
@@ -148,14 +170,14 @@ Data Preparation
 """
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, fileStructure, device)
-writeLogHdr(data_preparation.dataConfigs)
+writeDataTrackSum_hdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
     data_preparation.get_data()
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
-expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
+expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrackLog_fileName}'
 expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
@@ -210,7 +232,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
-    writeDataTrackHdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+    writeExpSum_hdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
                       lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise)
 
 

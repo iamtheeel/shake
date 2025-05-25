@@ -69,7 +69,7 @@ class Trainer:
             self.accStr = f"accuracy (%)"
 
         self.logDir = fileStru.expTrackFiles.expNumDir.expTrackDir_Name
-        self.logfile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackLog_file}"
+        self.logfile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackSum_fileName}"
 
         torch.manual_seed(configs['trainer']['seed'])
         torch.backends.cudnn.deterministic = True
