@@ -180,9 +180,9 @@ class Trainer:
                 #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
-                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, writeToLog=False, norm=self.dataPrep.labNormConst, debug=False)
                     #logger.info(f"Labels shape {labelsSpeed.shape}")
                 else:
                     labels = labelsSubject # we want ([batch size,])
@@ -371,9 +371,9 @@ class Trainer:
                 #if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, log=False, norm=self.dataPrep.dataNormConst, debug=False)
+                data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
-                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, log=False, norm=self.dataPrep.labNormConst, debug=False)
+                    labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, writeToLog=False, norm=self.dataPrep.labNormConst, debug=False)
                     #logger.info(f"labels shape: {labels.shape}")
                 else:
                     labels = tFun.one_hot(labelsSubject, num_classes=len(self.classes))

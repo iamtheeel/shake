@@ -83,9 +83,10 @@ def writeDataTrackSum_hdr(dataConfigs):
     dataTrackSum_fileName = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
     # Write from config.yaml
     with open(dataTrackSum_fileName, 'w', newline='') as csvFile:
+        writer = csv.writer(csvFile, dialect='unix')
         writer.writerow([f'--------- from config.yaml ----------'])
         writer.writerow([f'', '--------- data '])
-        writer = csv.writer(csvFile, dialect='unix')
+
         writer.writerow(['Test', configs['data']['test']])
         writer.writerow(['Data Path', configs['data']['inputData']])
         writer.writerow(['Ch List', dataConfigs.chList])
@@ -177,7 +178,7 @@ if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name
 
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
-expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrackLog_fileName}'
+expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
                  'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']

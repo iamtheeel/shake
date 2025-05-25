@@ -44,20 +44,21 @@ class normClass:
 
 class dataConfigs:
     sampleRate_hz: Optional[int] = None
+    origSRate_hz: Optional[int] = None
     units: Optional[str] = None
     dataLen_pts: Optional[int] = None
+    origDataLen_pts: Optional[int] = None
     nSensors: Optional[int] = None
     nTrials: Optional[int] = None
     chList: Optional[list] = None
 
 class HDF5Dataset(Dataset):
-    def __init__(self, file_path ):
+    def __init__(self, file_path):
         self.file_path = file_path
         self.h5_file = None  # Will be opened in `__getitem__`
         self._init_file()
 
         # Open file to get dataset size
-        #with h5py.File(self.file_path, "r", swmr=True) as f:
         f = self.h5_file
         self.length = len(f["data"])  # Number of samples
         self.shape = f["data"].shape
@@ -157,6 +158,7 @@ class dataLoader:
         self.labels = None
 
         self.timeDDataSet = None
+        self.CWTDataSet = None
         self.dataLoader_t = None
         self.dataLoader_v = None
 
@@ -184,9 +186,13 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
-        fieldnames = ['subject', 'data file', 'label file', 'dataRate', 'nSensors', 'nTrials', 'dataPoints', 'chList']
+        dataLoadFieldNames = ['subject', 'data file', 'label file', 'Original Data Rate (Hz)', 'Original dataPoints', 'DS Data Rate (Hz)', 'DS dataPoints', 'nSensors in data', 'nTrials in data']
         with open(self.logfile, 'a', newline='') as csvFile:
-            writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
+            writer = csv.writer(csvFile, dialect='unix')
+            writer.writerow(['--------- Data Loader -----------'])
+            writer.writerow(['--------- Data Files -----------'])
+        with open(self.logfile, 'a', newline='') as csvFile:
+            writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
             writer.writeheader()
 
         data_list = []
@@ -233,15 +239,19 @@ class dataLoader:
             #logger.info(f"Up to: {subjectName}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
 
             with open(self.logfile, 'a', newline='') as csvFile:
-                writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
+                writer = csv.writer(csvFile, dialect='unix')
+                writer.writerow([f'', '--------- Load Data From Files '])
+            with open(self.logfile, 'a', newline='') as csvFile:
+                writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
                 writer.writerow({'subject': subjectName,
                                 'data file': data_file_hdf5, 
                                 'label file': label_file_csv, 
-                                'dataRate': self.dataConfigs.sampleRate_hz, 
-                                'nSensors': subDataShape[1], 
-                                'nTrials': subDataShape[0], 
-                                'dataPoints': subDataShape[2],
-                                'chList': self.dataConfigs.chList
+                                'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
+                                'Original dataPoints': self.dataConfigs.origDataLen_pts,
+                                'DS Data Rate (Hz)': self.dataConfigs.sampleRate_hz, 
+                                'DS dataPoints': subDataShape[2],
+                                'nSensors in data': subDataShape[1], 
+                                'nTrials in data': subDataShape[0]
                                 })
 
         ## Convert our lists to numpys
@@ -270,8 +280,10 @@ class dataLoader:
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
         logger.info(f"Label min: {lab_min}, max: {lab_max}, mean: {lab_mean}, std: {lab_std}")
 
-        self.setNormConst(self.dataNormConst, data_min, data_max, data_mean, data_std)
-        self.setNormConst(self.labNormConst, lab_min, lab_max, lab_mean, lab_std)
+        self.setNormConst(isData=True, norm=self.dataNormConst, dataSetFile="Original Time Domain Data", 
+                          min=data_min, max=data_max, mean=data_mean, std=data_std)
+        self.setNormConst(isData=False, norm=self.labNormConst, dataSetFile="Original Time Domain Data", 
+                          min=lab_min, max=lab_max, mean=lab_mean, std=lab_std)
         timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
         timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
@@ -304,8 +316,10 @@ class dataLoader:
             label_ds.attrs["mean"] = self.labNormConst.mean
             label_ds.attrs["std"] = self.labNormConst.std
 
+            h5dataFile.attrs["orig_sample_rate"] = self.dataConfigs.origSRate_hz
             h5dataFile.attrs["sample_rate"] = self.dataConfigs.sampleRate_hz
             h5dataFile.attrs["units"] = self.dataConfigs.units
+            h5dataFile.attrs["orig_dataLen_pts"] = self.dataConfigs.origDataLen_pts
             h5dataFile.attrs["dataLen_pts"] = self.dataConfigs.dataLen_pts
             h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
             h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
@@ -442,7 +456,7 @@ class dataLoader:
 
         logger.info(f"Loading dataset file: {dataSetFile}")
         dataSet = HDF5Dataset(dataSetFile) # Keep the full dataset in order so we can transform off of it
-        self.getPeramsFromHDF5Dataset(dataSet=dataSet)
+        self.getPeramsFromHDF5Dataset(dataSet=dataSet )
         if timeD:
             self.timeDDataSet = dataSet # Keep the full dataset in order so we can transform off of it
         else:
@@ -757,19 +771,20 @@ class dataLoader:
         general_parameters = file['experiment/general_parameters'][:]
         #logger.info(f"Data File parameters: {general_parameters}")
         self.dataConfigs.sampleRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
+        self.dataConfigs.origSRate_hz = self.dataConfigs.sampleRate_hz
         self.dataConfigs.units = general_parameters[0]['units'].decode('utf-8')
         logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
         dataBlockSize = file['experiment/data'].shape 
         #logger.info(f"File Size: {dataBlockSize}")
-        #self.dataConfigs.dataLen_pts = dataBlockSize[2] # do in getSubjecteData after downsample
+        self.dataConfigs.origDataLen_pts = dataBlockSize[2] # do in getSubjecteData after downsample
         self.dataConfigs.nSensors = dataBlockSize[1]
         self.dataConfigs.nTrials = dataBlockSize[0]
         #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}")
 
 
     # If you don't send the normClass, it will calculate based on the data
-    def scale_data(self, data, log=False, norm:normClass=None, scaler=None, scale=None, debug=False):
+    def scale_data(self, data, writeToLog=False, norm:normClass=None, scaler=None, scale=None, debug=False):
         if isinstance(data, torch.Tensor): #convert to numpy
             data = data.numpy()
             isTensor = True
@@ -784,11 +799,11 @@ class dataLoader:
         if scaler==None: scaler= norm.type
 
         if np.iscomplexobj(data):
-            if scaler == "std": dataScaled, norm = self.std_complexData(data, log, norm, debug)
-            else:               dataScaled, norm = self.norm_complexData(data, log, norm)
+            if scaler == "std": dataScaled, norm = self.std_complexData(data, writeToLog, norm, debug)
+            else:               dataScaled, norm = self.norm_complexData(data, writeToLog, norm)
         else:
-            if scaler == "std": dataScaled, norm = self.std_data(data, log, norm, debug)
-            else:               dataScaled, norm = self.norm_data(data, log, norm, scale, debug)
+            if scaler == "std": dataScaled, norm = self.std_data(data, writeToLog, norm, debug)
+            else:               dataScaled, norm = self.norm_data(data, writeToLog, norm, scale, debug)
 
         if debug: 
             logger.info(f"After scaling: min: {np.min(dataScaled)}, max: {np.max(dataScaled)}, {norm}")
@@ -840,7 +855,7 @@ class dataLoader:
 
         return data
 
-    def std_complexData(self, data, log, norm:normClass, debug):
+    def std_complexData(self, data, writeToLog, norm:normClass, debug):
         if debug:
             logger.info(f"std_complexData: {norm}")
         real = np.real(data)
@@ -854,14 +869,14 @@ class dataLoader:
 
         normData = stdised_real + 1j * stdised_imag
 
-        if log:
-            self.logScaler(self.logfile, self.dataNormConst, complex=True)
+        if writeToLog:
+            self.writeScalerToLog(self.logfile, self.dataNormConst, complex=True)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         if debug:
             logger.info(f"std_complexData done: {norm}")
         return normData, norm
 
-    def std_data(self, data, log, norm:normClass, debug):
+    def std_data(self, data, writeToLog, norm:normClass, debug):
         # Normalize the data
         # float: from 0 to 1
         # 0.5 = center
@@ -876,12 +891,12 @@ class dataLoader:
             #logger.info(f"Orig: \n{data[0:8]}")
             #logger.info(f"Norm: \n{normData[0:8]}")
 
-        if log:
-            self.logScaler(self.logfile, norm)
+        if writeToLog:
+            self.writeScalerToLog(self.logfile, norm)
         #logger.info(f"newmin: {np.min(np.abs(normData))},  newmax: {np.max(np.abs(normData))}")
         return normData, norm
 
-    def norm_complexData(self, data, log, norm:normClass):
+    def norm_complexData(self, data, writeToLog, norm:normClass):
         #L2 norm is frobenious_norm, saved as mean
 
         if norm == None:
@@ -889,12 +904,12 @@ class dataLoader:
 
         normData = data/norm.mean
 
-        if log:
-            self.logScaler(self.logfile, norm)
+        if writeToLog:
+            self.writeScalerToLog(self.logfile, norm)
         #logger.info(f"l2 norm: {self.dataNormConst.mean}, newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
-    def norm_data(self, data, log, norm:normClass, scale, debug):
+    def norm_data(self, data, writeToLog, norm:normClass, scale, debug):
         #https://en.wikipedia.org/wiki/Feature_scaling
         if norm == None:
             norm = normClass(type="norm", min=np.min(data), max=np.max(data), mean=np.mean(data), scale=scale)
@@ -918,8 +933,8 @@ class dataLoader:
         if debug:
             logger.info(f"After rescale: {normData}")
 
-        if log:
-            self.logScaler(self.logfile, norm)
+        if writeToLog:
+            self.writeScalerToLog(self.logfile, norm)
         #logger.info(f"newmin: {np.min(normData)},  newmax: {np.max(normData)}")
         return normData, norm
 
@@ -948,22 +963,24 @@ class dataLoader:
         logger.info(f"Dataset train: {trainDataSize}, val: {valDataSize}")
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow(['--------- Time D Data Shape------------------'])
-            writer.writerow(['TimeD Shape', 'train batch size', 'val batch size', 'train count', 'val count', 'classes'])
-            writer.writerow([self.timeDDataSet.shape, self.dataLoader_t.batch_size, self.dataLoader_v.batch_size, trainDataSize, valDataSize, self.classes] )
+            writer.writerow(['--------- Data Shape------------------'])
+            writer.writerow(['TimeD Data Shape: windows/Ch/Time Points', 'train batch size', 'val batch size', 'train count', 'val count'])
+            writer.writerow([self.timeDDataSet.shape, self.dataLoader_t.batch_size, self.dataLoader_v.batch_size, trainDataSize, valDataSize ] )
+            if self.CWTDataSet is not None:
+                writer.writerow(['Transformed Data Shape windows/Ch/Freqs/TimePoints'])
+                writer.writerow([self.CWTDataSet.shape])
             writer.writerow(['---------------------------------------------'])
 
 
-    def logScaler(self, logFile, scaler:normClass, data=True, complex=False):
+    def writeScalerToLog(self, logFile, scaler:normClass, data=True, complex=False, whoAmI=""):
         logger.info(f"Writing data scaler to: {logFile}")
         with open(logFile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             dataOrLabel = "Data"
             if data == False: dataOrLabel = "Label"
-            writer.writerow([f'--------- {dataOrLabel}, {scaler.type}, complex: {complex} -------'])
+            writer.writerow([f'--------- Loaded:{whoAmI} {dataOrLabel}, {scaler.type}, complex: {complex} -------'])
             writer.writerow(['min', 'max', 'mean', 'std', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.std, scaler.scale])
-            writer.writerow(['---------'])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, std: {scaler.std}, scale: {scaler.scale}")
     
     def getThisWindowData(self, dataumNumber, ch=0 ):
@@ -1220,27 +1237,31 @@ class dataLoader:
         if testCorrectness:
             logger.info(f"cwtData: {type(cwtData_raw)}, {cwtData_raw.shape}, cwtFrequencies: {type(cwtFrequencies)}, {cwtFrequencies.shape}, time: {cwtTransformTime:.2f}s")
 
-    def getPeramsFromHDF5Dataset(self, dataSet:HDF5Dataset, debug  = False):
-        configs = dataSet.getConfig()
-        self.dataConfigs.sampleRate_hz = configs["sample_rate"]
-        self.dataConfigs.units = configs["units"]
-        self.dataConfigs.dataLen_pts = configs["dataLen_pts"]
-        self.dataConfigs.nSensors = configs["nSensors"]
-        self.dataConfigs.nTrials = configs["nTrials"]
-        self.dataConfigs.chList = configs["chList"]
+    def getPeramsFromHDF5Dataset(self, dataSet:HDF5Dataset, dataSetFile=False, debug=False):
+        HDF5Configs = dataSet.getConfig()
+        self.dataConfigs.origSRate_hz = HDF5Configs["orig_sample_rate"]
+        self.dataConfigs.sampleRate_hz = HDF5Configs["sample_rate"]
+        self.dataConfigs.units = HDF5Configs["units"]
+        self.dataConfigs.origDataLen_pts = HDF5Configs["orig_dataLen_pts"]
+        self.dataConfigs.dataLen_pts = HDF5Configs["dataLen_pts"]
+        self.dataConfigs.nSensors = HDF5Configs["nSensors"]
+        self.dataConfigs.nTrials = HDF5Configs["nTrials"]
+        self.dataConfigs.chList = HDF5Configs["chList"]
         logger.info(f"Loaded Peraimiters: srate: {self.dataConfigs.sampleRate_hz}")
 
         #TODO: Log the min, max, mean, std
-        self.setNormConst(self.dataNormConst, dataSet.data_min, dataSet.data_max, dataSet.data_mean, dataSet.data_std)
-        self.setNormConst(self.labNormConst, dataSet.lab_min, dataSet.lab_max, dataSet.lab_mean, dataSet.lab_std)
+        self.setNormConst(isData=True, norm=self.dataNormConst, dataSetFile=dataSetFile,
+                          min=dataSet.data_min, max=dataSet.data_max, mean=dataSet.data_mean, std=dataSet.data_std)
+        self.setNormConst(isData=False, norm=self.dataNormConst,  dataSetFile=dataSetFile,
+                          min=dataSet.lab_min, max=dataSet.lab_max, mean=dataSet.lab_mean, std=dataSet.lab_std)
 
         if debug:
             logger.info(f"Data: {self.dataNormConst}")
             logger.info(f"Labels: {self.labNormConst}")
 
-    def setNormConst(self, norm:normClass, min, max, mean, std):
+    def setNormConst(self, isData, norm:normClass, dataSetFile, min, max, mean, std):
         norm.min = min
         norm.max = max
         norm.mean = mean
         norm.std = std
-        self.logScaler(self.logfile, norm, data=True)
+        self.writeScalerToLog(self.logfile, norm, data=isData, whoAmI=dataSetFile)
