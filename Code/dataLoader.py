@@ -216,7 +216,7 @@ class dataLoader:
             speed =  self.getSpeedLabels(label_file_csv)
             #print(f"speeds: {speed}")
 
-            if configs['plts']['generatePlots']:
+            if configs['debugs']['generateTimeFreqPlots']:
                 yLim = configs['plts']['yLim_freqD']
                 self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
 
@@ -303,6 +303,9 @@ class dataLoader:
             h5dataFile.create_dataset("sTimes", data=sTimes_np)
 
     def saveHDF5MetaData(self, hd5File):
+        logger.info(f"Saveing MetaData to File: {hd5File}")
+        logger.info(f"data stats: {self.dataNormConst}")
+        logger.info(f"label stats: {self.labNormConst}")
         with h5py.File(hd5File, "a") as h5dataFile:
             data_ds = h5dataFile["data"]
             label_ds = h5dataFile["labelsSpeed"]
@@ -456,7 +459,7 @@ class dataLoader:
 
         logger.info(f"Loading dataset file: {dataSetFile}")
         dataSet = HDF5Dataset(dataSetFile) # Keep the full dataset in order so we can transform off of it
-        self.getPeramsFromHDF5Dataset(dataSet=dataSet )
+        self.getPeramsFromHDF5Dataset(dataSet=dataSet, debug=True)
         if timeD:
             self.timeDDataSet = dataSet # Keep the full dataset in order so we can transform off of it
         else:
@@ -884,6 +887,7 @@ class dataLoader:
             norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
 
         # scale the data
+        print(f"norm mean: {norm.mean}, std: {norm.std}")
         normData = (data - norm.mean)/norm.std # standardise
 
         if debug:
@@ -978,7 +982,7 @@ class dataLoader:
             writer = csv.writer(csvFile, dialect='unix')
             dataOrLabel = "Data"
             if data == False: dataOrLabel = "Label"
-            writer.writerow([f'--------- Loaded:{whoAmI} {dataOrLabel}, {scaler.type}, complex: {complex} -------'])
+            writer.writerow([f'--------- Loaded:{whoAmI} {dataOrLabel}, Scaler Type:{scaler.type}, complex: {complex} -------'])
             writer.writerow(['min', 'max', 'mean', 'std', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.std, scaler.scale])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, std: {scaler.std}, scale: {scaler.scale}")
@@ -1019,8 +1023,7 @@ class dataLoader:
 
     def plotDataByWindow(self, cwt_class:"cwt", logScaleData:bool=False):
         # Plot the windowed data
-        generatePlots = self.configs['plts']['generatePlots']
-        if generatePlots:
+        if self.configs['debugs']['generateTimeFreqWindowPlots']:
             yLim = configs['plts']['yLim_freqD']
             self.plotTime_FreqData(data=self.data_raw, freqYLim=yLim, folder="plots_byWindow")
 
@@ -1092,7 +1095,7 @@ class dataLoader:
             logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
 
             # Plot the saved images
-            if configs['plts']['generatePlots']:
+            if configs['debugs']['generateCWTPlots']:
                 timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
                     dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
@@ -1158,7 +1161,7 @@ class dataLoader:
         nElements = 0
 
         for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
-                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc="Generating CWT Data", unit="Window" ):
+                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc=f"Generating {cwt_class.wavelet_name} Data", unit="Window" ):
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
             if cwt_class.wavelet_name == 'spectroGram':
@@ -1167,6 +1170,7 @@ class dataLoader:
             else:
                 thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
             #logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
+            #logger.info(f"CWT max: {np.max(thisCwtData_raw)}")
             self.writeToCWTDataFile(saveFile, thisCwtData_raw, label_speed, label_subject, subject, run, startTime)
 
             nElements += thisCwtData_raw.size
@@ -1227,8 +1231,7 @@ class dataLoader:
         self.saveHDF5MetaData(saveFile)
 
         #self.dataNormConst.mean = sum/(i+1)
-        logger.info(f"Norm stats: {self.dataNormConst}")
-        logger.info(f"std dev | {self.dataNormConst.std}")
+        logger.info(f"GenerateCWT, Norm stats : {self.dataNormConst}")
         if testCorrectness:
             logger.info(f"           | min: {np.min(cwtData_raw)}, max: {np.max(cwtData_raw)}, mean: {np.mean(cwtData_raw)}")
             logger.info(f"        | {np.std(np.real(cwtData_raw))}, + {np.std(np.imag(cwtData_raw))}i")
@@ -1252,7 +1255,7 @@ class dataLoader:
         #TODO: Log the min, max, mean, std
         self.setNormConst(isData=True, norm=self.dataNormConst, dataSetFile=dataSetFile,
                           min=dataSet.data_min, max=dataSet.data_max, mean=dataSet.data_mean, std=dataSet.data_std)
-        self.setNormConst(isData=False, norm=self.dataNormConst,  dataSetFile=dataSetFile,
+        self.setNormConst(isData=False, norm=self.labNormConst,  dataSetFile=dataSetFile,
                           min=dataSet.lab_min, max=dataSet.lab_max, mean=dataSet.lab_mean, std=dataSet.lab_std)
 
         if debug:

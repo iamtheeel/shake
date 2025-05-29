@@ -419,8 +419,10 @@ class saveCWT_Time_FFT_images():
             else:
                 self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
             self.normTo_max = np.abs(self.normTo_max)
-            logger.info(f"max: {self.normTo_max}")
+            logger.info(f"Norm Stats data: {data_preparation.dataNormConst}")
+            logger.info(f"Norm Stats lables: {data_preparation.labNormConst}")
             self.normTo_max = self.normTo_max/fudge
+            logger.info(f"norm to max: {self.normTo_max}")
         ### For CWT we plot the magnitude
         # For non complex tranforms this is still the abs
         # As there is a negitive component.
@@ -685,7 +687,8 @@ class saveCWT_Time_FFT_images():
                 plt.show()
             else:
                 plt.savefig(filePath, dpi=250, bbox_inches=None)
-            plt.close(fig)
+            #plt.close(fig)
+            plt.close
 
             #procTime.endTime(echo=True, echoStr=f"Finished with dataNum: {dataumNumber}")
 
