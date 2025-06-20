@@ -653,16 +653,16 @@ class dataLoader:
 
             #logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
             if self.downSample > 1:
-                accelerometer_data = self.downSampleData(accelerometer_data)
+                accelerometer_data,  = self.downSampleData(accelerometer_data)
 
             # Get just the sensors we want
             if self.dataConfigs.sampleRate_hz == 0: 
                 # get the peramiters if needed
                 # ex: Sample Freq
                 self.getDataInfo(file) # get the sample rate from the file
-                if self.downSample > 1: # keep all the downsample calcs in one place
-                    self.dataConfigs.sampleRate_hz /= self.downSample
-                    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
+                #if self.downSample > 1: # keep all the downsample calcs in one place
+                #    self.dataConfigs.sampleRate_hz /= self.downSample
+                #    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
                 #logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
                 self.dataConfigs.dataLen_pts = accelerometer_data.shape[2]
@@ -686,8 +686,10 @@ class dataLoader:
                                                        ftype='iir', 
                                                        zero_phase=True)
 
+        self.dataConfigs.sampleRate_hz /= self.downSample
         logger.info(f"After downsample shape: {np.shape(downSampled_data)} ")
-        return downSampled_data
+        logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
+        return downSampled_data, self.dataConfigs.sampleRate_hz / self.downSample
 
     def getSubjectLabel(self, subjectNumber, vals):
         #Vals is currently the RMS ratio of the data to the baseline

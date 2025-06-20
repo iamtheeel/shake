@@ -228,6 +228,23 @@ def loadData(dataFile, trial=-1):
     return dataFromFile, dataCapRate_hz
     """
 
+def downSampleData(self, data, downSample):
+        from scipy.signal import decimate
+
+        #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
+        #logger.info(f"Before downsample shape: {np.shape(data)} ")
+        nTrials, nCh, timePoints = data.shape
+        downSampled_data = np.empty((nTrials, nCh, timePoints // downSample))  
+        for trial in range(nTrials):
+            for ch in range(nCh):
+                downSampled_data[trial, ch] = decimate(data[trial, ch], 
+                                                       downSample, 
+                                                       ftype='iir', 
+                                                       zero_phase=True)
+
+        return downSampled_data, dataCapRate_hz/downSample
+
+
 ## Data slicers
 def sliceTheData(dataBlock:np, chList, timeRange_sec, trial=-1):
     """
@@ -460,6 +477,8 @@ for i, trial in enumerate(trialList): # Cycle through the trials
         print(f"Trigger Time: {triggerTime.strftime("%Y-%m-%d %H:%M:%S.%f")}")
 
     # Get the parts of the data we are interested in:
+    #downSampledData, dataCapRate_hz = downSampleData(dataBlock_numpy, 4) #4x downsample... may need fudging, have not tryed in minCaseEx
+
     print(f"Data len pre-cut: {dataBlock_numpy.shape}")
     dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=-1, chList=chToPlot, timeRange_sec=dataTimeRange_s) # -1 if the data is already with the trial
     #dataBlock_sliced = sliceTheData(dataBlock=dataBlock_numpy, trial=trial, chList=chToPlot, timeRange_sec=dataTimeRange_s)
