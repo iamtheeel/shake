@@ -66,10 +66,11 @@ class runStats():
         if value < self.min: self.min = value
         if value > self.max: self.max = value
 
-        delta = value - self.mean                   # The diff from the current mean
-        self.mean += delta/self.nElements           # the running mean
-        self.M2 += (value - self.mean) * delta   # the running variance (before recalulating the mean)
+        delta = value - self.mean               # The diff from the current mean
+        self.mean += delta/self.nElements       # the running mean
+        self.M2 += (value - self.mean) * delta  # the running variance (the delta is before updating the mean)
 
     def finish(self):
         import math
-        self.std = math.sqrt(self.M2/(self.nElements-1))
+        if self.nElements > 1: #Watch the div/0
+            self.std = math.sqrt(self.M2/(self.nElements-1)) # n-1 for sample std

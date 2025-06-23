@@ -1165,7 +1165,7 @@ class dataLoader:
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
             if cwt_class.wavelet_name == 'spectroGram':
-                thisCwtData_raw, cwtFrequencies = self.specGramTransform(data, timeRes=1.0, overlap=0.9, debug=False)
+                thisCwtData_raw, cwtFrequencies = self.specGramTransform(data, timeRes=0.5, overlap=0.9, debug=False)
                 cwt_class.frequencies = cwtFrequencies
             else:
                 thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
@@ -1195,14 +1195,14 @@ class dataLoader:
                 mean_Imag += delta_imag / (i+1)
 
                 # Running variance
-                variance_Real += np.sum((real - mean_Real) *delta_real)
-                variance_Imag += np.sum((imag - mean_Imag) *delta_imag)
+                variance_Real += np.sum((real - mean_Real) *delta_real) #delta is before updating mean
+                variance_Imag += np.sum((imag - mean_Imag) *delta_imag) #delta is before updating mean
 
             else:
                 this_mean = np.mean(thisCwtData_raw)
                 delta = this_mean - mean
                 mean += delta/(i+1)
-                variance += np.sum((thisCwtData_raw - mean) *delta)
+                variance += np.sum((thisCwtData_raw - mean) *delta) #delta is before updating mean
 
             if min < self.dataNormConst.min: self.dataNormConst.min = min
             if max > self.dataNormConst.max: self.dataNormConst.max = max

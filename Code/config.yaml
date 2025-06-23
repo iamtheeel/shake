@@ -112,8 +112,8 @@ cwt:
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
     #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
-    #wavelet: ["spectroGram"] 
-    wavelet: ["cmorl"] 
+    wavelet: ["spectroGram"] 
+    #wavelet: ["cmorl"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
