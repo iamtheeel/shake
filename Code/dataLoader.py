@@ -889,7 +889,7 @@ class dataLoader:
             norm = normClass(type="std", mean=np.mean(data), std=np.std(data))
 
         # scale the data
-        print(f"norm mean: {norm.mean}, std: {norm.std}")
+        #logger.info(f"norm mean: {norm.mean}, std: {norm.std}")
         normData = (data - norm.mean)/norm.std # standardise
 
         if debug:
@@ -1103,9 +1103,7 @@ class dataLoader:
                     dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
                     dataPlotter.generateAndSaveImages(logScaleData)
 
-    def specGramTransform(self, data, debug=False):
-        timeRes = 1
-        overlap = 0.95
+    def specGramTransform(self, data, timeRes = 1.0, overlap = 0.95, debug=False):
         if debug:
             logger.info(f"SpectroGram Transform: sRate: {self.dataConfigs.sampleRate_hz}")
             logger.info(f"Transforming data: {type(data)}")
@@ -1153,7 +1151,7 @@ class dataLoader:
 
         cwtData_raw = None
         cwtFrequencies = None
-        sum = 0
+        #sum = 0
         mean = 0
         variance = 0
         mean_Real = 0
@@ -1167,7 +1165,7 @@ class dataLoader:
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
             if cwt_class.wavelet_name == 'spectroGram':
-                thisCwtData_raw, cwtFrequencies = self.specGramTransform(data, debug=False)
+                thisCwtData_raw, cwtFrequencies = self.specGramTransform(data, timeRes=1.0, overlap=0.9, debug=False)
                 cwt_class.frequencies = cwtFrequencies
             else:
                 thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
@@ -1178,7 +1176,7 @@ class dataLoader:
             nElements += thisCwtData_raw.size
             min = np.min(thisCwtData_raw)
             max = np.max(thisCwtData_raw)
-            sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
+            #sum += np.sum(thisCwtData_raw)/thisCwtData_raw.size
 
             if np.iscomplexobj(data):
                 real = np.real(thisCwtData_raw)
@@ -1197,14 +1195,14 @@ class dataLoader:
                 mean_Imag += delta_imag / (i+1)
 
                 # Running variance
-                variance_Real += np.sum((real - mean_Real) **2)
-                variance_Imag += np.sum((imag - mean_Imag) **2)
+                variance_Real += np.sum((real - mean_Real) *delta_real)
+                variance_Imag += np.sum((imag - mean_Imag) *delta_imag)
 
             else:
                 this_mean = np.mean(thisCwtData_raw)
                 delta = this_mean - mean
                 mean += delta/(i+1)
-                variance += np.sum((thisCwtData_raw - mean) **2)
+                variance += np.sum((thisCwtData_raw - mean) *delta)
 
             if min < self.dataNormConst.min: self.dataNormConst.min = min
             if max > self.dataNormConst.max: self.dataNormConst.max = max
@@ -1223,10 +1221,10 @@ class dataLoader:
 
         if np.iscomplexobj(data):
             mean = mean_Real + 1j * mean_Imag
-            std  = np.sqrt(variance_Real/nElements) + 1j * np.sqrt(variance_Imag/nElements) 
+            std  = np.sqrt(variance_Real/(nElements-1)) + 1j * np.sqrt(variance_Imag/(nElements-1)) 
         else:
             #print("NOT COMPLEX")
-            std = np.sqrt(variance/nElements)
+            std = np.sqrt(variance/(nElements-1))
         self.dataNormConst.mean = mean
         self.dataNormConst.std = std
 

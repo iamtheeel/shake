@@ -137,26 +137,32 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow(['--------- end configs -----------'])
     #The rest of the file is written in dataLoader
 
-def writeExpSum_hdr(cwt_class:cwt, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
-                      lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
+def writeExpSum(cwt_class:cwt, 
+                logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+                modelName, dropoutLayers, batchSize, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
     expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackSum_fileName}'
 
     with open(expTrackSum_fileName, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
+        writer.writerow(['---- wavelet peramiters -----'])
         writer.writerow(['wavelet', cwt_class.wavelet_base])
         writer.writerow(['wavelet_center_freq', cwt_class.f0])
         writer.writerow(['wavelet_bandwidth', cwt_class.bw])
+        writer.writerow(['---- data peramiters -----'])
         writer.writerow(['logScaleData', logScaleData])
         writer.writerow(['dataScaler', dataScaler])
         writer.writerow(['dataScale', dataScale])
         writer.writerow(['labelScaler', labelScaler])
         writer.writerow(['labelScale', labelScale])
+        writer.writerow(['---- training peramiters -----'])
+        writer.writerow(['modelName', modelName])
+        writer.writerow(['dropoutLayers', dropoutLayers])
+        writer.writerow(['batchSize', batchSize])
         writer.writerow(['loss', lossFunction])
         writer.writerow(['optimizer', optimizer])
         writer.writerow(['learning_rate', learning_rate])
         writer.writerow(['weight_decay', weight_decay])
         writer.writerow(['gradiant_noise', gradiant_noise])
-        writer.writerow(['---------'])
     #return logfile 
 
 torch.manual_seed(configs['trainer']['seed'])
@@ -179,12 +185,16 @@ if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
-expFieldnames = ['Test', 'BatchSize', 'Epochs', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
+lastStats_n = configs['trainer']['nEpochsStats']
+expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'f0', 'bw', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
-                 'Train Loss', f'Train {accStr}', 'Val Loss', f'Val {accStr}', f'Class Acc {accStr}', 'Time(s)']
+                 'Train Loss', f'Train {accStr}', 'Val Loss', 
+                 f'Val {accStr}', f'Last {lastStats_n} epochs min',
+                 f'Last {lastStats_n} epochs max', f'Last {lastStats_n} epochs mean', f'Last {lastStats_n} epochs std',
+                 f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
     print(f"Writing hdr: {expTrackFile}")
-    writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
+    writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
 def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
@@ -226,6 +236,7 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
     
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+           #wavelet, f0, bw, #sgTimeRes, sgOverlap,
            lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise,
            batchSize, model_name, dropOut_layers):
 
@@ -233,8 +244,9 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
-    writeExpSum_hdr(cwt_class, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
-                      lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise)
+    writeExpSum(cwt_class, 
+                logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
+                model_name, dropOut_layers, batchSize, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise)
 
 
     # TODO: Set to save the transformed data
@@ -267,7 +279,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
-    trainLoss, trainAcc = trainer.train(batchSize)
+    trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
     valLoss, valAcc, classAcc = trainer.validation(epochs)
     
 
@@ -275,10 +287,11 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     # Log the results
     with open(expTrackFile, 'a', newline='') as csvFile:
         print(f"Writing data: {expTrackFile}")
-        writer = csv.DictWriter(csvFile, fieldnames=expFieldnames, dialect='unix')
+        writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
         writer.writerow({'Test': expNum,
                          'BatchSize': batchSize,
                          'Epochs': epochs,
+                         'wavelet': cwt_class.wavelet_name,
                          'Data Scaler': data_preparation.dataNormConst.type, 
                          'Data Scale': data_preparation.dataNormConst.scale, 
                          'Label Scaler': labelScaler, 
@@ -294,6 +307,10 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                          f'Train {accStr}': trainAcc, 
                          'Val Loss': valLoss, 
                          f'Val {accStr}': valAcc,
+                         f'Last {lastStats_n} epochs min': valAccStats.min,
+                         f'Last {lastStats_n} epochs max': valAccStats.max,
+                         f'Last {lastStats_n} epochs mean': valAccStats.mean,
+                         f'Last {lastStats_n} epochs std': valAccStats.std,
                          f'Class Acc {accStr}': classAcc,
                          'Time(s)': exp_runTime
         })
@@ -370,6 +387,8 @@ for batchSize in configs['trainer']['batchSize']:
                                                     for gradiant_noise in configs['trainer']['gradiant_noise']:
                                                         for model_name in configs['model']['name']:
                                                             for dropOut_layers in configs['model']['dropOut']:
+                                                                sgTimeRes = 1.0
+                                                                sgOverlap = 0.95
         
                                                                 logger.info(f"==============================")
                                                                 logger.info(f"Wavelet: {wavelet_base}, Center Frequency: {center_freq}, Bandwidth: {bandwidth}, logData: {logScaleData}")
@@ -380,6 +399,7 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 if configs['debugs']['runModel']:
                                                                     runExp(expNum=expNum, logScaleData=logScaleData,
                                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
+                                                                           #wavelet=wavelet_base, f0=center_freq, bw=bandwidth, #sgTimeRes=sgTimeRes, sgOverlap=sgOverlap,
                                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
                                                                            batchSize = batchSize, model_name=model_name, dropOut_layers = dropOut_layers)
                                                                 expNum += 1

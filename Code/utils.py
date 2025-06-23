@@ -49,3 +49,27 @@ def checkFor_CreateDir(thisDir, echo=True):
         logger.info(f"Creating: {thisDir}")
         dir_path.mkdir(parents=True, exist_ok=True)  # Creates directory if missing
         return False
+    
+
+class runStats():
+    def __init__(self):
+        self.mean = 0
+        self.M2 = 0 # Sum of the squares of the differences from the mean
+        self.nElements = 0
+        self.min = float('inf')
+        self.max = float('-inf')
+        self.std = 0
+
+    def addElement(self, value):
+        self.nElements += 1
+
+        if value < self.min: self.min = value
+        if value > self.max: self.max = value
+
+        delta = value - self.mean                   # The diff from the current mean
+        self.mean += delta/self.nElements           # the running mean
+        self.M2 += (value - self.mean) * delta   # the running variance (before recalulating the mean)
+
+    def finish(self):
+        import math
+        self.std = math.sqrt(self.M2/(self.nElements-1))

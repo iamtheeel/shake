@@ -18,6 +18,7 @@ from torch import nn
 import torch.nn.functional as tFun
 import torch.optim as optim
 import time
+from utils import runStats
 
 
 #from dataLoader import dataSetWithSubjects
@@ -69,7 +70,9 @@ class Trainer:
             self.accStr = f"accuracy (%)"
 
         self.logDir = fileStru.expTrackFiles.expNumDir.expTrackDir_Name
-        self.logfile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackSum_fileName}"
+        self.sumaryFile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackSum_fileName}"
+        self.trainLog = f"{self.logDir}/trainResults_byBatch.csv"
+        self.validLog = f"{self.logDir}/valiResults_byEpoch.csv"
 
         torch.manual_seed(configs['trainer']['seed'])
         torch.backends.cudnn.deterministic = True
@@ -91,9 +94,9 @@ class Trainer:
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
         #Writh the headder for the validation acc by epoch file
-        with open(f"{self.logDir}/valiResults_byEpoch.csv", 'a', newline='') as csvFile:
+        with open(self.validLog, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow(["Epoch Num", "Loss", self.accStr])
+            writer.writerow(["Epoch Num", "Loss", self.accStr, "Acc by Class"])
 
     def set_training_config(self):
         #print(f"Selected Optimizer = {self.optimizerName}")
@@ -156,11 +159,12 @@ class Trainer:
         valAccArr = []
         train_predsArr =[] # for confusion matrix
 
+        valAccStats = runStats()
+
         print(f"Model device: {next(self.model.parameters()).device}")
 
         fieldnames = ['epoch', 'lr', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
-
-        with open(self.logfile, 'a', newline='') as csvFile:
+        with open(self.trainLog, 'a', newline='') as csvFile:
             writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
             writer.writeheader()
 
@@ -245,7 +249,7 @@ class Trainer:
                 if not self.regression:
                     thisAcc = 100*correct_batch/self.batchSize
 
-                with open(self.logfile, 'a', newline='') as csvFile:
+                with open(self.trainLog, 'a', newline='') as csvFile:
                     writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
                     writer.writerow({'epoch'            : epoch,
                                      'batch'            : batchNumber,
@@ -263,13 +267,16 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
-            valEveryNEpochs = self.configs['trainer']['validEveryNEpocchs']
+            valEveryNEpochs = self.configs['trainer']['validEveryNEpochs']
             if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau": valEveryNEpochs = 1
-            if epoch%valEveryNEpochs ==0 and epoch >= self.configs['trainer']['epochValiStart']:
+            if epoch%valEveryNEpochs == 0 and epoch >= self.configs['trainer']['epochValiStart']:
                 valLoss, valAcc, classAcc = self.validation(epochNum=epoch) # val acc and loss is printed here
                 self.model.train() # Put the model back in train
                 valLossArr.append(valLoss)
                 valAccArr.append(valAcc)
+                if self.epochs - epoch -1 < self.configs['trainer']['nEpochsStats']: # Starting from epoch 0
+                    valAccStats.addElement(valAcc)
+                    print(f"add to stats epoch: {epoch}, acc: {valAcc}")
                 #print(f" - {epoch} valAccArr: {valAccArr}")
 
             if self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
@@ -293,9 +300,9 @@ class Trainer:
                 f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
                 #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
                 f"Time: {epoch_runTime:.1f}s")
-        
 
-            with open(self.logfile, 'a', newline='') as csvFile:
+            # Log the per/epoch results 
+            with open(self.trainLog, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=fieldnames, dialect='unix')
                 writer.writerow({'epoch'    : epoch,
                                  'lr'       : self.optimizer.param_groups[0]['lr'],
@@ -304,13 +311,15 @@ class Trainer:
                                  'time(s)'  : epoch_runTime
                                  })
                 
-        # End Epoch
+        # End Epochs
+        valAccStats.finish()
+        print(f"Last {self.configs['trainer']['nEpochsStats']} epochs| min: {valAccStats.min}, max: {valAccStats.max}, mean: {valAccStats.mean}, std: {valAccStats.std}")
 
         self.plotLossAcc(lossArr=lossArr, accArr=accArr)
         self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
         #print(f"valAccArr: {valAccArr}")
 
-        return train_loss_epoch, train_acc_epoch
+        return train_loss_epoch, train_acc_epoch, valAccStats
 
     def plotLossAcc(self, lossArr, accArr, validation=False):
         #print(f"Loss shape: {len(lossArr)}")
@@ -319,7 +328,7 @@ class Trainer:
         fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
         if validation: 
             trainOrVal_str = "Validation"
-            plotPerCount = self.configs['trainer']['validEveryNEpocchs']
+            plotPerCount = self.configs['trainer']['validEveryNEpochs']
         else:          
             trainOrVal_str = "Training"
             plotPerCount = 1
@@ -445,17 +454,6 @@ class Trainer:
 
             print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.4}")
 
-            with open(self.logfile, 'a', newline='') as csvFile:
-                writer = csv.writer(csvFile, dialect='unix')
-                writer.writerow([f"------- Validation -------- epochNum: {epochNum}", "Loss:", finalValLoss, self.accStr, test_acc])
-                #writer.writerow(["Loss", self.accStr])
-                #writer.writerow([finalValLoss, test_acc])
-                if self.regression:
-                    writer.writerow(["Class Acc: "])
-                    for i in range(len(self.classes)):
-                        writer.writerow([self.classes[i], classAcc[i]])
-
-
         if self.regression:
             if(self.configs['debugs']['writeValData']): self.logRegression(y_preds, y_targs, epochNum=epochNum)
             self.plotRegRes(y_preds, y_targs, valAcc= test_acc, epochNum=epochNum)
@@ -463,7 +461,8 @@ class Trainer:
             if(self.configs['debugs']['writeValData']): self.logClassification(y_preds, y_targs, epochNum=epochNum)
             self.plotConfMat(y_preds, y_targs, valAcc=test_acc, epochNum=epochNum)
 
-        with open(f"{self.logDir}/valiResults_byEpoch.csv", 'a', newline='') as csvFile:
+        with open(self.validLog, 'a', newline='') as csvFile:
+            # Write the results after each validation
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow([epochNum, finalValLoss, test_acc, classAcc])
 
@@ -472,7 +471,7 @@ class Trainer:
     #TODO: Put the subject, run, and time info in the log 
     def logRegression(self, y_preds, labels, epochNum=0):
         #logger.info(f"log results: {len(y_preds)}")#, y_preds_targets: {type(y_preds_targets)}")
-        with open(f"{self.logDir}/{epochNum}_valiResults.csv", 'w', newline='') as csvFile:
+        with open(f"{self.logDir}/{epochNum}_validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['Predictions', 'Labels'])
             for pred, label in zip(y_preds, labels):
@@ -521,7 +520,7 @@ class Trainer:
         logger.info(f"Confusion Matrix:\n{cm}")
 
         # save to log
-        with open(self.logfile, 'a', newline='') as csvFile:
+        with open(self.sumaryFile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(["-------", "Confusion Matrix", f"Epoch Number: {epochNum}"])
             for row in cm: writer.writerow(row)
