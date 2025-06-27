@@ -19,14 +19,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from datasets.utils.logging import disable_progress_bar
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 import flwr
 from flwr.client import Client, ClientApp, NumPyClient
 from flwr.common import Metrics, Context
 from flwr.server import ServerApp, ServerConfig, ServerAppComponents
 from flwr.server.strategy import FedAvg
-from flwr.simulation import run_simulation
+from flwr.simulation import run_simulation # Run local
 from flwr_datasets import FederatedDataset
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -34,24 +34,31 @@ print(f"Training on {DEVICE}")
 print(f"Flower {flwr.__version__} / PyTorch {torch.__version__}")
 #disable_progress_bar()
 
+# Specify the resources each of your clients need
+# By default, each client will be allocated 1x CPU and 0x GPUs
+backend_config = {"client_resources": {"num_cpus": 1, "num_gpus": 0.0}}
 
+# When running on GPU, assign an entire GPU for each client
+if DEVICE == "cuda":
+    backend_config = {"client_resources": {"num_cpus": 1, "num_gpus": 1.0}}
+    # Refer to our Flower framework documentation for more details about Flower simulations
+    # and how to set up the `backend_config`
 
 ##  LOAD the DATASET
-NUM_CLIENTS = 10 #Fed learn clients 
+NUM_CLIENTS = 3 #Fed learn clients 
                  # Each client gets 1/NUM_CLIENTS % of the data
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 
+# This downloads and caches the dataset locally
+from torchvision.datasets import CIFAR10
+transform = transforms.ToTensor()
+CIFAR10(root="./data", train=True, download=True, transform=transform)
+CIFAR10(root="./data", train=False, download=True, transform=transform)
 
-# Create FedAvg strategy
-strategy = FedAvg(
-    fraction_fit=1.0,  # Sample 100% of available clients for training
-    fraction_evaluate=0.5,  # Sample 50% of available clients for evaluation
-    min_fit_clients=10,  # Never sample less than 10 clients for training
-    min_evaluate_clients=5,  # Never sample less than 5 clients for evaluation
-    min_available_clients=10,  # Wait until all 10 clients are available
-)
+### Depricated
 def load_datasets(partition_id: int):
     fds = FederatedDataset(dataset="cifar10", partitioners={"train": NUM_CLIENTS})
+    #full_train_dataset = CIFAR10(root="./data", train=True, download=False, transform=transform)``
     partition = fds.load_partition(partition_id)
     # Divide data on each node: 80% train, 20% test
     partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
@@ -77,14 +84,41 @@ def load_datasets(partition_id: int):
     return trainloader, valloader, testloader
 
 
+# No, don't load the full dataset
+def load_and_partition_cifar10():
+    transform = transforms.ToTensor()
+    full_train_dataset = CIFAR10(root="./data", train=True, download=False, transform=transform)
 
+    # Shuffle indices and split into chunks
+    indices = np.random.permutation(len(full_train_dataset))
+    split_indices = np.array_split(indices, NUM_CLIENTS)
 
-### Vis the training data
-trainloader, _, _ = load_datasets(partition_id=0)
-batch = next(iter(trainloader))
-images, labels = batch["img"], batch["label"]
+    # Create one Subset for each client
+    client_datasets = [Subset(full_train_dataset, idxs) for idxs in split_indices]
+    return client_datasets
+client_datasets = load_and_partition_cifar10()
+PARTITION_DIR = "./partitions"
+
+# loading the whole database
+def prepare_and_save_partitions():
+    transform = transforms.ToTensor()
+    dataset = CIFAR10(root="./data", train=True, download=True, transform=transform)
+
+    indices = np.random.permutation(len(dataset))
+    split_indices = np.array_split(indices, NUM_CLIENTS)
+
+    # Save each client's indices
+    for client_id, idxs in enumerate(split_indices):
+        np.save(f"{PARTITION_DIR}/client_{client_id}.npy", idxs)
+# Run this once before training
+#prepare_and_save_partitions()
+
 
 '''   Plot   
+### Vis the training data
+trainloader, _, _ = load_datasets(partition_id=0)
+images, labels = batch["img"], batch["label"]
+batch = next(iter(trainloader))
 # Reshape and convert images to a NumPy array
 # matplotlib requires images with the shape (height, width, 3)
 images = images.permute(0, 2, 3, 1).numpy()
@@ -137,7 +171,9 @@ def train(net, trainloader, epochs: int, verbose=False):
     for epoch in range(epochs):
         correct, total, epoch_loss = 0, 0, 0.0
         for batch in trainloader:
-            images, labels = batch["img"].to(DEVICE), batch["label"].to(DEVICE)
+            #images, labels = batch["img"].to(DEVICE), batch["label"].to(DEVICE)
+            images, labels = batch  # unpack the tuple
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
             optimizer.zero_grad()
             outputs = net(images)
             loss = criterion(outputs, labels)
@@ -160,7 +196,9 @@ def test(net, testloader):
     net.eval() #Set to read only
     with torch.no_grad():
         for batch in testloader:
-            images, labels = batch["img"].to(DEVICE), batch["label"].to(DEVICE)
+            #images, labels = batch["img"].to(DEVICE), batch["label"].to(DEVICE)
+            images, labels = batch  # unpack the tuple
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
             outputs = net(images)
             loss += criterion(outputs, labels).item()
             _, predicted = torch.max(outputs.data, 1)
@@ -219,6 +257,7 @@ loss, accuracy = test(net, testloader)
 print(f"Final test set performance:\n\tloss {loss}\n\taccuracy {accuracy}")
 '''
 
+
 def client_fn(context: Context) -> Client:
     """Create a Flower client representing a single organization."""
 
@@ -229,13 +268,52 @@ def client_fn(context: Context) -> Client:
     # Note: each client gets a different trainloader/valloader, so each client
     # will train and evaluate on their own unique data partition
     # Read the node_config to fetch data partition associated to this node
-    partition_id = context.node_config["partition-id"]
-    trainloader, valloader, _ = load_datasets(partition_id=partition_id)
+
+    partition_id = int(context.node_config["partition-id"])
+    #trainloader, valloader, _ = load_datasets(partition_id=partition_id)
+    # Load this client's dataset
+    #client_dataset = client_datasets[partition_id]  
+    #trainloader = DataLoader(client_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    #valloader = DataLoader(client_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    #del client_dataset
+    partition_path = f"./partitions/client_{partition_id}.npy"
+    indices = np.load(partition_path)
+
+    # Create dataset and subset
+    transform = transforms.ToTensor()
+    dataset = CIFAR10(root="./data", train=True, download=False, transform=transform)
+    subset = Subset(dataset, indices)
+    del dataset
+
+    # Create data loaders
+    trainloader = DataLoader(subset, batch_size=BATCH_SIZE, shuffle=True)
+    valloader = DataLoader(subset, batch_size=BATCH_SIZE, shuffle=False)  # use the same for now
+    del subset
+
 
     # Create a single Flower client representing a single organization
     # FlowerClient is a subclass of NumPyClient, so we need to call .to_client()
     # to convert it to a subclass of `flwr.client.Client`
     return FlowerClient(net, trainloader, valloader).to_client()
+
+def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+    # Multiply accuracy of each client by number of examples used
+    accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
+    examples = [num_examples for num_examples, _ in metrics]
+
+    # Aggregate and return custom metric (weighted average)
+    return {"accuracy": sum(accuracies) / sum(examples)}
+
+# Create FedAvg strategy
+strategy = FedAvg(
+    fraction_fit=1.0,  # Sample 100% of available clients for training
+    fraction_evaluate=0.5,  # Sample 50% of available clients for evaluation
+    min_fit_clients=NUM_CLIENTS,  # Never sample less than 10 clients for training
+    min_evaluate_clients=int(NUM_CLIENTS/2),  # Never sample less than 5 clients for evaluation
+    min_available_clients=NUM_CLIENTS,  # Wait until all 10 clients are available
+
+    evaluate_metrics_aggregation_fn=weighted_average,  # <-- pass the metric aggregation function
+)
 
 def server_fn(context: Context) -> ServerAppComponents:
     """Construct components that set the ServerApp behaviour.
@@ -245,11 +323,19 @@ def server_fn(context: Context) -> ServerAppComponents:
     wrapped in the returned ServerAppComponents object.
     """
 
-    # Configure the server for 5 rounds of training
-    config = ServerConfig(num_rounds=5)
+    # Configure the server for 5 rounds of training (epochs)
+    config = ServerConfig(num_rounds=10)
 
     return ServerAppComponents(strategy=strategy, config=config)
 
 
 server = ServerApp(server_fn=server_fn) # Create the ServerApp
 client = ClientApp(client_fn=client_fn) # Create the ClientApp
+
+# Run simulation
+run_simulation(
+    server_app=server,
+    client_app=client,
+    num_supernodes=NUM_CLIENTS,
+    backend_config=backend_config,
+)
