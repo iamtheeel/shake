@@ -229,20 +229,20 @@ def loadData(dataFile, trial=-1):
     """
 
 def downSampleData(self, data, downSample):
-        from scipy.signal import decimate
+    from scipy.signal import decimate
 
-        #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
-        #logger.info(f"Before downsample shape: {np.shape(data)} ")
-        nTrials, nCh, timePoints = data.shape
-        downSampled_data = np.empty((nTrials, nCh, timePoints // downSample))  
-        for trial in range(nTrials):
-            for ch in range(nCh):
-                downSampled_data[trial, ch] = decimate(data[trial, ch], 
-                                                       downSample, 
-                                                       ftype='iir', 
-                                                       zero_phase=True)
+    #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
+    #logger.info(f"Before downsample shape: {np.shape(data)} ")
+    nTrials, nCh, timePoints = data.shape
+    downSampled_data = np.empty((nTrials, nCh, timePoints // downSample))  
+    for trial in range(nTrials):
+        for ch in range(nCh):
+            downSampled_data[trial, ch] = decimate(data[trial, ch], 
+                                                   downSample, 
+                                                   ftype='iir', 
+                                                   zero_phase=True)
 
-        return downSampled_data, dataCapRate_hz/downSample
+    return downSampled_data, dataCapRate_hz/downSample
 
 
 ## Data slicers
