@@ -1224,7 +1224,7 @@ class dataLoader:
             std  = np.sqrt(variance_Real/(nElements-1)) + 1j * np.sqrt(variance_Imag/(nElements-1)) 
         else:
             #print("NOT COMPLEX")
-            std = np.sqrt(variance/(nElements-1))
+            std = np.sqrt(variance/(nElements-1)) # n-1 for sampel std
         self.dataNormConst.mean = mean
         self.dataNormConst.std = std
 

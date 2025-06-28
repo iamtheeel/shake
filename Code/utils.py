@@ -68,7 +68,7 @@ class runStats():
 
         delta = value - self.mean               # The diff from the current mean
         self.mean += delta/self.nElements       # the running mean
-        self.M2 += (value - self.mean) * delta  # the running variance (the delta is before updating the mean)
+        self.M2 += (value - self.mean) * delta  # (the delta is before updating the mean)
 
     def finish(self):
         import math
