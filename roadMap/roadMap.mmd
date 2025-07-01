@@ -49,30 +49,62 @@ graph TD
     end
     %% Phase 4 - Model Development, data transform
     C2 --> E1[Signal Preprocessing]
-    class E1 inprogress;
+    class E1 done;
     E1 --> E2[Model Architecture Design]
+    class E2 done;
     E1 --> E3[Labeling & Feature Engineering]
-    E3 --> F1[Model Training <br><i>Assigned: Josh</i>]
+    class E3 done;
+    E3 --> F1[Model Training]
+    class F1 inprogress;
 
     %% Phase 5 - Training & Evaluation
-    subgraph STARS 2025: Demonstrat Data Labeling with Camera
-    G1[Capture Vib Data]
-    G2[Capture Camera Data]
-    H1[Occupant Gait Analysis]
-    H2[Pose Estimation]
-    H4[foobar]
-    H3[Time Sync Data]
-    end
     E2 --> F1
-    F1 --> G1
+    B2 --> G1
     B3 --> G2
-    G2 --> H2
+    subgraph STARS 2025: Demonstrat Data Labeling with Camera
+        G1[Timestamp Vib Data]
+        class G1 done;
+        G2[Timestamp Camera]
+        class G2 done;
+        H1[Capture Vib Data]
+        class H1 done;
+        H2[Capture Camera Data]
+        class H2 done;
+        H4[Anonymize Video]
+        class H4 inprogress;
+        H10[Get Video Time]
+        class H10 inprogress;
+        H3[Calibrate Camera Hall Distance: Z]
+        class H3 done;
+        H5[Pose Estimation]
+        class H5 done;
+        H6[Track Walker]
+        class H6 inprogress;
+        H9[Calculate Speed]
+        class H9 inprogress;
+        H7[Time Sync Data]
+        class H7 inprogress;
+        H8[Label Vib Data from Camera]
+        class H8 pending;
+    end
     G1 --> H1
-    G1 --> H3
-    G2 --> H3
-    H1 --> H4
-    class G1 pending;
+    G2 --> H2
+    H1 --> H7
+    H2 --> H4
+    H2 --> H5
+    H2 --> H3
+    H2 --> H10
+    H10 --> H7
+    H5 --> H6
+    H3 --> H9
+    H6 --> H9
+    H9 --> H7
+    H7 --> H8
+    %% class H1 pending;
 
+    %% From footstep wavelet
+    D --> I1 
+    D --> I4
     subgraph Math: Fall 2025
         I1[filter]
         I2[X Location]
@@ -80,26 +112,29 @@ graph TD
         I4[Complex Version of FootStep Wavelet]
     end
     H3 --> I2
-    %% From footstep wavelet
-    D --> I1 
+    I2 --> I3
 
 
-    H3 --> J1
+    H8 --> J1
+    F1 --> J1
     subgraph Josh ENGR 898: Federated Learning
         J1
     end
 
+    H8 --> K1
+    F1 --> K1
     subgraph FootStep Features
         K1[Use Object detection: e.x. YOLO]
     end
-    J1 --> K1
 
     I2 -->L1
-    J1 --> L1
     subgraph Stride Features
-        L1[Use Transformer]
+        L1[Use Transformer?]
     end
 
+    X1[camera track walker]
+    X2[anonomize on camera]
+    x3[sterio camera]
 
     %% Phase 7 - Output
     Z[FIN]
