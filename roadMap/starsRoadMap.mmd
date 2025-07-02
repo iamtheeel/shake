@@ -1,0 +1,53 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% ─────────────────────────────────────────────
+graph TD
+    classDef done fill:#004d00,stroke:#00ff00,color:#ffffff;
+    classDef inprogress fill:#333300,stroke:#ffff66,color:#ffffff;
+    classDef pending fill:#4d0000,stroke:#ff6666,color:#ffffff;
+    classDef shared fill:#2f2f2f,stroke:#cccccc,color:#ffffff;
+
+
+    %% Using Camera to label data
+    %%E2 --> F1
+    subgraph STARS 2025: Demonstrat Data Labeling with Camera
+        G1[Timestamp Vib Data]
+        class G1 done;
+        G2[Timestamp Camera]
+        class G2 done;
+        H1[Capture Vib Data]
+        class H1 done;
+        H2[Capture Camera Data]
+        class H2 done;
+        H4[Anonymize Video]
+        class H4 done;
+        H10[Get Video Time]
+        class H10 done;
+        H3[Calibrate Camera Hall Distance: y -> Z]
+        class H3 done;
+        H5[Pose Estimation]
+        class H5 done;
+        H6[Track Walker]
+        class H6 done;
+        H9[Calculate Speed]
+        class H9 inprogress;
+        H7[Time Sync Data]
+        class H7 inprogress;
+        H8[Label Vib Data from Camera]
+        class H8 pending;
+    end
+    G1 --> H1
+    G2 --> H2
+    H1 --> H7
+    H2 --> H4
+    H2 --> H5
+    H2 --> H3
+    H2 --> H10
+    H10 --> H7
+    H5 --> H6
+    H3 --> H9
+    H6 --> H9
+    H9 --> H7
+    H7 --> H8

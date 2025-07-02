@@ -11,54 +11,67 @@ graph TD
 
     A[Acquire Funding]
 
-    %% Phase 1 - Sensor Instalation
+    %% Sensor Instalation
     A --> B1[Sensor Hardware Install]
-    A --> B2[Data Acquisition Install]
+    B1 --> B2[Data Acquisition Install]
     A --> B3[Camera Install]
     class A done;
     class B1 done;
     class B2 done;
     class B3 done;
 
-    %% Phase 2 - Data acquistion, Walking Pace Tagged
+    %% Data acquistion, Walking Pace Tagged
     subgraph First pass data Caputure
-    C2
-    C1
+        C1[Label Walking Pace with ADPM wearable BioSensor System]
+        C2[Capture Labled Data]
     end
-    C1[Label Walking Pase with ADPM wearable BioSensor System]
     C1 --> C2
-    B1 --> C2[Capture Labled Data]
     B2 --> C2
     class C1 done;
     class C2 done;
 
-    %% Phase 2 - Footstep Wavelet
+
+    %% Footstep Wavelet
     subgraph FootStep Wavelet
-    D
+        D1[Footstep Wavelet]
     end
-    D[Footstep Wavelet]
-    D --> E1
-    class D done;
+    D1 --> E1
+    class D1 done;
 
 
+    %% Model Development, data transform
+    C2 --> E1
     subgraph Josh ENGR 897: Compairson of Wavlet Transformed Data with MobilNet
-     E1
-     E2
-     E3
-     F1
+        E1[CWT Transform of Data]
+        class E1 done;
+        E2[Data Loader]
+        class E2 done;
+        E3[Data Norm]
+        class E3 done;
+        E4[Build Model]
+        class E4 done;
+        E5[Train On Time Domain]
+        class E5 done;
+        E6[Train On Wavelet Domain]
+        class E6 done;
+        E7[Train On Spectra Domain]
+        class E7 done;
+        E8[Compair Results]
+        class E8 inprogress;
     end
-    %% Phase 4 - Model Development, data transform
-    C2 --> E1[Signal Preprocessing]
-    class E1 done;
-    E1 --> E2[Model Architecture Design]
-    class E2 done;
-    E1 --> E3[Labeling & Feature Engineering]
-    class E3 done;
-    E3 --> F1[Model Training]
-    class F1 inprogress;
+    E1 --> E2
+    E2 --> E3
+    E3 --> E4
+    E4 --> E5
+    E4 --> E6
+    E4 --> E7
+    E5-->E8
+    E6-->E8
+    E7-->E8
 
-    %% Phase 5 - Training & Evaluation
-    E2 --> F1
+
+    %% Using Camera to label data
+    %%E2 --> F1
     B2 --> G1
     B3 --> G2
     subgraph STARS 2025: Demonstrat Data Labeling with Camera
@@ -71,10 +84,10 @@ graph TD
         H2[Capture Camera Data]
         class H2 done;
         H4[Anonymize Video]
-        class H4 inprogress;
+        class H4 done;
         H10[Get Video Time]
         class H10 inprogress;
-        H3[Calibrate Camera Hall Distance: Z]
+        H3[Calibrate Camera Hall Distance: y -> Z]
         class H3 done;
         H5[Pose Estimation]
         class H5 done;
@@ -100,45 +113,57 @@ graph TD
     H6 --> H9
     H9 --> H7
     H7 --> H8
-    %% class H1 pending;
 
     %% From footstep wavelet
-    D --> I1 
-    D --> I4
+    D1 --> I1 
+    D1 --> I4
     subgraph Math: Fall 2025
         I1[filter]
-        I2[X Location]
+        I2[x -> X Location]
         I3[X, Z Location with camera move]
         I4[Complex Version of FootStep Wavelet]
+        I5[Complex Models in pyTorch]
     end
     H3 --> I2
     I2 --> I3
+    I4 --> I5
 
 
     H8 --> J1
-    F1 --> J1
+    E8 --> J1
     subgraph Josh ENGR 898: Federated Learning
-        J1
+        J1[Research Fed Learn]
+        J99
     end
+    J1 --> J99
 
     H8 --> K1
-    F1 --> K1
+    %%F1 --> K1
     subgraph FootStep Features
         K1[Use Object detection: e.x. YOLO]
+        K99
     end
+    K1 --> K99
 
     I2 -->L1
     subgraph Stride Features
         L1[Use Transformer?]
+        L99
     end
+    L1 --> L99
 
-    X1[camera track walker]
-    X2[anonomize on camera]
-    x3[sterio camera]
+    %% Unphased issues
+    I3 --> X1[Camera Track Walker]
+    H4 --> X2[Anonymizeon on Camera]
+    I2 --> X9[Sterio Camera]
+    H7 --> X4[Real Time Camera]
 
-    %% Phase 7 - Output
-    Z[FIN]
-    L1 --> Z
-    K1 --> Z
+    %% End Prodcut
+    I2 --> Z
+    I4 --> Z
+    J99 --> Z
+    L99 --> Z
+    K99 --> Z
+    Z[Real Time Prediction of Health from Gait]
 
     class Z shared;
