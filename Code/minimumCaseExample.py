@@ -25,7 +25,8 @@ dataTimeRange_s = [0, 0] # [0 0] for full dataset
 #dataFile = "/home/josh/winShare/joshTest_413.hdf5"
 #dataFile = "/home/josh/winShare/joshTest_413_413.hdf5"
 #dataFile = "/home/josh/winShare/joshTest_413_1652.hdf5"
-dataFile = "/Users/theeel/schoolDocs/MIC/NSF_Floor_Vib_Camera-Labeling/StudentData/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+#dataFile = "/Users/theeel/schoolDocs/MIC/NSF_Floor_Vib_Camera-Labeling/StudentData/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+dataFile = "/home/josh/Documents/MIC/shake/STARS/NSF_Floor_Vib_Camera-Labeling/StudentData/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
 
 # What data are we interested in
 #dataTimeRange_s = [15, 55] # [0 0] for full dataset
