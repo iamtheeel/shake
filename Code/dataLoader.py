@@ -651,10 +651,6 @@ class dataLoader:
                 try:              accelerometer_data = np.append(accelerometer_data, thisChData, axis=1)
                 except NameError: accelerometer_data = thisChData
 
-            #logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
-            if self.downSample > 1:
-                accelerometer_data,  = self.downSampleData(accelerometer_data)
-
             # Get just the sensors we want
             if self.dataConfigs.sampleRate_hz == 0: 
                 # get the peramiters if needed
@@ -669,6 +665,10 @@ class dataLoader:
                 self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
                 self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
                 #logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
+
+            logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
+            if self.downSample > 1:
+                accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
         return accelerometer_data 
 
@@ -686,6 +686,7 @@ class dataLoader:
                                                        ftype='iir', 
                                                        zero_phase=True)
 
+        #logger.info(f"Sample rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
         self.dataConfigs.sampleRate_hz /= self.downSample
         logger.info(f"After downsample shape: {np.shape(downSampled_data)} ")
         logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
