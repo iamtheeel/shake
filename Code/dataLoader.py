@@ -782,7 +782,10 @@ class dataLoader:
     def getDataInfo(self, file):
         general_parameters = file['experiment/general_parameters'][:]
         #logger.info(f"Data File parameters: {general_parameters}")
-        self.dataConfigs.sampleRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
+        self.dataConfigs.sampleRate_hz = configs['data']['sampleRate']
+        if self.dataConfigs.sampleRate_hz == None:
+            self.dataConfigs.sampleRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
+
         self.dataConfigs.origSRate_hz = self.dataConfigs.sampleRate_hz
         self.dataConfigs.units = general_parameters[0]['units'].decode('utf-8')
         logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
