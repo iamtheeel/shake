@@ -44,9 +44,9 @@ data:
     downSample: 4 # Downsample by n-times
 
     classes: ['No Step', '001', '002', '003']
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
-    #chList: [6, 5, 4] # Try for 3 color plot
+    chList: [6, 5, 4] # Try for 3 color plot
 
     limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
