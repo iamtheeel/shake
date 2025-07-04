@@ -306,6 +306,8 @@ class dataLoader:
         logger.info(f"Saveing MetaData to File: {hd5File}")
         logger.info(f"data stats: {self.dataNormConst}")
         logger.info(f"label stats: {self.labNormConst}")
+        logger.info(f"*****  Sample Rate: {self.dataConfigs.sampleRate_hz}")
+        logger.info(f"*****  Original Rate: {self.dataConfigs.origSRate_hz}")
         with h5py.File(hd5File, "a") as h5dataFile:
             data_ds = h5dataFile["data"]
             label_ds = h5dataFile["labelsSpeed"]
@@ -394,6 +396,7 @@ class dataLoader:
             return #If the folder exists, we aleady have our plots
         logger.info(f"Writting files to: {timeDImageDir}")
         logger.info(f"                 : {freqDImageDir}")
+        logger.info(f"                 : sRate {self.dataConfigs.sampleRate_hz}")
 
         self.dataPlotter.generalConfigs(self.dataConfigs.sampleRate_hz)
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
@@ -553,7 +556,7 @@ class dataLoader:
                     rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for stomp and no step
 
                     # Look for stomp, and keeps track of how many windows since the stomp
-                    # The detection of no step is done in getSubjecteLabel
+                    # The detection of no step is done in getSubjectLabel
                     if self.stompFromFile == False:
                         if self.stompThresh == 0: nSkips = 0
                         else                    : nSkips = 3
@@ -582,7 +585,10 @@ class dataLoader:
                         #print(f"rms_ratio = {rms_ratio}")
 
                         #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
-                        if (not self.regression) or (thisSubjectId > 0):
+                        #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
+                        #If thisSubjectID <= 0, there are no steps detected in this window
+                        if thisSubjectId > 0: 
+                        #if (not self.regression) or (thisSubjectId > 0): 
                             windowsWithData += 1
                             #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                             thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
@@ -651,25 +657,24 @@ class dataLoader:
                 try:              accelerometer_data = np.append(accelerometer_data, thisChData, axis=1)
                 except NameError: accelerometer_data = thisChData
 
-            logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
-            if self.downSample > 1:
-                accelerometer_data, _ = self.downSampleData(accelerometer_data)
-
             # Get just the sensors we want
             if self.dataConfigs.sampleRate_hz == 0: 
                 # get the peramiters if needed
                 # ex: Sample Freq
-                self.getDataInfo(file) # get the sample rate from the file
+                self.getDataInfo(file) # gets the sample rate from the file
                 if self.downSample > 1: # keep all the downsample calcs in one place
                     self.dataConfigs.sampleRate_hz /= self.downSample
-                #    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
+                    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
-                #logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
+                logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
                 self.dataConfigs.dataLen_pts = accelerometer_data.shape[2]
                 self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
                 self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
-                #logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
+                logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
 
+            logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
+            if self.downSample > 1:
+                accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
         return accelerometer_data 
 
@@ -688,7 +693,7 @@ class dataLoader:
                                                        zero_phase=True)
 
         #logger.info(f"Sample rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
-        self.dataConfigs.sampleRate_hz /= self.downSample
+        #self.dataConfigs.sampleRate_hz /= self.downSample
         logger.info(f"After downsample shape: {np.shape(downSampled_data)} ")
         logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
         return downSampled_data, self.dataConfigs.sampleRate_hz / self.downSample
@@ -1252,7 +1257,7 @@ class dataLoader:
         self.dataConfigs.nSensors = HDF5Configs["nSensors"]
         self.dataConfigs.nTrials = HDF5Configs["nTrials"]
         self.dataConfigs.chList = HDF5Configs["chList"]
-        logger.info(f"Loaded Peraimiters: srate: {self.dataConfigs.sampleRate_hz}")
+        logger.info(f"Loaded Peraimiters from HDF5: srate: {self.dataConfigs.sampleRate_hz}")
 
         #TODO: Log the min, max, mean, std
         self.setNormConst(isData=True, norm=self.dataNormConst, dataSetFile=dataSetFile,

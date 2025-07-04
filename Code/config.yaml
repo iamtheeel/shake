@@ -4,10 +4,10 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
+    generateTimeFreqWindowPlots: True
     generateCWTPlots: True
 
 plts:

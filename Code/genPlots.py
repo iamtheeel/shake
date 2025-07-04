@@ -130,12 +130,14 @@ class dataPlotter_class():
 
     def plotFreq(self, imageDir, acclData, saveStr, plotTitle_str, xlim, yLim = None, xInLog = False, yInLog=False, show=False):
         #logger.info(f"{imageDir}")
+
         xlimStr = f"fmin-{xlim[0]}_fmax-{xlim[1]}"
         self.freqDDir = f"{imageDir}_{xlimStr}"
         if xInLog: self.freqDDir = f"{self.freqDDir}_xLog"
         if yInLog: self.freqDDir = f"{self.freqDDir}_yLog"
 
         xData = self.fftClass.getFreqs(self.samRate, acclData.shape[1])
+        #logger.info(f"xlim: {xlim}, samRate: {self.samRate}")
         data = acclData
 
         xlabel = "Frequency (Hz)"
