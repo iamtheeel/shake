@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -184,7 +184,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 1 #Set to upper limit and validate every... (see below)
+    epochs: 10 #Set to upper limit and validate every... (see below)
     epochValiStart: 0
     validEveryNEpochs: 1
     nEpochsStats: 5 # Run stats on the last n Epochs
