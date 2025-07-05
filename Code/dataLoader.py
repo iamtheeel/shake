@@ -533,8 +533,9 @@ class dataLoader:
                     startPoint = int(startPoint)
                     nWindows += 1
                     endPoint = startPoint + self.windowLen
-                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
-                    if self.dataConfigs.dataLen_pts <= endPoint: break
+                    #Why is endPoint working with 3 ch of data, but not 9??
+                    logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
+                    if self.dataConfigs.dataLen_pts <= endPoint: break # Don't walk of the end of the data
                     if self.configs['data']['limitWindowLen'] > 0:
                         if windowsWithData >= self.configs['data']['limitWindowLen']: 
                             logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
@@ -584,9 +585,9 @@ class dataLoader:
                         #print(f"rms_BaseLin = {rms_BaseLine}")
                         #print(f"rms_ratio = {rms_ratio}")
 
-                        #print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
-                        #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
-                        #If thisSubjectID <= 0, there are no steps detected in this window
+                        print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
+                        logger.info(f"thisDataBlock: {thisDataBlock.shape}")
+                        #if False:
                         if thisSubjectId > 0: 
                         #if (not self.regression) or (thisSubjectId > 0): 
                             windowsWithData += 1
@@ -657,6 +658,11 @@ class dataLoader:
                 try:              accelerometer_data = np.append(accelerometer_data, thisChData, axis=1)
                 except NameError: accelerometer_data = thisChData
 
+            logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
+            if self.downSample > 1:
+                # must be prior to calculating the info
+                accelerometer_data, _ = self.downSampleData(accelerometer_data)
+
             # Get just the sensors we want
             if self.dataConfigs.sampleRate_hz == 0: 
                 # get the peramiters if needed
@@ -671,10 +677,6 @@ class dataLoader:
                 self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
                 self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
                 logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
-
-            logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
-            if self.downSample > 1:
-                accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
         return accelerometer_data 
 
