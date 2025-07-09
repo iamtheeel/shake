@@ -50,8 +50,8 @@ data:
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
@@ -151,29 +151,19 @@ trainer:
 
     optimizer: ["Adam"]
     #optimizer: ["Adam", "SGD"]
-    # Best for Mobilnet Time Not folded
-    #learning_rate: [0.00005] #[0.00075] 
-    #weight_decay:  [0.002, 0.001, 0.0005]  #[0.005]
-    #learning_rate: [0.002] #Trying scheduler
-    #weight_decay:  [0.01]
-    #Best for TimeD folded LeNet (all batch sizes). Could probably use fine tuning
-    learning_rate: [0.0001] 
-    #weight_decay:  [0.00001]
-    #learning_rate: [0.0001] # Try with optimiser
-    weight_decay:  [0.001]
-    # Time D folded Mobilnet
-    #learning_rate:  [0.00005, 0.000075, 0.0001, 0.00025, 0.0005, 0.00075] # Not converging
-    #weight_decay: [0.0005, 0.00075, 0.001, 0.0025, 0.005, 0.0075] # # Not converging
-    #learning_rate: [0.000001, 0.000005, 0.00001, 0.00005] #Still not converging
-    #weight_decay:  [0.00001, 0.0001, 0.001]
-    #learning_rate: [0.0002, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009] #Still not converging
-    #weight_decay:  [0.00005, 0.0001, 0.0005, 0.001, 0.002]
-    #Worked! lr: 0.0005, wd: 0.0001, 0.001
-    #Worked! lr: 0.0006, wd: 0.0005, 0.002
-    #Worked! lr: 0.0007, wd: 0.00005, 0.0001
-    #Worked! lr: 0.0008, wd: 0.0001
-    #learning_rate: [0.0006] 
-    #weight_decay:  [0.002]
+    learning_rate: [0.00005] #[0.00075] # Best for Mobilnet Time Not folded
+    weight_decay:  [0.0005]  #[0.005]
+    #
+    #learning_rate: [0.0001] # Gold Standard
+    #weight_decay:  [0.001]  # Gold Standard
+    #learning_rate:  [0.00005, 0.000075, 0.0001, 0.00025, 0.0005, 0.00075] 
+    #weight_decay: [0.0005, 0.00075, 0.001, 0.0025, 0.005, 0.0075]
+    #learning_rate:  [0.00005, 0.00007, 0.00008, 0.0001, 0.00004] 
+    #weight_decay: [0.00005, 0.000075, 0.00015]
+    #learning_rate: [0.00007, 0.00008, 0.00009, 0.0001, 0.00011, 0.00012]
+    #learning_rate: [0.0001, 0.00011, 0.00012]
+    #weight_decay: [0.00009, 0.00011, 0.00013, 0.00015, 0.00017, 0.00019]
+    #
     # Learing rate schetuler use 2x to 3x the lr
     LR_sch: None #None to not use
     #LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
@@ -184,10 +174,10 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 10 #Set to upper limit and validate every... (see below)
-    epochValiStart: 0
+    epochs: 100 #Set to upper limit and validate every... (see below)
+    epochValiStart: 90
     validEveryNEpochs: 1
-    nEpochsStats: 5 # Run stats on the last n Epochs
+    nEpochsStats: 10 # Run stats on the last n Epochs
     seed: 4601
 
 model: 
