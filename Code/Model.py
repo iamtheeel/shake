@@ -98,7 +98,7 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class MobileNet_v2(nn.Module):
-    def __init__(self, numClasses:int, dataShape, folded=True, dropOut=0, config=None):
+    def __init__(self, numClasses:int, dataShape, folded=True, dropOut=0, config=None, timeD=False):
         super().__init__() 
         #TODO: Modify so its the same code for resnet
         '''
@@ -139,23 +139,28 @@ class MobileNet_v2(nn.Module):
             self.timePoints = dataShape[2]
             base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         
-        if(config['cwt']['doCWT']):
+        #if(config['cwt']['doCWT']):
+        self.timDData = timeD
+        '''
+        if(config['cwt']['wavelet']) != "None":
             # [Batch, Ch, Frequencies, TimePoints]
+            logger.info(f"Wavelet Shape: {config['cwt']['wavelet']}")
             self.timDData = False
         else:
             # [Batch, Ch, TimePoints]
+            logger.info(f"Time Domain Shape")
             self.timDData = True
             #the new count must be more than the number of timepoints
-            '''
-            base_model.features[0][0] = nn.Conv1d(
-                                                  in_channels=self.nCh,
-                                                  out_channels=32,
-                                                  kernel_size=3,
-                                                  stride=2,
-                                                  padding=1,
-                                                  bias=False
-                                                 )
-            '''
+
+            #base_model.features[0][0] = nn.Conv1d(
+            #                                      in_channels=self.nCh,
+            #                                      out_channels=32,
+            #                                      kernel_size=3,
+            #                                      stride=2,
+            #                                      padding=1,
+            #                                      bias=False
+            #                                     )
+        '''
 
 
         startFeature = 0 #Change to 1 to replace the first layer instead of adding a new layer

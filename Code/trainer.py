@@ -80,10 +80,10 @@ class Trainer:
 
         self.set_training_config()
         self.cwtClass = cwtClass
-        self.doCWT = False
+        #self.doCWT = False
         waveletStr = ""
         if cwtClass.wavelet_name != "None":
-            self.doCWT = True
+            #self.doCWT = True
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 
         #add if it is folded or no, for time domain
@@ -377,8 +377,6 @@ class Trainer:
             #print(f"Test Data len: {nData}")
 
             for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window"):
-                #if self.doCWT: data = self.cwtClass.cwtTransformBatch(data)
-
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:

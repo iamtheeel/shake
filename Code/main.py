@@ -108,7 +108,7 @@ def writeDataTrackSum_hdr(dataConfigs):
     
 
         writer.writerow([f'', '--------- CWT '])
-        writer.writerow(['Do CWT', configs['cwt']['doCWT']])
+        #writer.writerow(['Do CWT', configs['cwt']['doCWT']])
         writer.writerow(['log scale freq', configs['cwt']['logScaleFreq']])
         writer.writerow(['log scale data', configs['cwt']['logScale']])
         writer.writerow(['Num Scales', configs['cwt']['numScales']])
@@ -197,7 +197,7 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
-def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
+def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= False):
     logger.info(f"Loading model: {model_name}")
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
@@ -217,7 +217,7 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
     elif model_name == "leNetV5_unFolded":
             model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs)
+        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs, timeD=timeD)
     elif model_name == "MobileNet_v2_folded":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, dropOut=dropOut_layers, config=configs)
     else: 
@@ -236,7 +236,7 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None):
     
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
-           #wavelet, f0, bw, #sgTimeRes, sgOverlap,
+           cwt_class, #, f0, bw, #sgTimeRes, sgOverlap,
            lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise,
            batchSize, model_name, dropOut_layers):
 
@@ -258,14 +258,20 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
     logger.info(f"Get Model")
     # Add the batch size to the dataloader shape, but don't include the number of items
-    if configs['cwt']['doCWT']:
+    #if configs['cwt']['doCWT']:
+    #if configs['cwt']['wavelet'] != "None":
+    print(f"Wavelet base: {cwt_class.wavelet_base}")
+    if wavelet_base != "None":
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
+        timeD = False
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
+        timeD = True
     logger.info(f"Data Shape loaded data : {dataShape}") # Batch size, nCh, width, height
+    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD)
 
-    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers)
     #print(model)
+    '''
     if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
@@ -273,6 +279,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             logger.info(f"TODO, put model in complex format!!")
             #model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
+    '''
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
     logger.info(f"Load Trainer")
@@ -320,14 +327,14 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
 
 expNum = 1
-wavelet_bases = ['None']
-if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
+wavelet_bases = configs['cwt']['wavelet']
+#wavelet_bases = ['None']
+#if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
 
 for batchSize in configs['trainer']['batchSize']:
     data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
     # we get data freq rate here, and need it for below
     # The hyperperamiters setup for expTracking
-    #if configs['cwt']['doCWT']: Put back in when we sort out norm
     cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
     for wavelet_base in wavelet_bases:
@@ -399,7 +406,7 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 if configs['debugs']['runModel']:
                                                                     runExp(expNum=expNum, logScaleData=logScaleData,
                                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                           #wavelet=wavelet_base, f0=center_freq, bw=bandwidth, #sgTimeRes=sgTimeRes, sgOverlap=sgOverlap,
+                                                                           cwt_class=cwt_class, #wavelet=wavelet_base, #f0=center_freq, bw=bandwidth, #sgTimeRes=sgTimeRes, sgOverlap=sgOverlap,
                                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
                                                                            batchSize = batchSize, model_name=model_name, dropOut_layers = dropOut_layers)
                                                                 expNum += 1
