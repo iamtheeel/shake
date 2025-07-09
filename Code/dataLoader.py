@@ -510,7 +510,7 @@ class dataLoader:
             csvFile.write("\n")
 
             # do while endPoint <= thisPoint + data len
-            logger.debug(f"windowData, Data: {data.shape}")
+            #logger.debug(f"windowData, Data: {data.shape}")
             if self.configs['data']['limitRuns'] > 0:
                 runsEnd = self.configs['data']['limitRuns']
             else:
@@ -534,7 +534,7 @@ class dataLoader:
                     nWindows += 1
                     endPoint = startPoint + self.windowLen
                     #Why is endPoint working with 3 ch of data, but not 9??
-                    logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
+                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
                     if self.dataConfigs.dataLen_pts <= endPoint: break # Don't walk of the end of the data
                     if self.configs['data']['limitWindowLen'] > 0:
                         if windowsWithData >= self.configs['data']['limitWindowLen']: 
@@ -585,8 +585,8 @@ class dataLoader:
                         #print(f"rms_BaseLin = {rms_BaseLine}")
                         #print(f"rms_ratio = {rms_ratio}")
 
-                        print(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
-                        logger.info(f"thisDataBlock: {thisDataBlock.shape}")
+                        #logger.info(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
+                        #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
                         #if False:
                         if thisSubjectId > 0: 
                         #if (not self.regression) or (thisSubjectId > 0): 
@@ -684,7 +684,7 @@ class dataLoader:
         from scipy.signal import decimate
 
         #logger.info(f" dataLen from file: {self.dataConfigs.dataLen_pts}")
-        #logger.info(f"Before downsample shape: {np.shape(data)} ")
+        logger.info(f"Before downsample shape: {np.shape(data)} ")
         nTrials, nCh, timePoints = data.shape
         downSampled_data = np.empty((nTrials, nCh, timePoints // self.downSample))  
         for trial in range(nTrials):

@@ -186,10 +186,10 @@ if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 lastStats_n = configs['trainer']['nEpochsStats']
-expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'f0', 'bw', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
+expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
-                 'Train Loss', f'Train {accStr}', 'Val Loss', 
-                 f'Val {accStr}', f'Last {lastStats_n} epochs min',
+                 'Train Loss', f'Train {accStr}', 'Last Epoch Val Loss', 
+                 f'Last Epoch Val {accStr}', f'Last {lastStats_n} epochs min',
                  f'Last {lastStats_n} epochs max', f'Last {lastStats_n} epochs mean', f'Last {lastStats_n} epochs std',
                  f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
@@ -305,8 +305,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                          'Dropout Layers': dropOut_layers,
                          'Train Loss': trainLoss, 
                          f'Train {accStr}': trainAcc, 
-                         'Val Loss': valLoss, 
-                         f'Val {accStr}': valAcc,
+                         'Last Epoch Val Loss': valLoss, 
+                         f'Last Epoch Val {accStr}': valAcc,
                          f'Last {lastStats_n} epochs min': valAccStats.min,
                          f'Last {lastStats_n} epochs max': valAccStats.max,
                          f'Last {lastStats_n} epochs mean': valAccStats.mean,
