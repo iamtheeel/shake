@@ -115,6 +115,10 @@ cwt:
     #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
     #wavelet: ["spectroGram"] 
     wavelet: ["None"] 
+<<<<<<< HEAD
+=======
+    #wavelet: ["cmorl"] 
+>>>>>>> d7f067a6c537489c90e6cd6f6d179f27afef2256
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
@@ -174,7 +178,7 @@ trainer:
     gradiant_noise: [0] #[1e-3]
 
     epochs: 100 #Set to upper limit and validate every... (see below)
-    epochValiStart: 90
+    epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 10 # Run stats on the last n Epochs
     seed: 4601
