@@ -105,7 +105,6 @@ cwt:
     #  'shan', 
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
-    doCWT: True #Roll this in to "wavelet"?
     saveCWT: True
 
     logScaleFreq: False
@@ -115,7 +114,7 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
     #wavelet: ["spectroGram"] 
-    wavelet: ["cmorl"] 
+    wavelet: ["None"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
