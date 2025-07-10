@@ -267,7 +267,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
         timeD = True
-    logger.info(f"Data Shape loaded data : {dataShape}") # Batch size, nCh, width, height
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD)
 
     #print(model)
