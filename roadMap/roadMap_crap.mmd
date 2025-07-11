@@ -13,7 +13,7 @@ graph TD
 
     %% Sensor Instalation
     A --> B1[Sensor Hardware Install]
-    A --> B2[Data Acquisition Install]
+    B1 --> B2[Data Acquisition Install]
     A --> B3[Camera Install]
     class A done;
     class B1 done;
@@ -26,10 +26,10 @@ graph TD
         C2[Capture Labled Data]
     end
     C1 --> C2
-    B1 --> C2
     B2 --> C2
     class C1 done;
     class C2 done;
+
 
     %% Footstep Wavelet
     subgraph FootStep Wavelet
@@ -69,76 +69,124 @@ graph TD
     E6-->E8
     E7-->E8
 
-    %% Using Camera to label data
-    B2 --> Ga1
-    B3 --> Ga2
-    subgraph STARS 2025: Demonstrat Data Labeling with Camera
-        Ga1[Modify Vib to Save Trigger Time]
-        class Ga1 done;
-        Ga2[Set Up Camera System]
-        class Ga2 done;
-        G1[Capture Vib Data]
-        class G1 done;
-        G2[Capture Camera Data]
-        class G2 done;
-        G3[Calibrate Halway Position y-->Z]
-        class G3 done;
-        G4[Pose Estimation]
-        class G4 inprogress;
-        G5[Calculate Waking Speed]
-        class G5 inprogress;
-        G6[Time Sync Data]
-        class G6 inprogress;
-    end
-    Ga1 -->G1
-    Ga2 -->G2
-    G2 --> G4
-    G2 --> G3
-    G1 --> G6
-    G5 --> G6
-    G3 --> G5
-    G4 --> G5
 
-    G3 --> I2
-    G3 --> I3
+    %% Using Camera to label data
+    %%E2 --> F1
+    B2 --> G1
+    B3 --> G2
+    subgraph STARS 2025: Demonstrat Data Labeling with Camera
+        G1[Timestamp Vib Data]
+        class G1 done;
+        G2[Timestamp Camera]
+        class G2 done;
+        H1[Capture Vib Data]
+        class H1 done;
+        H2[Capture Camera Data]
+        class H2 done;
+        H4[Anonymize Video]
+        class H4 inprogress;
+        H10[Get Video Time]
+        class H10 inprogress;
+        H3[Calibrate Camera Hall Distance: y -> Z]
+        class H3 done;
+        H5[Pose Estimation]
+        class H5 done;
+        H6[Track Walker]
+        class H6 inprogress;
+        H9[Calculate Speed]
+        class H9 inprogress;
+        H7[Time Sync Data]
+        class H7 inprogress;
+        H8[Real Time Label Vib Data from Camera]
+        class H8 pending;
+    end
+    G1 --> H1
+    G2 --> H2
+    H1 --> H7
+    H2 --> H4
+    H2 --> H5
+    H2 --> H3
+    H2 --> H10
+    H10 --> H7
+    H5 --> H6
+    H3 --> H9
+    H6 --> H9
+    H9 --> H7
+    H7 --> H8
+
     %% From footstep wavelet
-    D1 --> I4 
-    E8 --> I1 
     D1 --> I1 
-    E8 --> I5 
+    D1 --> I4
+    D1 --> I8
     subgraph Math: Fall 2025
-        I1[filter]
-        I2[X Location]
+        I1[Filter]
+        I2[x -> X Location]
         I3[X, Z Location with camera move]
         I4[Complex Version of FootStep Wavelet]
-        I5[Complex Models]
+        I5[Complex Models in pyTorch]
+        I6[Identify Footsteps]
+        I7[Multi-Footstep]
+        I8[Improve FootStep Wavelet]
     end
+    H3 --> I2
+    I2 --> I3
+    I4 --> I5
+    I6 --> I7
 
-
+    H8 --> J1
     E8 --> J1
+
+    I5 --> E8
     subgraph Josh ENGR 898: Federated Learning
         J1[Research Fed Learn]
-        J99
+        J2[Load Data to Sensor Clusters]
+        J3[Window By Cluster]
+        J4[Train on One Cluster]
+        J5[Validate with another clusters Data]
+        J_4[Fed Train]
+        J_5[Validate]
+        J99[Compair Fed to Non Fed]
     end
-    J1 --> J99
+    J1 --> J2
+    J2 --> J3
+    J3 --> J4
+    J4 --> J5
+    J3 --> J_4
+    J_4 --> J_5
 
-    G6 --> K1
+    J5 --> J99
+    J_5 --> J99
+
+    H8 --> K1
+    I1 --> K1
+    I7 --> K1
     subgraph FootStep Features
-        K1[Use Object detection: e.x. YOLO]
+        K0[Manualy Label Footsteps]
+        K1[Use Object detection: e.x. YOLO, SSD]
+        K99[Output Footstep Features]
     end
+    K0 --> K1
+    K1 --> K99
 
     I2 -->L1
-    G6 --> L1
+    H7 --> L1
     subgraph Stride Features
-        L1[Use Transformer]
+        L1[Use Transformer?]
+        L99
     end
+    L1 --> L99
 
     %% Unphased issues
+    I3 --> X1[Camera Track Walker]
+    H4 --> X2[Anonymizeon on Camera]
+    H5 --> X3[Invstigate Pose-Est Packages]
+    H3 --> X9[Sterio Camera]
+    H7 --> X4[Real Time Camera]
 
-    %% Fin
+    %% End Prodcut
     J99 --> Z
-    L1 --> Z
-    K1 --> Z
+    L99 --> Z
+    K99 --> Z
     Z[Real Time Prediction of Health from Gait]
 
     class Z shared;
