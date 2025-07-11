@@ -117,14 +117,16 @@ graph TD
     %% From footstep wavelet
     D1 --> I1 
     D1 --> I4
+    D1 --> I8
     subgraph Math: Fall 2025
-        I1[filter]
+        I1[Filter]
         I2[x -> X Location]
         I3[X, Z Location with camera move]
         I4[Complex Version of FootStep Wavelet]
         I5[Complex Models in pyTorch]
         I6[Identify Footsteps]
         I7[Multi-Footstep]
+        I8[Improve FootStep Wavelet]
     end
     H3 --> I2
     I2 --> I3
@@ -133,21 +135,45 @@ graph TD
 
     H8 --> J1
     E8 --> J1
+
+    I5 --> E8
     subgraph Josh ENGR 898: Federated Learning
         J1[Research Fed Learn]
-        J99
+        J2[Load Data to Sensor Clusters]
+        J3[Window By Cluster]
+        J4[Train on One Cluster]
+        J5[Validate with another clusters Data]
+        J_4[Fed Train]
+        J_5[Validate]
+        J99[Compair Fed to Non Fed]
     end
-    J1 --> J99
+    J1 --> J2
+    J2 --> J3
+    J3 --> J4
+    J4 --> J5
+    J3 --> J_4
+    J_4 --> J_5
+
+    J5 --> J99
+    J_5 --> J99
 
     H8 --> K1
-    %%F1 --> K1
+    I1 --> K1
+    I7 --> K1
+    I5 --> K1
+    I8 --> K1
     subgraph FootStep Features
-        K1[Use Object detection: e.x. YOLO]
-        K99
+        K0[Manualy Label Footsteps]
+        K1[Use Object detection: e.x. YOLO, SSD]
+        K99[Output Footstep Features]
     end
+    K0 --> K1
     K1 --> K99
 
     I2 -->L1
+    H7 --> L1
+    I5 --> L1
+    I8 --> L1
     subgraph Stride Features
         L1[Use Transformer?]
         L99
@@ -157,13 +183,11 @@ graph TD
     %% Unphased issues
     I3 --> X1[Camera Track Walker]
     H4 --> X2[Anonymizeon on Camera]
-    H5 --> X3[Invstigate Pose-Est Pacages]
-    I2 --> X9[Sterio Camera]
+    H5 --> X3[Invstigate Pose-Est Packages]
+    H3 --> X9[Sterio Camera]
     H7 --> X4[Real Time Camera]
 
     %% End Prodcut
-    I2 --> Z
-    I4 --> Z
     J99 --> Z
     L99 --> Z
     K99 --> Z
