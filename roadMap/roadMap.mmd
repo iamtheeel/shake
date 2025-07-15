@@ -84,21 +84,21 @@ graph TD
         H2[Capture Camera Data]
         class H2 done;
         H4[Anonymize Video]
-        class H4 inprogress;
+        class H4 done;
         H10[Get Video Time]
-        class H10 inprogress;
+        class H10 done;
         H3[Calibrate Camera Hall Distance: y -> Z]
         class H3 done;
         H5[Pose Estimation]
         class H5 done;
         H6[Track Walker]
-        class H6 inprogress;
+        class H6 done;
         H9[Calculate Speed]
         class H9 inprogress;
         H7[Time Sync Data]
         class H7 inprogress;
         H8[Real Time Label Vib Data from Camera]
-        class H8 pending;
+        class H8 inprogress;
     end
     G1 --> H1
     G2 --> H2
@@ -139,6 +139,7 @@ graph TD
     I5 --> E8
     subgraph Josh ENGR 898: Federated Learning
         J1[Research Fed Learn]
+        class J1 inprogress;
         J2[Load Data to Sensor Clusters]
         J3[Window By Cluster]
         J4[Train on One Cluster]
@@ -157,13 +158,12 @@ graph TD
     J5 --> J99
     J_5 --> J99
 
-    H8 --> K1
+    H8 --> K0
     I1 --> K1
     I7 --> K1
-    I5 --> K1
     I8 --> K1
     subgraph FootStep Features
-        K0[Manualy Label Footsteps]
+        K0[Label Footsteps]
         K1[Use Object detection: e.x. YOLO, SSD]
         K99[Output Footstep Features]
     end
@@ -171,12 +171,11 @@ graph TD
     K1 --> K99
 
     I2 -->L1
-    H7 --> L1
     I5 --> L1
-    I8 --> L1
+    I8 --> L99
     subgraph Stride Features
-        L1[Use Transformer?]
-        L99
+        L1[Label Stride Features]
+        L99[Use Transformer?]
     end
     L1 --> L99
 
