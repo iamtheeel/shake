@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -46,9 +46,9 @@ data:
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 
     classes: ['No Step', '001', '002', '003']
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
-    #chList: [6, 5, 4] # Try for 3 color plot
+    chList: [6, 5, 4] # Try for 3 color plot
 
     limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
@@ -106,16 +106,16 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: True #Roll this in to "wavelet"?
-    saveCWT: True
+    saveCWT: #True
 
     logScaleFreq: False
     logScale: False
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
-    #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
+    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
     #wavelet: ["spectroGram"] 
-    wavelet: ["None"] 
+    wavelet: ["ricker"] 
     #wavelet: ["cmorl"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
