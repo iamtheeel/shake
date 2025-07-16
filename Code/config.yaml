@@ -106,17 +106,19 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: True #Roll this in to "wavelet"?
-    saveCWT: True
+    saveCWT: #True
 
     logScaleFreq: False
     logScale: False
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
-    #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
+    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
     #wavelet: ["spectroGram"] 
     #wavelet: ["None"] 
     wavelet: ["fstep"] 
+    #wavelet: ["ricker"] 
+    #wavelet: ["cmorl"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
