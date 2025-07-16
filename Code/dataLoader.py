@@ -1269,7 +1269,7 @@ class dataLoader:
                           min=dataSet.data_min, max=dataSet.data_max, mean=dataSet.data_mean, std=dataSet.data_std)
         self.setNormConst(isData=False, norm=self.labNormConst,  dataSetFile=dataSetFile,
                           min=dataSet.lab_min, max=dataSet.lab_max, mean=dataSet.lab_mean, std=dataSet.lab_std)
-
+        #logger.info(f"main, max, mean, std: {dataSet.data_min}, {dataSet.data_max}, {dataSet.data_mean}, {dataSet.data_std}")
         if debug:
             logger.info(f"Data: {self.dataNormConst}")
             logger.info(f"Labels: {self.labNormConst}")

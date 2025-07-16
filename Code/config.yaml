@@ -4,11 +4,11 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -46,12 +46,12 @@ data:
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 
     classes: ['No Step', '001', '002', '003']
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
-    #chList: [6, 5, 4] # Try for 3 color plot
+    chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
@@ -115,8 +115,8 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #wavelet: ["ricker", "morl", "cmorl", "fstep"] #"None" for no CWT
     #wavelet: ["spectroGram"] 
-    wavelet: ["None"] 
-    #wavelet: ["cmorl"] 
+    #wavelet: ["None"] 
+    wavelet: ["fstep"] 
     waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
     #wavelet: ["fstep"] #Bandwidth not used for fstep
