@@ -63,12 +63,13 @@ class cwt:
         self.f0= f0
         self.bw = bw
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
-        if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None':
-            self.wavelet_name = wavelet_base
+        #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
+        if wavelet_base == 'cmorl' or wavelet_base == 'shan':
+            self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
         elif wavelet_base == "fstep": #No arguments, arguments handled seperately
             self.wavelet_name = f"{wavelet_base}-{f0}"
-        else:  #cmorl
-            self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
+        else:  
+            self.wavelet_name = wavelet_base
         # The wavelet
         logger.info(f"Wavelet name: {self.wavelet_name}")
 
@@ -301,6 +302,8 @@ class cwt:
             freqDFilename = f"{self.wavelet_name}.txt"
             freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
             with open(freqDFilePathName, "w") as file:
+                file.write(f"Wavelet: {self.wavelet_name}\n")
+                file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
                 file.write(f"Center frequency (f0): {f0:.4f} Hz\n")
                 file.write(f"Bandwidth (bw):       {bw:.4f} Hz\n")
 
