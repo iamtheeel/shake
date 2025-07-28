@@ -80,6 +80,7 @@ def print_attrs(name, obj): #From Chatbot
         if isinstance(obj, h5py.Dataset):
             print(f"  📊 Dataset - Shape: {obj.shape}, Dtype: {obj.dtype}")
 
+# Get a perameter assosiated with the file
 def get_peram(perams, peramName:str, asStr=False):
     mask = perams['parameter'] == peramName.encode()
     matches = perams[mask]
@@ -97,6 +98,7 @@ def get_peram(perams, peramName:str, asStr=False):
 
     return peram_value, units_value
 
+# Get the perameters assosiated with each run
 def get_perams(perams, peramName:str, asType='dateTime'):
     values = [
         #row['value'].decode()

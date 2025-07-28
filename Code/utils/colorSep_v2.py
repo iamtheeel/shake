@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # === Load image ===
-dir = "/Volumes/Data/thesis/publish/2_gradShowCase_2025/images"
-#img = "IMG_7573.png"
-img = "cmorl10-0.8_preFilt_trial-0_ch.jpg"
-img = Image.open(f"{dir}/{img}").convert("RGB")
+dir = "/Volumes/Data/thesis/publish/4_compairsonOfWavelets/images"
+#imgFile = "IMG_7573.png"
+#imgFile = "cmorl10-0.8_preFilt_trial-0_ch.jpg"
+imgFile = '0026_ch-6_5_4_subject-2_run-1_timeStart-11.75.png'
+img = Image.open(f"{dir}/{imgFile}").convert("RGB")
 
 # === Resize with correct aspect ===
 max_dim = 200
@@ -34,7 +35,7 @@ def build_facecolors(channel, color_mask):
 
 # === Offsets (X, Y, Z) with overlap ===
 slide_x = - 1.01
-slide_y = 0.01
+slide_y = 0.25
 slide_z = 0.01
 
 offSet_x = int(W * slide_x)
@@ -54,7 +55,6 @@ for channel, color, z_off, y_off, x_off in zip(
     [b, g, r],            # red now on top
     [[0, 0, 1], [0, 1, 0], [1, 0, 0]],
         z_offsets, y_offsets, x_offsets):
-        #z_offsets, y_offsets, x_offsets):
 
     facecolors = build_facecolors(channel, color)
     Z = np.full_like(channel, z_off)

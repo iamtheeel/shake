@@ -8,7 +8,7 @@ debugs:
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
-    generateCWTPlots: True
+    generateCWTPlots: False
 
 plts:
     pltDir: "plots"
@@ -50,8 +50,8 @@ data:
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #15 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
@@ -115,12 +115,12 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'gaus1x', 'shan'] #"None" for no CWT
     #wavelet: ["spectroGram"] 
-    #wavelet: ["None"] 
+    wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
     # Shannon shanB-F : Freq precision, less time localization
-    wavelet: ["shan"] 
+    #wavelet: ["shan"] 
     waveLet_center_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     waveLet_bandwidth: [0.01, 0.1]  # best vor cmorl
     #wavelet: ["cmorl"] 
