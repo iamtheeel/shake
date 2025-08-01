@@ -203,11 +203,3 @@ model:
 
     leNetV5:
         hidden_neurons: 100
-
-duy:
-  FOLDER_DIR: "E:\\Documents2TBm2\\StatisticDocuments\\GaitResearch\\Box\\StudentData\\25_07_10"
-  VIDEO_FILENAME: "intercept_run_7-10-2025_10-45-46 AM.asf"
-  HDF5_FILENAME: "Jack_clockTest_interuptVPoll.hdf5"
-  MEDIAPIPE_PATH: "E:\\Documents2TBm2\\StatisticDocuments\\GaitResearch\\media-pipeModels\\pose_landmarker_lite.task"
-  CAMERA_CALIBRATION_DIR: "E:\\Documents2TBm2\\StatisticDocuments\\GaitResearch\\shake\\camera\\cameraCalibration\\star"
-
