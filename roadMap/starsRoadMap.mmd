@@ -17,6 +17,8 @@ graph TD
         class G1 done;
         G2[Timestamp Camera]
         class G2 done;
+        G3[Experiment Design]
+        class G3 done;
         H1[Capture Vib Data]
         class H1 done;
         H2[Capture Camera Data]
@@ -32,14 +34,16 @@ graph TD
         H6[Track Walker]
         class H6 done;
         H9[Calculate Speed]
-        class H9 done;
+        class H9 inprogress;
         H7[Time Sync Data]
-        class H7 done;
+        class H7 inprogress;
         H8[Real Time Label Vib Data from Camera]
-        class H8 done;
+        class H8 pending;
     end
-    G1 --> H1
-    G2 --> H2
+    G1 --> G3
+    G2 --> G3
+    G3 --> H1
+    G3 --> H2
     H1 --> H7
     H2 --> H4
     H2 --> H5
