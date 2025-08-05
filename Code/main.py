@@ -270,15 +270,14 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD)
 
     #print(model)
-    '''
     if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
             # and conv2d is not implemented :(
-            logger.info(f"TODO, put model in complex format!!")
+            logger.info(f"  !!!!!  TODO, put model in complex format  !!!!!!")
             #model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
-    '''
+
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
     logger.info(f"Load Trainer")

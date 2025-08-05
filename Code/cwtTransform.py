@@ -222,27 +222,12 @@ class cwt:
             else:
                 titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
         print(f"title str: {titleStr}")
-        plt.figure(figsize=(10, 8))
-        plt.title(f'{titleStr}', fontsize=tFontSize)
-        plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
-        if np.iscomplexobj(self.wavelet_fun):
-            plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
-        plt.xlabel('Time')
-        plt.ylabel('Amplitude')
-        plt.legend()
-        plt.grid(True)
-        if save:
-            timeDFileName = f"{self.wavelet_name}_timeD.jpg"
-            timeDFileNamePath = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{timeDFileName}"
-            logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
-            plt.savefig(timeDFileNamePath)
-        if show:
-            plt.show()
-        plt.close()
 
-        # Bode plot
+
+
+
+        # Get the bandwidth and f0
         fftClass = jFFT_cl()
-        #ch, datapoint
         nSamp = len(self.wavelet_Time)
         #logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
         #logger.info(f"{self.wavelet_Time}")
@@ -268,7 +253,55 @@ class cwt:
         half_max = fftData[0, f0_index] / 2
         indices = np.where(fftData[0] >= half_max)[0]
         bw = freqList[indices[-1]] - freqList[indices[0]]
+        if save:
+            freqDFilename = f"{self.wavelet_name}.txt"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
+            with open(freqDFilePathName, "w") as file:
+                file.write(f"Wavelet: {self.wavelet_name}\n")
+                file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
+                file.write(f"Center frequency (f0): {f0:.4f} Hz\n")
 
+
+        self.plotWaveletTime(titleStr, tFontSize, save, show)
+        if np.iscomplexobj(self.wavelet_fun):
+            self.plotWaveletTime_complex(titleStr, tFontSize, save, show)
+        self.plotWaveletBode(titleStr, sRate, tFontSize, freqList, fftData, save, show)     
+
+
+        return f0, bw
+
+    def plotWaveletTime_complex(self, titleStr, tFontSize, save, show):
+        from mpl_toolkits.mplot3d import Axes3D  # Required for 3D plotting
+
+        fig = plt.figure(figsize=(10, 8))
+
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(self.wavelet_Time, np.real(self.wavelet_fun), np.imag(self.wavelet_fun) )
+
+        azimRot_deg = -10 # 10 deg ccw about z
+        ax.view_init(elev=30, azim=-60+azimRot_deg)
+
+        ax.set_title(f'{titleStr}', fontsize=tFontSize)
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Real Part')
+        ax.set_zlabel('Imaginary Part')
+
+        self.savePlot(plt, f"{self.wavelet_name}_timeD-complex.jpg", save, show)
+
+    def plotWaveletTime(self, titleStr, tFontSize, save, show):
+        plt.figure(figsize=(10, 8))
+        plt.title(f'{titleStr}', fontsize=tFontSize)
+        plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
+        if np.iscomplexobj(self.wavelet_fun):
+            plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
+        plt.xlabel('Time')
+        plt.ylabel('Amplitude')
+        plt.legend()
+        plt.grid(True)
+
+        self.savePlot(plt, f"{self.wavelet_name}_timeD.jpg", save, show)
+
+    def plotWaveletBode(self, titleStr, sRate, tFontSize, freqList, fftData, save, show):
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
@@ -293,26 +326,19 @@ class cwt:
         axs[1].grid(True, which='major', linestyle='-', alpha=0.6)
         #axs[1].set_ylim([-180, 180])
 
+        self.savePlot(plt, f"{self.wavelet_name}_freqD.jpg", save, show)
+
+    def savePlot(self, plot, fileName, save, show):
         if save:
-            freqDFilename = f"{self.wavelet_name}_freqD.jpg"
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{fileName}"
             logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
             plt.savefig(freqDFilePathName)
-
-            freqDFilename = f"{self.wavelet_name}.txt"
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
-            with open(freqDFilePathName, "w") as file:
-                file.write(f"Wavelet: {self.wavelet_name}\n")
-                file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
-                file.write(f"Center frequency (f0): {f0:.4f} Hz\n")
-                file.write(f"Bandwidth (bw):       {bw:.4f} Hz\n")
 
         if show:
             plt.show()
         plt.close()
 
-        return f0, bw
-    
+
     def cwtTransformBatch(self, data):
         #logger.info(f"before cwt: {data.shape}")
         data, freqs = self.cwtTransform(data=data.numpy())
