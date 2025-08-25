@@ -340,7 +340,7 @@ for batchSize in configs['trainer']['batchSize']:
         if wavelet_base == 'ricker':
             centerFreqs = [1]
             bandwidths = [1]
-        elif wavelet_base == 'fstep': #what is the bw?
+        elif wavelet_base == 'fstep' or wavelet_base == 'cfstep': 
             centerFreqs = configs['cwt']['waveLet_center_freq']
             bandwidths = [1]
         elif wavelet_base == 'morl':

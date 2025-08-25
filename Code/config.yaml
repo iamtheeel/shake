@@ -4,11 +4,11 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -112,7 +112,7 @@ cwt:
     logScale: False
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
-    fMax: 0 #100 #0 = use the nyquist
+    fMax: 100 #0 = use the nyquist
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no CWT
     #wavelet: ["None"] 
     # gaus1, gaus4 iedge detection

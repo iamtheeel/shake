@@ -66,7 +66,8 @@ class cwt:
         #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
         if wavelet_base == 'cmorl' or wavelet_base == 'shan':
             self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
-        elif wavelet_base == "fstep": #No arguments, arguments handled seperately
+        elif wavelet_base == "fstep" or wavelet_base == 'cfstep': #No arguments, arguments handled seperately
+            complex = True if self.wavelet_base == 'cfstep' else False
             self.wavelet_name = f"{wavelet_base}-{f0}"
         else:  
             self.wavelet_name = wavelet_base
@@ -79,8 +80,8 @@ class cwt:
             logger.info(f"wavelet_name: {self.wavelet_name}")
             return #Now that we have the name, we can skip the rest on None
 
-        if self.wavelet_base == 'fstep':
-            self.wavelet = FootStepWavelet(central_frequency=f0)
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
+            self.wavelet = FootStepWavelet(central_frequency=f0, complex=complex)
         else:
             #Center freq and bw are imbedded in the name, or not used
             if self.wavelet_base == 'ricker':
@@ -108,7 +109,7 @@ class cwt:
         
         if self.max_freq == 0: self.max_freq = self.sampleRate_hz/2 #Nyquist
 
-        if self.wavelet_base == 'fstep':
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
             center_freq = self.wavelet.central_frequency
         else: 
             center_freq = pywt.central_frequency(self.wavelet)
@@ -165,10 +166,13 @@ class cwt:
             logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
-        if self.wavelet_base == 'fstep':
-            if debug: logger.info(f"Fstep")
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
+            if debug: logger.info(f"{self.wavelet_base}.foot_step_cwt, complex: {complex}")
             [data_coefficients, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
-                                                                sampling_period=self.samplePeriod, f_0=self.f0)
+                                                                  sampling_period=self.samplePeriod, f_0=self.f0, 
+                                                                  complex=complex)
+            if debug:
+                logger.info(f"data_coefficients dtype: {data_coefficients.dtype}, complex: {data_coefficients.dtype.kind == 'c'}")
         else:
             if debug: logger.info(f"pywt.cwt")
             [data_coefficients, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
@@ -210,14 +214,14 @@ class cwt:
 
         # Plot the time Domain
         expStr = ""
-        if self.wavelet_base == "fstep":
+        if self.wavelet_base == "fstep" or self.wavelet_base == 'cfstep':
             titleStr = f"Wavelet: {expStr}cust"
         else:
             titleStr = f"Wavelet: {expStr}{self.wavelet_base}"
         print(f"wavelet base: {self.wavelet_base}")
 
         if self.wavelet_base != 'ricker' and self.wavelet_base != 'morl':
-            if self.wavelet_base == 'fstep':
+            if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
                 titleStr = f"{titleStr}, f0={self.f0}"
             else:
                 titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
