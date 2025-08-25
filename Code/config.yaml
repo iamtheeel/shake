@@ -113,7 +113,7 @@ cwt:
     numScales: 256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 0 #100 #0 = use the nyquist
-    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'gaus1x', 'shan'] #"None" for no CWT
+    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no CWT
     #wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
@@ -122,11 +122,11 @@ cwt:
     #wavelet: ["shan"] 
     #waveLet_center_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_bandwidth: [0.01, 0.1]  # best vor cmorl
-    wavelet: ["cmorl"] 
-    waveLet_center_freq:  [10] # best for cmorl
+    #wavelet: ["cmorl"] 
+    #waveLet_center_freq:  [10] # best for cmorl
     waveLet_bandwidth: [0.8]  # best vor cmorl
-    #wavelet: ["fstep"] #Bandwidth not used for fstep
-    #waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
+    wavelet: ["cfstep"] #Bandwidth not used for fstep
+    waveLet_center_freq:  [2.14] #fstep center freq best4 for fStep
     #waveLet_center_freq:  [0.8125] #morl center freq
     #wavelet: ["cmor", "fstep" ]
     #waveLet_bandwidth: [6.0] 

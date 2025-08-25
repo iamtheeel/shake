@@ -11,7 +11,7 @@ from scipy.fftpack import next_fast_len
 
 
 #%% Foot-Step Wavelet Function
-def foot_step_wavelet(t, central_frequency=2.14):
+def foot_step_wavelet(t, central_frequency=2.14, complex=False):
     """
     Constructs the Foot-Step wavelet, a custom time-domain wavelet designed for step-event analysis.
     The wavelet captures both sharp impacts and oscillatory dynamics using dual-frequency components 
@@ -43,7 +43,7 @@ def foot_step_wavelet(t, central_frequency=2.14):
     >>> wavelet = foot_step_wavelet(t, central_frequency=2.14)
     >>> print(wavelet)
     """
-    A = 1
+    A = 1.0
     phase = 1.27*np.pi # Adjust phase to shift the alignment of peaks 1.27pi
     
     
@@ -57,8 +57,13 @@ def foot_step_wavelet(t, central_frequency=2.14):
     #t = t/5.0 
     # MJB: the signal line is totaly different, done in 2 parts but looks the same
     # Main cosine wave
-    signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
-    signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
+    if complex:
+        signal = A * np.exp(1j * (2*np.pi * central_frequency * t + phase))
+        signal += secondary_amplitude * np.exp(1j * (2*np.pi * secondary_freq * t + phase))
+
+    else:
+        signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
+        signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
     #signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
     #         secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
 
@@ -73,7 +78,8 @@ def foot_step_wavelet(t, central_frequency=2.14):
     #MJB: We don't want to norm here. If there are no steps we want it quiet
     # We norm to the full dataset.
     signal /= np.sqrt(np.sum(signal**2)) # Normalize to unit energy
-    signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
+    if complex == False:
+        signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
     
     return signal
 
