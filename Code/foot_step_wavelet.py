@@ -52,21 +52,21 @@ def foot_step_wavelet(t, central_frequency=2.14, complex=False):
     #secondary_amplitude = 1.25  # It is positive in the paper.
     secondary_freq = 1.43  # A different frequency to modulate the shape of the wavelet
 
-
     ## MJB: foot_step_wavelet_devlopenet has a t/scale=5.0, not sure why
     #t = t/5.0 
-    # MJB: the signal line is totaly different, done in 2 parts but looks the same
     # Main cosine wave
-    if complex:
-        #MJB: Added Duy's (robot's) complex version
+    if complex: 
+        # From Duy:
+        #Complex Foot-Step wavelet: sum of two complex exponentials under a Gaussian window.
         signal = A * np.exp(1j * (2*np.pi * central_frequency * t + phase))
         signal += secondary_amplitude * np.exp(1j * (2*np.pi * secondary_freq * t + phase))
 
     else:
         signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
         signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
-    #signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
-    #         secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
+        # MJB: the signal line is totaly different, done in 2 parts but looks the same
+        #signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
+        #         secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
 
     
     # Gaussian window decay

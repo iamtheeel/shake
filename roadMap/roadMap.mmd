@@ -2,6 +2,8 @@
 %% 📈 HOW TO PREVIEW THIS DIAGRAM:
 %% → Right-click this file tab (not the content) → “Command Palette”
 %% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
 %% ─────────────────────────────────────────────
 graph TD
     classDef done fill:#004d00,stroke:#00ff00,color:#ffffff;
@@ -113,24 +115,27 @@ graph TD
     H9 --> H7
     H7 --> H8
 
+    subgraph Math: Duy Summer 2025
+        I2[x -> X Location]
+        class I2 inprogress
+        I4[Complex Version of FootStep Wavelet]
+        class I4 done
+    end
+    H3 --> I2
+    I2 --> I3
+
     %% From footstep wavelet
     D1 --> I1 
     D1 --> I4
     D1 --> I8
-    subgraph Math: Fall 2025
+    subgraph Math: 
         I1[Filter]
-        I2[x -> X Location]
-        class I2 inprogress
         I3[X, Z Location with camera move]
-        I4[Complex Version of FootStep Wavelet]
-        class I4 inprogress
         I6[Identify Footsteps]
         I7[Multi-Footstep]
         I8[Improve FootStep Wavelet]
-        I8[Investigate wavelet f0 and bw]
+        I9[Investigate wavelet f0 and bw]
     end
-    H3 --> I2
-    I2 --> I3
     I4 --> M0
     I6 --> I7
 
