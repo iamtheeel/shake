@@ -11,7 +11,7 @@ from scipy.fftpack import next_fast_len
 
 
 #%% Foot-Step Wavelet Function
-def foot_step_wavelet(t, central_frequency=2.14):
+def foot_step_wavelet(t, central_frequency=2.14, complex=False):
     """
     Constructs the Foot-Step wavelet, a custom time-domain wavelet designed for step-event analysis.
     The wavelet captures both sharp impacts and oscillatory dynamics using dual-frequency components 
@@ -43,7 +43,7 @@ def foot_step_wavelet(t, central_frequency=2.14):
     >>> wavelet = foot_step_wavelet(t, central_frequency=2.14)
     >>> print(wavelet)
     """
-    A = 1
+    A = 1.0
     phase = 1.27*np.pi # Adjust phase to shift the alignment of peaks 1.27pi
     
     
@@ -57,8 +57,14 @@ def foot_step_wavelet(t, central_frequency=2.14):
     #t = t/5.0 
     # MJB: the signal line is totaly different, done in 2 parts but looks the same
     # Main cosine wave
-    signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
-    signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
+    if complex:
+        #MJB: Added Duy's (robot's) complex version
+        signal = A * np.exp(1j * (2*np.pi * central_frequency * t + phase))
+        signal += secondary_amplitude * np.exp(1j * (2*np.pi * secondary_freq * t + phase))
+
+    else:
+        signal = A * np.cos(2 * np.pi * central_frequency * t + phase)
+        signal += secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)    
     #signal = A * np.cos(2 * np.pi * central_frequency * t + phase) + \
     #         secondary_amplitude * np.cos(2 * np.pi * secondary_freq * t + phase)
 
@@ -73,7 +79,8 @@ def foot_step_wavelet(t, central_frequency=2.14):
     #MJB: We don't want to norm here. If there are no steps we want it quiet
     # We norm to the full dataset.
     signal /= np.sqrt(np.sum(signal**2)) # Normalize to unit energy
-    signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
+    if complex == False:
+        signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
     
     return signal
 
@@ -124,16 +131,18 @@ class FootStepWavelet:
      >>> print("Wavelet values:", wavelet_values)
      >>> print("Time vector:", time)
      """
-    def __init__(self, central_frequency=2):
+    def __init__(self, central_frequency=2, complex=False): #MJB: added complex arg
         self.central_frequency = central_frequency
-        self._is_complex = False  # Internal flag to indicate if the wavelet is complex
+        self._is_complex = complex  # Internal flag to indicate if the wavelet is complex
         self.support = [-8,8]
     # Method to return the wavelet function and the time array
     def wavefun(self, length=None):
         if length is None:
             length = 1000  # Default length if none provided
         t = np.linspace(self.support[0], self.support[1], length)  # Create a time vector
-        wavelet_values = foot_step_wavelet(t, central_frequency=self.central_frequency)
+        wavelet_values = foot_step_wavelet(t, 
+                                           central_frequency=self.central_frequency, 
+                                           complex=self._is_complex) #MJB: added complex arg
         return wavelet_values, t
     
     @property
@@ -237,7 +246,7 @@ def step_scale2frequency(wavelet, scale):
 
 #%%
 #def foot_step_cwt(data, scales, sampling_period=1., method='conv', axis=-1):
-def foot_step_cwt(data, scales, sampling_period=1., f_0=2.14, method='conv', axis=-1): #MJB: need the f0 as an argument
+def foot_step_cwt(data, scales, sampling_period=1., f_0=2.14, method='conv', axis=-1, complex = False): #MJB: need the f0 as an argument
     """
     Compute the Continuous Wavelet Transform (CWT) using the custom Foot-Step wavelet, 
     tailored for walking-induced vibrations. This implementation adapts and extends 
@@ -289,9 +298,7 @@ def foot_step_cwt(data, scales, sampling_period=1., f_0=2.14, method='conv', axi
     from numpy import AxisError
     fftmodule = scipy.fft
     
-    wavelet = FootStepWavelet(central_frequency=f_0) # MJB
-    #wavelet = FootStepWavelet(central_frequency=2.14)
-    
+    wavelet = FootStepWavelet(central_frequency=f_0, complex=complex) # MJB: added f0 and complex
     
     # wavelet = 'morl'
     dt = _check_dtype(data)
@@ -307,7 +314,8 @@ def foot_step_cwt(data, scales, sampling_period=1., f_0=2.14, method='conv', axi
     if not np.isscalar(axis):
         raise AxisError("axis must be a scalar.")
 
-    dt_out = dt#dt_cplx if wavelet.complex_cwt else dt
+    #dt_out = dt#dt_cplx if wavelet.complex_cwt else dt
+    dt_out = dt_cplx if wavelet.complex_cwt else dt #MJB: need complex output if complex wavelet, why commented?
     out = np.empty((np.size(scales),) + data.shape, dtype=dt_out)
     precision = 10
     int_psi, x = step_integrate_wavelet(wavelet, precision=precision)

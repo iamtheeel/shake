@@ -267,19 +267,17 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
         timeD = True
-    logger.info(f"Data Shape loaded data : {dataShape}") # Batch size, nCh, width, height
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD)
 
     #print(model)
-    '''
     if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
         if np.iscomplexobj(cwt_class.wavelet_fun):
             # This is only partialy implemented
             # and conv2d is not implemented :(
-            logger.info(f"TODO, put model in complex format!!")
+            logger.info(f"  !!!!!  TODO, put model in complex format  !!!!!!")
             #model = model.to(torch.complex128)
             #model = model.to(torch.complex64)
-    '''
+
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
 
     logger.info(f"Load Trainer")
@@ -342,7 +340,7 @@ for batchSize in configs['trainer']['batchSize']:
         if wavelet_base == 'ricker':
             centerFreqs = [1]
             bandwidths = [1]
-        elif wavelet_base == 'fstep': #what is the bw?
+        elif wavelet_base == 'fstep' or wavelet_base == 'cfstep': 
             centerFreqs = configs['cwt']['waveLet_center_freq']
             bandwidths = [1]
         elif wavelet_base == 'morl':

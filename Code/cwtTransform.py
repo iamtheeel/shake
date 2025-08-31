@@ -63,12 +63,14 @@ class cwt:
         self.f0= f0
         self.bw = bw
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
-        if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None':
-            self.wavelet_name = wavelet_base
-        elif wavelet_base == "fstep": #No arguments, arguments handled seperately
-            self.wavelet_name = f"{wavelet_base}-{f0}"
-        else:  #cmorl
+        #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
+        if wavelet_base == 'cmorl' or wavelet_base == 'shan':
             self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
+        elif wavelet_base == "fstep" or wavelet_base == 'cfstep': #No arguments, arguments handled seperately
+            complex = True if self.wavelet_base == 'cfstep' else False
+            self.wavelet_name = f"{wavelet_base}-{f0}"
+        else:  
+            self.wavelet_name = wavelet_base
         # The wavelet
         logger.info(f"Wavelet name: {self.wavelet_name}")
 
@@ -78,30 +80,36 @@ class cwt:
             logger.info(f"wavelet_name: {self.wavelet_name}")
             return #Now that we have the name, we can skip the rest on None
 
-        if self.wavelet_base == 'fstep':
-            self.wavelet = FootStepWavelet(central_frequency=f0)
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
+            self.wavelet = FootStepWavelet(central_frequency=f0, complex=complex)
         else:
             #Center freq and bw are imbedded in the name, or not used
             if self.wavelet_base == 'ricker':
                 self.wavelet = pywt.ContinuousWavelet('mexh') # mexh is probimatic, lets re-name to ricker
             else:
                 self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
-        self.level = 8 #Number of iterations, for descrete wavelets
+        #level = 10 #Number of iterations, for descrete wavelets
         self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
 
         # Our wave function
+        #self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(level=level)#, level=self.level) 
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
         logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
 
+        #f0, bw
+        f0, bw = self.getF0_BW()
+        logger.info(f"Calculated f0: {f0}, bw: {bw}")
+
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
-        self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
+        f0, bw = self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
+        logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
     def setFreqScale(self, freqLogScale=True):
         #scales = np.arange(1, self.numScales)  # N+1 number of scales (frequencies)
         
         if self.max_freq == 0: self.max_freq = self.sampleRate_hz/2 #Nyquist
 
-        if self.wavelet_base == 'fstep':
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
             center_freq = self.wavelet.central_frequency
         else: 
             center_freq = pywt.central_frequency(self.wavelet)
@@ -123,6 +131,34 @@ class cwt:
         #logger.info(f"Scales: \n{self.scales}")
         #logger.info(f"Frequencies: \n{self.frequencies}")
 
+    def getF0_BW(self):
+        # mexh does not have phi
+        psi, x = self.wavelet.wavefun(length=512) 
+        #phi, psi, x = self.wavelet.wavefun(level=10)  # psi is the wavelet
+
+        # Get the frequencies, and do an fft on psi
+        #dt = x[1] - x[0]
+        dt = 1/(1706.666667/4)
+        f = np.fft.fftfreq(len(psi), d=dt)
+        #print(f"getF0_BW | len: {len(psi)}, dt: {dt}")
+        Psi = np.abs(np.fft.fft(psi))
+
+        # Keep positive frequencies
+        mask = f > 0
+        f = f[mask]
+        Psi = Psi[mask]
+
+        # Get approximate center frequency
+        f0_index = np.argmax(Psi)
+        f0 = f[f0_index]
+
+        # Find Full Width at Half Maximum (FWHM)
+        half_max = Psi[f0_index] / 2
+        indices = np.where(Psi >= half_max)[0]
+        bw = f[indices[-1]] - f[indices[0]]
+
+        return f0, bw
+
     def cwtTransform(self, data, debug=False):
         # Perform continuous wavelet transform using the defined wavelet
         if debug:
@@ -130,10 +166,13 @@ class cwt:
             logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
-        if self.wavelet_base == 'fstep':
-            if debug: logger.info(f"Fstep")
+        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
+            if debug: logger.info(f"{self.wavelet_base}.foot_step_cwt, complex: {complex}")
             [data_coefficients, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
-                                                                sampling_period=self.samplePeriod, f_0=self.f0)
+                                                                  sampling_period=self.samplePeriod, f_0=self.f0, 
+                                                                  complex=complex)
+            if debug:
+                logger.info(f"data_coefficients dtype: {data_coefficients.dtype}, complex: {data_coefficients.dtype.kind == 'c'}")
         else:
             if debug: logger.info(f"pywt.cwt")
             [data_coefficients, data_frequencies] = pywt.cwt(data, self.scales, wavelet=self.wavelet, sampling_period=self.samplePeriod)
@@ -175,18 +214,85 @@ class cwt:
 
         # Plot the time Domain
         expStr = ""
-        if self.wavelet_base == "fstep":
+        if self.wavelet_base == "fstep" or self.wavelet_base == 'cfstep':
             titleStr = f"Wavelet: {expStr}cust"
         else:
             titleStr = f"Wavelet: {expStr}{self.wavelet_base}"
         print(f"wavelet base: {self.wavelet_base}")
 
         if self.wavelet_base != 'ricker' and self.wavelet_base != 'morl':
-            if self.wavelet_base == 'fstep':
+            if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
                 titleStr = f"{titleStr}, f0={self.f0}"
             else:
                 titleStr = f"{titleStr}, f0={self.f0}, bw={self.bw}"
         print(f"title str: {titleStr}")
+
+
+
+
+        # Get the bandwidth and f0
+        fftClass = jFFT_cl()
+        nSamp = len(self.wavelet_Time)
+        #logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
+        #logger.info(f"{self.wavelet_Time}")
+        if sRate == 0: #If we call with no sample rate, use the wavelet default
+            waveletDt = self.wavelet_Time[1] - self.wavelet_Time[0]
+            logger.info(f"dt: {waveletDt}")
+            sRate = 1/waveletDt
+        freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp, complex=complexInput)
+        #logger.info(f"Freq D | shape : {fftData.shape}")
+        #logger.info(f"len: {nSamp}, sRate: {sRate}, dt: {1/sRate}")
+        fftData = fftClass.calcFFT(self.wavelet_fun, complex=complexInput) #mag, phase
+
+        if complexInput: #Re-center so neg is before positive
+            freqList = np.fft.fftshift(freqList)
+
+        #Get the f0 and bw from the wavelet
+        # find the max value
+        f0_index = np.argmax(fftData[0]) #fft data is mag/phase
+        #print(f"plotWavelet | {f0_index}")
+        f0 = freqList[f0_index] # the assosiated freq
+
+        # Find Full Width at Half Maximum (FWHM)
+        half_max = fftData[0, f0_index] / 2
+        indices = np.where(fftData[0] >= half_max)[0]
+        bw = freqList[indices[-1]] - freqList[indices[0]]
+        if save:
+            freqDFilename = f"{self.wavelet_name}.txt"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
+            with open(freqDFilePathName, "w") as file:
+                file.write(f"Wavelet: {self.wavelet_name}\n")
+                file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
+                file.write(f"Center frequency (f0): {f0:.4f} Hz\n")
+
+
+        self.plotWaveletTime(titleStr, tFontSize, save, show)
+        if np.iscomplexobj(self.wavelet_fun):
+            self.plotWaveletTime_complex(titleStr, tFontSize, save, show)
+        self.plotWaveletBode(titleStr, sRate, tFontSize, freqList, fftData, save, show)     
+
+
+        return f0, bw
+
+    def plotWaveletTime_complex(self, titleStr, tFontSize, save, show):
+        from mpl_toolkits.mplot3d import Axes3D  # Required for 3D plotting
+
+        fig = plt.figure(figsize=(10, 8))
+
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(self.wavelet_Time, np.real(self.wavelet_fun), np.imag(self.wavelet_fun) )
+
+        azimRot_deg = -10 # 10 deg ccw about z
+        ax.view_init(elev=30, azim=-60+azimRot_deg)
+
+        ax.set_title(f'{titleStr}', fontsize=tFontSize)
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Real Part')
+        ax.set_zlabel('Imaginary Part')
+
+        self.savePlot(plt, f"{self.wavelet_name}_timeD-complex.jpg", save, show)
+
+    def plotWaveletTime(self, titleStr, tFontSize, save, show):
         plt.figure(figsize=(10, 8))
         plt.title(f'{titleStr}', fontsize=tFontSize)
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
@@ -196,33 +302,10 @@ class cwt:
         plt.ylabel('Amplitude')
         plt.legend()
         plt.grid(True)
-        if save:
-            timeDFileName = f"{self.wavelet_name}_timeD.jpg"
-            timeDFileNamePath = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{timeDFileName}"
-            logger.info(f"Saving Wavelet Time Plot: {timeDFileNamePath}")
-            plt.savefig(timeDFileNamePath)
-        if show:
-            plt.show()
-        plt.close()
 
-        # Bode plot
-        fftClass = jFFT_cl()
-        #ch, datapoint
-        nSamp = len(self.wavelet_Time)
-        #logger.info(f"timeD | shape{type(self.wavelet_Time)}, len: {nSamp}")
-        #logger.info(f"{self.wavelet_Time}")
-        waveletDt = self.wavelet_Time[1] - self.wavelet_Time[0]
-        if sRate == 0:
-            sRate = 1/waveletDt
-        freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp, complex=complexInput)
-        #logger.info(f"Freq D | shape : {fftData.shape}")
-        #logger.info(f"{freqList}")
-        fftData = fftClass.calcFFT(self.wavelet_fun, complex=complexInput) #mag, phase
+        self.savePlot(plt, f"{self.wavelet_name}_timeD.jpg", save, show)
 
-        if complexInput: #Re-center so neg is before positive
-            freqList = np.fft.fftshift(freqList)
-
-
+    def plotWaveletBode(self, titleStr, sRate, tFontSize, freqList, fftData, save, show):
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
@@ -247,16 +330,19 @@ class cwt:
         axs[1].grid(True, which='major', linestyle='-', alpha=0.6)
         #axs[1].set_ylim([-180, 180])
 
+        self.savePlot(plt, f"{self.wavelet_name}_freqD.jpg", save, show)
+
+    def savePlot(self, plot, fileName, save, show):
         if save:
-            freqDFilename = f"{self.wavelet_name}_freqD.jpg"
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{fileName}"
             logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
             plt.savefig(freqDFilePathName)
 
         if show:
             plt.show()
         plt.close()
-    
+
+
     def cwtTransformBatch(self, data):
         #logger.info(f"before cwt: {data.shape}")
         data, freqs = self.cwtTransform(data=data.numpy())

@@ -415,16 +415,19 @@ class saveCWT_Time_FFT_images():
             self.normTo_max = data_preparation.dataNormConst.max 
             if self.complexInput:
                 self.normTo_max = np.max(np.abs(data_preparation.dataNormConst.max)) # We plot in mag
-            # Not seting the datanormConst is somehow overwriting it?? Makes no sense
-            if data_preparation.dataNormConst.type == None:
-                self.normTo_max = data_preparation.dataNormConst.max
             else:
-                self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
+                self.normTo_max = data_preparation.dataNormConst.max 
+            logger.info(f" *** norm to max from data_preparation.dataNormConst.max: {self.normTo_max}  *** ")
+            # Not seting the datanormConst is somehow overwriting it?? Makes no sense
+            self.normTo_max = data_preparation.dataNormConst.max
+            #if data_preparation.dataNormConst.type != None:  # This is never none the second run through
+            #    self.normTo_max, data_preparation.dataNormConst = data_preparation.scale_data(data=self.normTo_max, norm=data_preparation.dataNormConst, debug=False) #scalers may be complex
+            #    logger.info(f" *** norm to max dataNormCost != None: {self.normTo_max}  *** ")
             self.normTo_max = np.abs(self.normTo_max)
             logger.info(f"Norm Stats data: {data_preparation.dataNormConst}")
             logger.info(f"Norm Stats lables: {data_preparation.labNormConst}")
             self.normTo_max = self.normTo_max/fudge
-            logger.info(f"norm to max: {self.normTo_max}")
+            logger.info(f" *** norm to max: {self.normTo_max}  *** ")
         ### For CWT we plot the magnitude
         # For non complex tranforms this is still the abs
         # As there is a negitive component.
@@ -557,12 +560,14 @@ class saveCWT_Time_FFT_images():
         cwtData = cwtData[:,:,indices] # Only use the data from the plot list
 
         # scale as we would for processing
+        ### We don't have the scaler type set yet  ###
         #logger.info(f"CWT Before scaling: min: {np.min(cwtData)}, max: {np.max(cwtData)}")
         # Not seting the datanormConst is somehow overwriting it?? Makes no sense
         #cwtData, _ = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
-        if self.data_preparation.dataNormConst.type != None:
-            if self.data_preparation.dataNormConst.type != "none":
-                cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
+        #print(f" ##### scale type: {self.data_preparation.dataNormConst.type}   ####")
+        #if self.data_preparation.dataNormConst.type != None:
+        #    if self.data_preparation.dataNormConst.type != "none":
+        #        cwtData, self.data_preparation.dataNormConst = self.data_preparation.scale_data(data=cwtData, norm=self.data_preparation.dataNormConst, debug=False)
 
         cwtData = np.abs(cwtData) # non complex goes negitive
 

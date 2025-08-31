@@ -172,8 +172,26 @@ class dataLoader:
         self.fileStruct.setFullData_dir()
         self.fileStruct.setWindowedData_dir()
 
+        self.CSVdataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
+
         # Setup the dataplotter
         self.dataPlotter = dataPlotter_class()
+    
+    def get_peram(self, perams, peramName:str, asStr=False):
+        mask = perams['parameter'] == peramName.encode()
+        matches = perams[mask]
+        if len(matches) > 0:
+            if asStr:
+                peram_value = matches['value'][0].decode('utf8')
+                #peram_value = perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
+            else:
+                peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
+            units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
+        else: 
+            peram_value = None
+            units_value = None
+        #print(f"{peramName}: {peram_value} {units_value}")
+        return peram_value, units_value
 
     def get_data(self):
         # Load all the data to a 3D numpy matrix:
@@ -211,6 +229,8 @@ class dataLoader:
             subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want. Sets the sample rate and friends
             subDataShape = np.shape(subjectData) 
             logger.info(f"Subject: {subjectName}, subject shape: {np.shape(subjectData)}")
+
+
 
 
             speed =  self.getSpeedLabels(label_file_csv)
@@ -501,8 +521,8 @@ class dataLoader:
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
         # Strip the head/tails
 
-        dataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
-        with open(dataFile , 'a', newline='') as csvFile:
+        #CSVdataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
+        with open(self.CSVdataFile , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), dataPtsAfterStomp, label')
             for i in range(data.shape[1]):
                 thisCh = self.dataConfigs.chList[i]
@@ -647,6 +667,29 @@ class dataLoader:
 
     def getSubjectData(self, data_file_name):
         with h5py.File(data_file_name, 'r') as file:
+            # Get peramiters
+            ####
+            # fs, record_length, pre_trigger, Building, Floor No, Hallway Width, Hallway Length, Subject4_ID, Height, Age, Weight, shoe-type
+            # heel_strike_loc
+            ####
+
+            filePerams = file['experiment/general_parameters'][:]
+            dataCapRate_hz, dataCapUnits = self.get_peram(filePerams, 'fs', asStr=True)
+            recordLen_s, _ = self.get_peram(filePerams, 'record_length', asStr=True)
+            preTrigger_s, _ = self.get_peram(filePerams, 'pre_trigger', asStr=True)
+            print(f"   *******")
+            print(f"Data Cap: {dataCapRate_hz}, {dataCapUnits}, Record Len: {recordLen_s} sec, pre trigger: {preTrigger_s}")
+            subID, _ = self.get_peram(filePerams, 'Subject4_ID', asStr=True)
+            subHeight, hUnits = self.get_peram(filePerams, 'Height', asStr=True) 
+            subAge, aUnits = self.get_peram(filePerams, 'Age', asStr=True) 
+            subWeight, wUnits = self.get_peram(filePerams, 'Weight', asStr=True) 
+            subShoe, _ = self.get_peram(filePerams, 'shoe-type', asStr=True) 
+            print(f"id: {subID}, height: {subHeight} {hUnits}, age: {subAge} {aUnits}, weight: {subWeight} {wUnits}, shoe: {subShoe}")
+            print(f"   *******")
+            print(self.CSVdataFile)
+            with open(self.CSVdataFile , 'a', newline='') as csvFile:
+                csvFile.write(f"id: {subID}, height: {subHeight} {hUnits}, age: {subAge} {aUnits}, weight: {subWeight} {wUnits}, shoe: {subShoe}\n")
+
             # Get the data from the datafile
             #for ch in self.sensorChList[sensor]-1: 
             for ch in self.dataConfigs.chList:
@@ -1269,7 +1312,7 @@ class dataLoader:
                           min=dataSet.data_min, max=dataSet.data_max, mean=dataSet.data_mean, std=dataSet.data_std)
         self.setNormConst(isData=False, norm=self.labNormConst,  dataSetFile=dataSetFile,
                           min=dataSet.lab_min, max=dataSet.lab_max, mean=dataSet.lab_mean, std=dataSet.lab_std)
-
+        #logger.info(f"main, max, mean, std: {dataSet.data_min}, {dataSet.data_max}, {dataSet.data_mean}, {dataSet.data_std}")
         if debug:
             logger.info(f"Data: {self.dataNormConst}")
             logger.info(f"Labels: {self.labNormConst}")
