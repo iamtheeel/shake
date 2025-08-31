@@ -65,7 +65,9 @@ class cwt:
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
         #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
         if wavelet_base == 'cmorl' or wavelet_base == 'shan':
-            self.wavelet_name = f"{wavelet_base}{f0}-{bw}"
+            # https://pywavelets.readthedocs.io/en/latest/ref/cwt.html
+            # cmorB-C where B is the bandwidth parameter and C is the center frequency
+            self.wavelet_name = f"{wavelet_base}{bw}-{f0}"
         elif wavelet_base == "fstep" or wavelet_base == 'cfstep': #No arguments, arguments handled seperately
             complex = True if self.wavelet_base == 'cfstep' else False
             self.wavelet_name = f"{wavelet_base}-{f0}"
@@ -101,6 +103,7 @@ class cwt:
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
+        f0, bw = self.plotWavelet(sRate=0, save=True, show=False ) #Use 0 to use the wavelet default
         f0, bw = self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
@@ -228,8 +231,6 @@ class cwt:
         print(f"title str: {titleStr}")
 
 
-
-
         # Get the bandwidth and f0
         fftClass = jFFT_cl()
         nSamp = len(self.wavelet_Time)
@@ -239,6 +240,9 @@ class cwt:
             waveletDt = self.wavelet_Time[1] - self.wavelet_Time[0]
             logger.info(f"dt: {waveletDt}")
             sRate = 1/waveletDt
+            atRateOrDefault = f"default-{sRate}Hz"
+        else:
+            atRateOrDefault = f"dataRate-{sRate}Hz"
         freqList = fftClass.getFreqs(sRate=sRate, tBlockLen=nSamp, complex=complexInput)
         #logger.info(f"Freq D | shape : {fftData.shape}")
         #logger.info(f"len: {nSamp}, sRate: {sRate}, dt: {1/sRate}")
@@ -258,18 +262,19 @@ class cwt:
         indices = np.where(fftData[0] >= half_max)[0]
         bw = freqList[indices[-1]] - freqList[indices[0]]
         if save:
-            freqDFilename = f"{self.wavelet_name}.txt"
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}"
+            freqDFilename = f"{atRateOrDefault}_{self.wavelet_name}"
+            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}.txt"
             with open(freqDFilePathName, "w") as file:
                 file.write(f"Wavelet: {self.wavelet_name}\n")
                 file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
                 file.write(f"Center frequency (f0): {f0:.4f} Hz\n")
+                file.write(f"Bandwidth Frequency (bw): {bw:.4f} Hz\n")
 
 
         self.plotWaveletTime(titleStr, tFontSize, save, show)
         if np.iscomplexobj(self.wavelet_fun):
             self.plotWaveletTime_complex(titleStr, tFontSize, save, show)
-        self.plotWaveletBode(titleStr, sRate, tFontSize, freqList, fftData, save, show)     
+        self.plotWaveletBode(titleStr, sRate, tFontSize, freqList, fftData, save, freqDFilename, show)     
 
 
         return f0, bw
@@ -305,7 +310,7 @@ class cwt:
 
         self.savePlot(plt, f"{self.wavelet_name}_timeD.jpg", save, show)
 
-    def plotWaveletBode(self, titleStr, sRate, tFontSize, freqList, fftData, save, show):
+    def plotWaveletBode(self, titleStr, sRate, tFontSize, freqList, fftData, save, fileName, show):
         fig, axs = plt.subplots(2, 1, figsize=(10,10)) #w, h figsize in inches?
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0.10, left = 0.10, right=0.99) 
         #plt.figure(figsize=(10, 8))
@@ -330,7 +335,7 @@ class cwt:
         axs[1].grid(True, which='major', linestyle='-', alpha=0.6)
         #axs[1].set_ylim([-180, 180])
 
-        self.savePlot(plt, f"{self.wavelet_name}_freqD.jpg", save, show)
+        self.savePlot(plt, f"{fileName}_freqD.jpg", save, show)
 
     def savePlot(self, plot, fileName, save, show):
         if save:

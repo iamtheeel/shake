@@ -114,7 +114,7 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow(['Num Scales', configs['cwt']['numScales']])
         writer.writerow(['Freq range', configs['cwt']['fMin'], configs['cwt']['fMax']])
 
-        writer.writerow(['wavelets/center freq/Bandwidth', configs['cwt']['wavelet'], configs['cwt']['waveLet_center_freq'], configs['cwt']['waveLet_bandwidth']])
+        writer.writerow(['wavelets/center freq/Bandwidth', configs['cwt']['wavelet'], configs['cwt']['waveLet_center_freq'], configs['cwt']['waveLet_bandwidth_freq']])
         writer.writerow(['Norm to min/max', configs['cwt']['normTo_min'], configs['cwt']['normTo_max'] ])
 
 
@@ -351,7 +351,7 @@ for batchSize in configs['trainer']['batchSize']:
             bandwidths = [0]
         else:
             centerFreqs = configs['cwt']['waveLet_center_freq']
-            bandwidths = configs['cwt']['waveLet_bandwidth']
+            bandwidths = configs['cwt']['waveLet_bandwidth_freq']
     
         for center_freq in centerFreqs:
             #logger.info(f"Center Freq: {center_freq}")
