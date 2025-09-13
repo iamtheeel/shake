@@ -438,12 +438,13 @@ class leNetV5_cwt(nn.Module):
         #linMult = 486750 # 1 = conv_3_out linConnections
         # the number of cwt freques is tied up in this
         # The batch size also
-        linMult = 11536 #47792 # 1 = conv_3_out linConnections
+        linMult = 263376 #11536 #47792 # 1 = conv_3_out linConnections
         #linMult = 1
         stage1 = 512
         stage2 = 128
         self.linear = nn.Sequential( nn.Flatten(),
-                                      nn.Linear(linMult*conv_3_out, stage1), #Output matrix (linMult*conv_3_out x stage1)
+                                      #nn.Linear(linMult*conv_3_out, stage1), #Output matrix (linMult*conv_3_out x stage1)
+                                      nn.Linear(linMult, stage1), #Output matrix (linMult*conv_3_out x stage1)
                                       nn.ReLU(),
                                       nn.Dropout(0.5),
                                       nn.Linear(stage1, stage2),
@@ -461,3 +462,66 @@ class leNetV5_cwt(nn.Module):
         x = self.clasifyer(x)
 
         return x 
+
+from Complex_Neural_Networks.complex_neural_net import CAvgPool2d, CConv2d, CLinear
+class leNet(nn.Module):
+    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, config = None):
+        super().__init__() 
+        """
+        LeNet-5:
+            3x: Convolution --> Normalization --> Activation --> Pooling
+            Flatten
+            Linear (120) --> activation 
+            Linear (84) --> activation 
+            Linear (nClasses) --> 
+            softmax
+
+        """
+        # Keep it deterministic
+        self.seed = config['trainer']['seed']
+        torch.manual_seed(self.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+        if complex: 
+            self.poolLayer = CAvgPool2d
+            self.convolveLayer = CConv2d
+            self.linearLayer = CLinear
+            #TODO: activations
+        else:       
+            self.poolLayer = nn.AvgPool2d
+            self.convolveLayer = nn.Conv2d
+            self.linearLayer = nn.Linear
+            self.activation = nn.ReLU
+
+        self.pool = self.poolLayer(kernel_size=2, stride=2)
+
+        self.conv1 = self.convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(6)
+        self.conv2 = self.convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
+        self.bn2 = nn.BatchNorm2d(16)
+
+        #TODO: add dropout layers
+
+        self.fc1 = nn.Linear(517280, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.classifyer = nn.Linear(84, numClasses)
+
+    def forward(self, x: torch.Tensor):
+        x = self.conv1(x)
+        x = self.bn1(x) # Normalization Layer Here
+        # Activation Layer Here
+        x = self.activation(x)
+        x = self.pool(x)
+
+        x = self.conv2(x)
+        x = self.bn2(x)# Normalization Layer Here
+        x = self.activation(x)
+        x = self.pool(x)  
+
+        x = torch.flatten(x, 1)
+        x = self.activation(self.fc1(x))
+        x = self.activation(self.fc2(x))
+        x = self.classifyer(x) 
+
+        return x

@@ -480,7 +480,7 @@ class Trainer:
         print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
         with open(f"{self.logDir}/{epochNum}_validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow(['Predictions', '', '', 'Labels'])
+            writer.writerow(['Predictions', '', '','', 'Labels']) #TODO: fix for n classes
             writer.writerow(self.classes + self.classes)
             for row in y_preds_targets:
                 writer.writerow(row.tolist())

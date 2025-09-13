@@ -56,8 +56,7 @@ def foot_step_wavelet(t, central_frequency=2.14, complex=False):
     #t = t/5.0 
     # Main cosine wave
     if complex: 
-        # From Duy:
-        #Complex Foot-Step wavelet: sum of two complex exponentials under a Gaussian window.
+        # From Duy: Complex Foot-Step wavelet: sum of two complex exponentials under a Gaussian window.
         signal = A * np.exp(1j * (2*np.pi * central_frequency * t + phase))
         signal += secondary_amplitude * np.exp(1j * (2*np.pi * secondary_freq * t + phase))
 
@@ -79,6 +78,8 @@ def foot_step_wavelet(t, central_frequency=2.14, complex=False):
     #MJB: We don't want to norm here. If there are no steps we want it quiet
     # We norm to the full dataset.
     signal /= np.sqrt(np.sum(signal**2)) # Normalize to unit energy
+    # if complex norm real and imag parts separately
+    # If complex, we don't norm to max amplitude of 1, as the real and imag parts can be >1
     if complex == False:
         signal /= np.max(np.abs(signal)) # Normalize to max amplitude of 1
     

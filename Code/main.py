@@ -213,9 +213,10 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= 
             #TODO: rewrite lenet to take timeD as an argument
             model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
         else:
-            model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
-    elif model_name == "leNetV5_unFolded":
-            model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+            model = leNet(numClasses=data_preparation.nClasses,nCh=nCh, config=configs )
+            #model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+    #elif model_name == "leNetV5_unFolded":
+    #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs, timeD=timeD)
     elif model_name == "MobileNet_v2_folded":
