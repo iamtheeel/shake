@@ -240,7 +240,7 @@ class dataLoader:
                 yLim = configs['plts']['yLim_freqD']
                 self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
 
-            # Window the data
+            # Window the data and get the labels
             windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectName, speed=speed)
             logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
             logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
@@ -608,8 +608,7 @@ class dataLoader:
                         #logger.info(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
                         #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
                         #if False:
-                        if thisSubjectId > 0: 
-                        #if (not self.regression) or (thisSubjectId > 0): 
+                        if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
                             windowsWithData += 1
                             #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                             thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
