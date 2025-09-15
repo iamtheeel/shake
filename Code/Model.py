@@ -484,21 +484,22 @@ class leNet(nn.Module):
         torch.backends.cudnn.benchmark = False
 
         if complex: 
-            self.poolLayer = CAvgPool2d
-            self.convolveLayer = CConv2d
+            poolLayer = CAvgPool2d
+            convolveLayer = CConv2d
             self.linearLayer = CLinear
             #TODO: activations
         else:       
-            self.poolLayer = nn.AvgPool2d
-            self.convolveLayer = nn.Conv2d
+            poolLayer = nn.AvgPool2d
+            convolveLayer = nn.Conv2d
             self.linearLayer = nn.Linear
-            self.activation = nn.ReLU
+            activation = lambda: nn.ReLU(inplace=True) # lambda to make it a function; Inplace to save memory
 
-        self.pool = self.poolLayer(kernel_size=2, stride=2)
+        self.activation = activation()
+        self.pool = poolLayer(kernel_size=2, stride=2)
 
-        self.conv1 = self.convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0)
+        self.conv1 = convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(6)
-        self.conv2 = self.convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
+        self.conv2 = convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
         self.bn2 = nn.BatchNorm2d(16)
 
         #TODO: add dropout layers
@@ -510,7 +511,6 @@ class leNet(nn.Module):
     def forward(self, x: torch.Tensor):
         x = self.conv1(x)
         x = self.bn1(x) # Normalization Layer Here
-        # Activation Layer Here
         x = self.activation(x)
         x = self.pool(x)
 

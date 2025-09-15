@@ -50,8 +50,8 @@ data:
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 0 #2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
@@ -189,9 +189,9 @@ trainer:
     seed: 4601
 
 model: 
-    regression: False #Or Clasification
-    #name: ["leNetV5"]
-    name: ["MobileNet_v2"] #
+    regression: True #Or Clasification
+    name: ["leNetV5"]
+    #name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #
