@@ -463,7 +463,45 @@ class leNetV5_cwt(nn.Module):
 
         return x 
 
-from Complex_Neural_Networks.complex_neural_net import CAvgPool2d, CConv2d, CLinear
+
+# Our own implementation of complex layers
+# Average Pooling Layer
+class ComplexAvgPool2d(nn.Module):
+    def __init__(self, kernel_size, stride=None, padding=0):
+        super().__init__()
+        self.pool = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
+
+    def forward(self, x: torch.Tensor):
+        return torch.complex(
+            self.pool(x.real),
+            self.pool(x.imag)
+        )
+    
+class ComplexBatchNorm2d(nn.Module):
+    def __init__(self, num_features, **bn_kwargs):
+        super().__init__()
+        # mirror BN params for real and imag
+        self.bn_r = nn.BatchNorm2d(num_features, **bn_kwargs)
+        self.bn_i = nn.BatchNorm2d(num_features, **bn_kwargs)
+
+    def forward(self, x: torch.Tensor):
+        # x: (N, C, H, W), complex64
+        xr, xi = x.real, x.imag
+        yr = self.bn_r(xr)
+        yi = self.bn_i(xi)
+        return torch.complex(yr, yi)
+    
+
+## Does not have an activation layer
+#from Complex_Neural_Networks.complex_neural_net import CAvgPool2d, CConv2d, CLinear
+## complextorch requires: pip install depricated
+##                        In the complextorch directory
+##                        pip install  . --use-pep517
+#import complextorch.complextorch.nn.modules.conv as cplx_conv
+#import complextorch.complextorch.nn.modules.pooling as cplx_pool
+#import complextorch.complextorch.nn.modules.linear as cplx_lin
+#import complextorch.complextorch.nn.modules.activation.complex_relu as cplx_reLU  # Note: many more activations are available
+import complextorch as cplx_torch
 class leNet(nn.Module):
     def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, config = None):
         super().__init__() 
@@ -483,45 +521,75 @@ class leNet(nn.Module):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        if complex: 
-            poolLayer = CAvgPool2d
-            convolveLayer = CConv2d
-            self.linearLayer = CLinear
-            #TODO: activations
-        else:       
-            poolLayer = nn.AvgPool2d
-            convolveLayer = nn.Conv2d
-            self.linearLayer = nn.Linear
-            activation = lambda: nn.ReLU(inplace=True) # lambda to make it a function; Inplace to save memory
+        fc1InputCount = 517280 
 
-        self.activation = activation()
-        self.pool = poolLayer(kernel_size=2, stride=2)
+        if complex: 
+            logger.info(" ***************  Using Complex Layers ***************  ")
+            convolveLayer = cplx_torch.nn.Conv2d 
+            #convolveLayer = nn.Conv2d
+            batchNormLayer = ComplexBatchNorm2d
+            activation = lambda: cplx_torch.nn.CReLU(inplace=False) #Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation:
+
+            #poolLayer = cplx_torch.nn.AdaptiveAvgPool2d#cplx_pool.CAvgPool2d
+            poolLayer = ComplexAvgPool2d
+            #batchNormLayer = cplx_torch.nn.BatchNorm2d  #RuntimeError: Expected both inputs to be Half, Float or Double tensors but got ComplexFloat and ComplexFloat
+            linearLayer = cplx_torch.nn.Linear
+
+            #The head is real valued for real valued loss functions
+            self.fc1 = nn.Linear(2*fc1InputCount, 120) # We need to double the input size for R, I to real valued
+        else:       
+            logger.info(" ***************  Using Real Valued Layers ***************  ")
+            convolveLayer = nn.Conv2d
+            batchNormLayer = nn.BatchNorm2d
+            activation = lambda: nn.ReLU(inplace=True) # lambda to make it a function; Inplace to save memory (Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation: )
+            poolLayer = nn.AvgPool2d
+            linearLayer = nn.Linear
+            self.fc1 = nn.Linear(fc1InputCount, 120)
+
+
+        self.act = activation()
+        if complex: 
+            self.pool = poolLayer(kernel_size=2, stride=2)
+        else:
+            self.pool = poolLayer(kernel_size=2, stride=2)
 
         self.conv1 = convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0)
-        self.bn1 = nn.BatchNorm2d(6)
+        self.bn1 = batchNormLayer(6)
         self.conv2 = convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
-        self.bn2 = nn.BatchNorm2d(16)
+        self.bn2 = batchNormLayer(16)
 
-        #TODO: add dropout layers
+        #TODO: add dropout layers?
 
-        self.fc1 = nn.Linear(517280, 120)
+        #The head is real valued for real valued loss functions
+        #self.fc1 = linearLayer(fc1InputCount, 120)
+        self.act_r = nn.ReLU(inplace=False) # The head is real valued for real valued loss functions
         self.fc2 = nn.Linear(120, 84)
         self.classifyer = nn.Linear(84, numClasses)
 
     def forward(self, x: torch.Tensor):
+        #print(f"Input shape: {x.shape}, dtype: {x.dtype}")
         x = self.conv1(x)
+        #print(f"After conv1 shape: {x.shape}, dtype: {x.dtype}")
         x = self.bn1(x) # Normalization Layer Here
-        x = self.activation(x)
+        x = self.act(x)
         x = self.pool(x)
 
         x = self.conv2(x)
         x = self.bn2(x)# Normalization Layer Here
-        x = self.activation(x)
+        x = self.act(x)
         x = self.pool(x)  
-
         x = torch.flatten(x, 1)
-        x = self.activation(self.fc1(x))
-        x = self.activation(self.fc2(x))
+        #print(f"After flatten: {x.shape}, dtype: {x.dtype}")
+
+        # Our loss functions are real valued, so we need to convert
+        x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
+        x = self.fc1(x) 
+        #print(f"After fc1: {x.shape}, dtype: {x.dtype}")
+        x = self.act_r(x)
+        #print(f"After fc1, activation: {x.shape}, dtype: {x.dtype}")
+        x = self.fc2(x)
+        x = self.act_r(x)
         x = self.classifyer(x) 
+        #print(f"After classification: {x.shape}, dtype: {x.dtype}")
 
         return x

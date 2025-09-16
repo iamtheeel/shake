@@ -7,17 +7,32 @@
 # Train footfall data
 ###
 
+## Installs
+# #conda install numpy=1.26.4  #But copmplex needs > 2
+# pip install torch torchvision
+# pip install torch torchinfo
+# pip install matplotlib
+# pip install pywavelets #pywt
+# pip install scipy
+# pip install PyYAML
+# pip install h5py
+# pip install scikit-learn
+# pip install seaborn
+
+# For complex numbers
+# pip install deprecated
+
 # From MICLab
 ## Configuration
 import os, sys
 import datetime
 import csv
-import numpy as np #conda install numpy=1.26.4
+import numpy as np #conda install numpy=1.26.4  #But copmplex needs > 2
 
 #import time
 from utils import timeTaken
 
-from torchinfo import summary
+from torchinfo import summary  #install torch torchinfo
 
 from timeit import default_timer as timer
 
@@ -57,22 +72,30 @@ machine = platform.machine()
 logger.info(f"machine: {machine}")
 logger.info(f"Importing torch")
 import torch
-device = "cpu"
 if torch.cuda.is_available(): 
     device = "cuda"
     torch.cuda.set_device(args.local_rank)
     print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
 if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
+device = "cpu" # Force CPU for complex on the MAC
 logger.info(f"device: {device}")
 
-def saveSumary(model, dataShape):
+def saveSumary(model, dataShape, complex=False):
     sumFile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{model.__class__.__name__}_modelInfo.txt'
     logger.info(f"Save modelinfo | fileName: {sumFile} | dataShape: {type(dataShape)}, {dataShape}")
+
+    if complex:
+        dummyInput = torch.randn(dataShape, dtype=torch.complex64)
+    else:
+        dummyInput = torch.randn(dataShape)
+    logger.info(f"dummyInput: {type(dummyInput)}, {dummyInput.shape}, {dummyInput.dtype}")
+
     with open(sumFile, 'w', newline='') as sumFile:
         sys.stdout = sumFile
         modelSum = summary(model=model, 
             #Batch Size, inputch, height, width
-            input_size=dataShape, # make sure this is "input_size", not "input_shape"
+            #input_size=dataShape, # make sure this is "input_size", not "input_shape"
+            input_data=dummyInput,
             col_names=["input_size", "output_size", "num_params", "trainable"],
             col_width=20,
             row_settings=["var_names"])
@@ -197,7 +220,7 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
-def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= False):
+def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= False, complex= False):
     logger.info(f"Loading model: {model_name}")
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
@@ -213,7 +236,7 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= 
             #TODO: rewrite lenet to take timeD as an argument
             model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
         else:
-            model = leNet(numClasses=data_preparation.nClasses,nCh=nCh, config=configs )
+            model = leNet(numClasses=data_preparation.nClasses,nCh=nCh, config=configs, complex=complex)
             #model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     #elif model_name == "leNetV5_unFolded":
     #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
@@ -268,20 +291,24 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
         timeD = True
-    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD)
+
+    isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
+    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD, 
+                     complex= isComplex)
 
     #print(model)
     if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
-        if np.iscomplexobj(cwt_class.wavelet_fun):
+        if isComplex:
+            print(model)
             # This is only partialy implemented
             # and conv2d is not implemented :(
-            logger.info(f"  !!!!!  TODO, put model in complex format  !!!!!!")
-            #model = model.to(torch.complex128)
-            #model = model.to(torch.complex64)
+            logger.info(f"  !!!!!  TODO: put model in complex format  !!!!!!")
+            #model = model.to(torch.complex64) # We do not want the whole model in complex
 
-    if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape)
+    if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape, complex=isComplex)
 
     logger.info(f"Load Trainer")
+    model = model.to(device)
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 

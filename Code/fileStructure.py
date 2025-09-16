@@ -67,7 +67,7 @@ class dataDirFiles_class:
         timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
         timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
 
-        #Wavelet Data dir (<wavelet name>_<Center frequency>_<Bandwidth>):
+        #Wavelet Data dir (<wavelet name>_<Center frequency>_<Bandwidth>_<real/mag/complex>):
         class waveletDir_class:
             #waveletFolder_name:str
             waveletDir_name:str
@@ -196,13 +196,19 @@ class fileStruct:
         self.makeDir(self.dataDirFiles.saveDataDir.saveDataDir_name)
         logger.info(f"Data save folder: {self.dataDirFiles.saveDataDir.saveDataDir_name}")
 
-    def setCWT_dir(self, cwtClass:cwt):
+    def setCWT_dir(self, cwtClass:cwt, isComplex:bool= False, asMagnitude:bool= False):
         '''
         '''
         waveletFolder_name = f"{cwtClass.wavelet_name}"
         if cwtClass.wavelet_name != 'None' and cwtClass.wavelet_name != 'spectroGram':
             waveletFolder_name = f"{waveletFolder_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
             waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
+
+        if isComplex:
+            if asMagnitude: waveletFolder_name = f"{waveletFolder_name}_mag"
+            else:           waveletFolder_name = f"{waveletFolder_name}_complex"
+        else:
+            waveletFolder_name = f"{waveletFolder_name}_real"
 
         if cwtClass.useLogScaleFreq: 
             logScFreq_st = "_logScaleFreq"

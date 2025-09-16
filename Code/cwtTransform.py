@@ -63,13 +63,20 @@ class cwt:
         self.f0= f0
         self.bw = bw
         logger.info(f"Wavelet base: {self.wavelet_base}, f0: {self.f0}, bw: {self.bw}")
+
+        ## Note: some wavelets are complex, some are real
+        asMagnitude = self.configs['cwt']['runAsMagnitude']
+        if wavelet_base == 'cmor' or wavelet_base == 'cmorl' or wavelet_base == 'cfmorl' or wavelet_base == 'cfstep' or wavelet_base == 'shan': 
+            complex = True  
+        else:
+            complex = False
+
         #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
         if wavelet_base == 'cmorl' or wavelet_base == 'shan':
             # https://pywavelets.readthedocs.io/en/latest/ref/cwt.html
             # cmorB-C where B is the bandwidth parameter and C is the center frequency
             self.wavelet_name = f"{wavelet_base}{bw}-{f0}"
         elif wavelet_base == "fstep" or wavelet_base == 'cfstep': #No arguments, arguments handled seperately
-            complex = True if self.wavelet_base == 'cfstep' else False
             self.wavelet_name = f"{wavelet_base}-{f0}"
         else:  
             self.wavelet_name = wavelet_base
@@ -77,7 +84,7 @@ class cwt:
         logger.info(f"Wavelet name: {self.wavelet_name}")
 
 
-        self.fileStructure.setCWT_dir(self) 
+        self.fileStructure.setCWT_dir(self, isComplex=complex, asMagnitude=asMagnitude) 
         if self.wavelet_name == 'None' or self.wavelet_name == 'spectroGram':
             logger.info(f"wavelet_name: {self.wavelet_name}")
             return #Now that we have the name, we can skip the rest on None
@@ -186,12 +193,13 @@ class cwt:
 
         data_coefficients = np.transpose(data_coefficients, (1, 0, 2))           # we want: ch, freqs, timepoints
         # Keep only every nth column (time point) from the results?
-        #step_size = 5  # Adjust this to control output resolution: TODO: make this a config
-        #self.data_coefficients = data[:, ::step_size]
         #logger.info(f"Coefficients: type: {type(data_coefficients[0][0])},  shape: {data_coefficients.shape}") #each dataum is a numpy.complex128
 
         ## TODO: allow for complex data
-        if np.iscomplexobj(data_coefficients): data_coefficients = np.abs(data_coefficients)
+        if self.configs['cwt']['runAsMagnitude'] and np.iscomplexobj(data_coefficients):
+            #logger.info(f"Converting complex CWT output to magnitude")
+            data_coefficients = np.abs(data_coefficients) #Magnitude
+            #data_coefficients = np.angle(data_coefficients) #phase
 
         return data_coefficients, data_frequencies
         

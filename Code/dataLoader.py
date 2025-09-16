@@ -33,6 +33,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
+
+def _f32(x):
+    return np.float32(x) if isinstance(x, (float, np.floating)) else x
 @dataclass
 class normClass:
     type: Optional[str] = None
@@ -41,6 +44,18 @@ class normClass:
     mean: Optional[float] = None
     std: Optional[float] = None
     scale: Optional[float] = None
+
+    # Force to float32 for pytorch: From the bot:
+    def __post_init__(self):
+        # Cast anything set during construction
+        for name in ("min", "max", "mean", "std", "scale"):
+            setattr(self, name, _f32(getattr(self, name)))
+
+    def __setattr__(self, name, value):
+        # Cast values set *after* construction
+        if name in {"min", "max", "mean", "std", "scale"}:
+            value = _f32(value)
+        super().__setattr__(name, value)
 
 class dataConfigs:
     sampleRate_hz: Optional[int] = None
@@ -84,7 +99,8 @@ class HDF5Dataset(Dataset):
         self._init_file()
         f  = self.h5_file
         #with h5py.File(self.file_path, "r") as f:
-        data = torch.tensor(f["data"][idx], dtype=torch.float32)
+        #data = torch.tensor(f["data"][idx], dtype=torch.float32)
+        data = torch.tensor(f["data"][idx], dtype=torch.complex64)
         label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
         label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
         subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
@@ -502,9 +518,14 @@ class dataLoader:
         dataSet_t, dataSet_v = random_split(dataSet, [train_size, val_size], torch.Generator().manual_seed(self.seed))
         dataSet_v.indices.sort() # put the validation data back in order
 
+        # Running complex on the mac is broken, so force num_workers=0
+        # for complex we can't run mps, so force to cpu
+        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=0, shuffle=True)
+        self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, num_workers=0, shuffle=False)
+        '''
         if self.device == "mps":
-            self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, shuffle=True)
-            self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, shuffle=False)
+            self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=0, shuffle=True)
+            self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, num_workers=0, shuffle=False)
         else:
             nWorkers = 8
             self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, 
@@ -513,6 +534,7 @@ class dataLoader:
             self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, 
                                 num_workers=nWorkers, persistent_workers=True, pin_memory=True, 
                                 shuffle=False)
+        '''
 
         if writeLog: self.logDataShape()
     
@@ -851,10 +873,10 @@ class dataLoader:
             isTensor = False
 
         if debug: 
+            logger.info(f"Complex data: {np.iscomplexobj(data)}")
             logger.info(f"scale_data: constants:{norm}")
-            logger.info(f"Before scaling: min: {np.min(data)}, max: {np.max(data)}, shape: {data.shape}")
+            logger.info(f"Before scaling: min: {np.min(data)}, max: {np.max(data)}, shape: {data.shape}, type: {type(data)}, {data.dtype}")
             #logger.info(f"{data[0:10, 0, 0]}")
-            #logger.info(f"Complex data: {np.iscomplexobj(data)}")
         if scaler==None: scaler= norm.type
 
         if np.iscomplexobj(data):
@@ -865,7 +887,7 @@ class dataLoader:
             else:               dataScaled, norm = self.norm_data(data, writeToLog, norm, scale, debug)
 
         if debug: 
-            logger.info(f"After scaling: min: {np.min(dataScaled)}, max: {np.max(dataScaled)}, {norm}")
+            logger.info(f"After scaling: min: {np.min(dataScaled)}, max: {np.max(dataScaled)}, {norm}, type: {type(dataScaled)}, {dataScaled.dtype} ")
 
         if isTensor: # and back to tensor
             dataScaled = torch.from_numpy(dataScaled)
@@ -948,6 +970,7 @@ class dataLoader:
 
         if debug:
             logger.info(norm)
+            logger.info(f"std_data: data type: {type(data)}, {data.dtype}, shape: {data.shape}")
             #logger.info(f"Orig: \n{data[0:8]}")
             #logger.info(f"Norm: \n{normData[0:8]}")
 
@@ -1087,15 +1110,22 @@ class dataLoader:
         # Create HDF5 file with expandable datasets
         label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
         #logger.info(f"Data type: {type(data)}, shape {data.shape} ")
-        #if np.iscomplexobj(data): data = np.abs(data)
         ## TODO: Save the complex data
+        if np.iscomplexobj(data):
+            dtype = np.complex64  
+        else:
+            dtype = "float32"
 
         dataShape = data.shape
         with h5py.File(filename, "a") as cwtDataFile:
             if "data" not in cwtDataFile:
                 # Create datasets with `maxshape=(None, ...)` to allow dynamic resizing
                     #cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[2], dataShape[1], dataShape[2]), dtype="complex64", chunks=True)
-                cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), maxshape=(None, dataShape[0], dataShape[1], dataShape[2]), dtype="float32", chunks=True)
+                cwtDataFile.create_dataset("data", shape=(0, dataShape[0], dataShape[1], dataShape[2]), 
+                                           maxshape=(None, dataShape[0], dataShape[1], dataShape[2]), 
+                                           #dtype="float32", 
+                                           dtype=dtype,
+                                           chunks=True)
 
                 cwtDataFile.create_dataset("labelsSpeed", shape=(0,1), maxshape=(None,1), dtype="float32", chunks=True)
                 cwtDataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
