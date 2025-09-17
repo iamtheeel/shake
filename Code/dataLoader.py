@@ -99,8 +99,8 @@ class HDF5Dataset(Dataset):
         self._init_file()
         f  = self.h5_file
         #with h5py.File(self.file_path, "r") as f:
-        #data = torch.tensor(f["data"][idx], dtype=torch.float32)
-        data = torch.tensor(f["data"][idx], dtype=torch.complex64)
+        data = torch.tensor(f["data"][idx], dtype=torch.float32)
+        #data = torch.tensor(f["data"][idx], dtype=torch.complex64)
         label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
         label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
         subject = torch.tensor(f["subjects"][idx], dtype=torch.long)

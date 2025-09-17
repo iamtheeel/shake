@@ -42,7 +42,7 @@ data:
     #test: "Test_4" #Multiple people variyed pace, no labels
 
     downSample: 4 # Downsample by n-times
-    sampleRate: None # early data has the wrong sample rate
+    #sampleRate: None # early data has the wrong sample rate
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 
     classes: ['No Step', '001', '002', '003']
@@ -106,7 +106,7 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: False #Roll this in to "wavelet"?
-    runAsMagnitude: False #Convert complex output to magnitude
+    runAsMagnitude: True #Convert complex output to magnitude
     #saveCWT: #True
 
     logScaleFreq: False

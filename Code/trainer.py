@@ -187,7 +187,7 @@ class Trainer:
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
-                print(f"Label Data type: {type(labelsSpeed)}, {labelsSpeed.shape}, {labelsSpeed.dtype}")
+                #print(f"Label Data type: {type(labelsSpeed)}, {labelsSpeed.shape}, {labelsSpeed.dtype}")
                 if self.regression:
                     labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, writeToLog=False, norm=self.dataPrep.labNormConst, debug=False)
                 else:

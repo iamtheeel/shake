@@ -76,8 +76,8 @@ if torch.cuda.is_available():
     device = "cuda"
     torch.cuda.set_device(args.local_rank)
     print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
-if torch.backends.mps.is_available() and torch.backends.mps.is_built(): device = "mps"
-device = "cpu" # Force CPU for complex on the MAC
+if torch.backends.mps.is_available() and torch.backends.mps.is_built(): 
+    device = "mps"
 logger.info(f"device: {device}")
 
 def saveSumary(model, dataShape, complex=False):
@@ -293,17 +293,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         timeD = True
 
     isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
+    if isComplex:
+        if device == "mps": device = "cpu" # Force CPU for complex on the MAC
+
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD, 
                      complex= isComplex)
 
     #print(model)
-    if cwt_class.wavelet_name != 'None' and cwt_class.wavelet_name != 'spectroGram':
-        if isComplex:
-            print(model)
-            # This is only partialy implemented
-            # and conv2d is not implemented :(
-            logger.info(f"  !!!!!  TODO: put model in complex format  !!!!!!")
-            #model = model.to(torch.complex64) # We do not want the whole model in complex
 
     if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape, complex=isComplex)
 

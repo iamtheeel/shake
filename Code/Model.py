@@ -582,7 +582,7 @@ class leNet(nn.Module):
         #print(f"After flatten: {x.shape}, dtype: {x.dtype}")
 
         # Our loss functions are real valued, so we need to convert
-        x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
+        #x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
         x = self.fc1(x) 
         #print(f"After fc1: {x.shape}, dtype: {x.dtype}")
         x = self.act_r(x)
