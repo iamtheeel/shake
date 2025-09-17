@@ -7,66 +7,68 @@
 # Minimum Case DataLoad, time domain, fft, Spectrogram, CWT Example
 ###
 
-### Settings
-# Data/_h
-#dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" # Data from paper
-#chToPlot = [1, 2, 3, 4]
-#cwtChList = chToPlot #[1, 2, 3]
-#dataTimeRange_s = [10.75, 15.75] # [0 0] for full dataset
-dataTimeRange_s = [0, 0] # [0 0] for full dataset
-
-#dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
-#dataFreqRange_hz = [0.5, 2.5] # If the second argument is 0, use the nyquist
-
-#dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
-#dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
-#dataFile = "/home/josh/winShare/joshTest_1652.hdf5"
-#dataFile = "/home/josh/winShare/joshTest_1652_2.hdf5"
-#dataFile = "/home/josh/winShare/joshTest_413.hdf5"
-#dataFile = "/home/josh/winShare/joshTest_413_413.hdf5"
-#dataFile = "/home/josh/winShare/joshTest_413_1652.hdf5"
-#dataFile = "/Users/theeel/schoolDocs/MIC/NSF_Floor_Vib_Camera-Labeling/StudentData/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
-dataFile = "/home/josh/Documents/MIC/shake/STARS/NSF_Floor_Vib_Camera-Labeling/StudentData/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
-
-# What data are we interested in
-#dataTimeRange_s = [15, 55] # [0 0] for full dataset
-dataFreqRange_hz = [1, 0] # If the second argument is 0, use the nyquist
-#dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
-#dataFreqRange_hz = [0.5, 10] # If the second argument is 0, use the nyquist
-logFreq = False
-# What data are we interested in
-chToPlot = [6, 5, 4]
-cwtChList = chToPlot 
-#chToPlot = list(range(1,20+1)) # all the chns
-#chToPlot = [6, 7, 10]
-#chToPlot = [8, 9, 10]
-#cwtChList = [6, 7, 10] # CWT for only 3 ch (rgb)
-#Ranges for the plotting
-#timeYRange = .02
-#freqYRange = .2
-
-pltXRange = dataFreqRange_hz #[10, 45]
-
-#The wavelet peramiters
-#waveletBase = 'mexh' # Shows low freq well
-#waveletBase = 'morl'
-waveletBase = 'cmorl'
-#waveletBase = 'fstep'
-#f0 = 2.14 #10 # For footstep
-f0 = 10 # For cmorl
-bw = 0.8 # only cmorl
-numScales = 256 # How many frequencies to look at
-
-
 # Librarys needed
 from datetime import datetime           # Built in
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
-import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4
+import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4 for FStep to work
 from scipy.signal import spectrogram    # For spectrogram
 import pywt                             # The CWT              : pip install pywavelets
 #scikit-learn
 from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum footstep wavelet, in foot_step_wavelet.py
+
+
+### Settings
+
+#### The data file to use
+## Data from FStep paper
+#dataFile = "../dataOnFastDrive/data_acquisition_p6.hdf5" 
+
+## Sensor 8, CH10 test data
+# No trigger time
+# Wrong sample rate in file
+#sampleRate = 1706.666667
+#dataFile = "../TestData/WalkingTest_Sensor8/walking_hallway_classroom_single_person.hdf5" # Ch 10 test
+
+## First dataset
+# No trigger time
+# Wrong sample rate in file
+sampleRate = 1706.666667
+dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
+
+## Stars Data
+# Has trigger time
+# Correct sample rate in file
+#sampleRate = None # Get from file
+#dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+
+# What data are we interested in
+dataTimeRange_s = [0, 0] # [0 0] for full dataset
+
+dataFreqRange_hz = [1, 0] # If the second argument is 0, use the nyquist
+
+logFreq = False
+# What data are we interested in
+#chToPlot = list(range(1,20+1)) # all the chns
+chToPlot = [6, 5, 4]
+#cwtChList = [6, 7, 10] # CWT for only 3 ch (rgb)
+cwtChList = chToPlot # CWT for only 3 ch (rgb)
+
+#Ranges for the plotting: If the timerange is 0, it will be set to the max of the data
+timeYRange = 0.01 
+freqYRange = [0.01, 10]
+
+pltXRange = dataFreqRange_hz #[10, 45]
+
+#The wavelet peramiters
+## mexh, morl, cmorl, fstep
+waveletBase = 'cmorl'
+
+#f0 = 2.14 #10 # For footstep, does not take BW
+f0 = 0.8 # For cmorl
+bw = 10 # only cmorl
+numScales = 256 # How many frequencies to look at
+
 
 ### 
 # Functions
@@ -116,8 +118,15 @@ def loadPeramiters(dataFile):
         filePerams = h5file['experiment/general_parameters'][:]
 
     #Extract the data capture info from the file
-    dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
+    if sampleRate == None:
+        dataCapRate_hz, dataCapUnits = get_peram(filePerams, 'fs')
+        #dataCapRate_hz = float(dataCapRate_hz) 
+    else:
+        dataCapRate_hz = sampleRate
+        dataCapUnits = "Hz"
+
     recordLen_s, _ = get_peram(filePerams, 'record_length')
+    recordLen_s = float(recordLen_s)
     preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
 
     #print(filePerams.dtype.names)   # Show the peramiter field names
@@ -300,7 +309,7 @@ def generateCWT(data:np, freqRange, dataRate, waveletBase:str, f0=0, bw=0, log=T
         if f0 == 0 or bw ==0:
             print(f" ERROR!!, cmor must have f0 and bw != 0")
             exit()
-        waveletName = f"{waveletBase}{f0}-{bw}"
+        waveletName = f"{waveletBase}{bw}-{f0}"
     elif waveletBase == "fstep" and f0 != 0:
         waveletName = f"{waveletBase}{f0}"
     else: 
@@ -462,14 +471,14 @@ def plot_3D(data, freqs, title, extraBump = 1, log=False, freqScale=None, save="
 dataCapRate_hz, recordLen_s, preTrigger_s, nTrials = loadPeramiters(dataFile=dataFile) 
 print(f"Data cap rate: {dataCapRate_hz} Hz, Record Length: {recordLen_s} sec, pretrigger len: {preTrigger_s}sec, Trials: {nTrials}")
 
-#timeYRange = np.max(np.abs(dataBlock_numpy))
-
+'''
 # 2-22.21-APDM-data.xlsx has 27 enterys, so this is probably the data
 # Is this even in the right order???
 trialList = [21, 34, 35, 36, 37, 39, 42, 45, 46,
                      22, 23, 24, 25, 26, 27, 28, 30,
                      50, 51, 53, 54, 57, 58, 60, 61, 62, 64]
-trialList = [0]
+'''
+trialList = [0, 1]
 
 #for trial in range(20): # Cycle through the trials
 #for trial in range(dataBlock_numpy.shape[0]): # Cycle through the trials
@@ -488,20 +497,15 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     print(f"Data len: {dataBlock_sliced.shape}")
     
     # Plot the data in the time domain
-    timeYRange = 0.01
-    #timeYRange = np.max(np.abs(dataBlock_sliced))
+    if timeYRange == 0: timeYRange = np.max(np.abs(dataBlock_sliced))
     timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time", save="original")
-    #freqYRange = [0.001, 0.1]
-    freqYRange = [0.01, 10]
     freqSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
                               xAxisRange=dataFreqRange_hz, yAxisRange=freqYRange, 
                               dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True, save="original")
 
-    #plt.show() # Open the plots
-    #exit()
-
     # Generate and plot the CWT
+    '''
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
     plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
@@ -550,5 +554,6 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
     cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
     plot_3D(data=cwtData, freqs=cwtFreqs, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
+    '''
     
     plt.show() # SHow all the plots
