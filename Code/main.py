@@ -72,6 +72,7 @@ machine = platform.machine()
 logger.info(f"machine: {machine}")
 logger.info(f"Importing torch")
 import torch
+device = "cpu"
 if torch.cuda.is_available(): 
     device = "cuda"
     torch.cuda.set_device(args.local_rank)
@@ -199,7 +200,7 @@ fileStructure.setExpTrack_dir(dateTime_str=dateTime_str)
 Data Preparation
 """
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, fileStructure, device)
+data_preparation = dataLoader(configs, fileStructure, device) # Device is sent to determine num_workers (0 for mac)
 writeDataTrackSum_hdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
@@ -264,6 +265,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
            lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise,
            batchSize, model_name, dropOut_layers):
 
+    global device
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
@@ -293,8 +295,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         timeD = True
 
     isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
+    logger.info(f"Running complex on {device},  if mps, force device to cpu")
     if isComplex:
+        # We have already set the num_workers to 0 for mac in the dataLoader, so we can change to CPU now
+        # This is the first use of device after the dataLoader
         if device == "mps": device = "cpu" # Force CPU for complex on the MAC
+        # Time Data can never be complex
+        data_preparation.CWTDataSet.setComplex(True)
 
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD, 
                      complex= isComplex)
