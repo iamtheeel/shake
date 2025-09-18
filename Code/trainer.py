@@ -279,7 +279,7 @@ class Trainer:
                 valAccArr.append(valAcc)
                 if self.epochs - epoch -1 < self.configs['trainer']['nEpochsStats']: # Starting from epoch 0
                     valAccStats.addElement(valAcc)
-                    print(f"add to stats epoch: {epoch}, acc: {valAcc}")
+                    #print(f"add to stats epoch: {epoch}, acc: {valAcc}")
                 #print(f" - {epoch} valAccArr: {valAccArr}")
 
             if self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
