@@ -88,6 +88,11 @@ class HDF5Dataset(Dataset):
         self.lab_mean = f["labelsSpeed"].attrs["mean"]
         self.lab_std = f["labelsSpeed"].attrs["std"]
 
+        self.complex = False # Are we using complex data, we need to know before we load the data from file
+
+    def setComplex(self, complex:bool):
+        self.complex = complex
+
     def __len__(self):
         return self.length
 
@@ -99,8 +104,10 @@ class HDF5Dataset(Dataset):
         self._init_file()
         f  = self.h5_file
         #with h5py.File(self.file_path, "r") as f:
-        data = torch.tensor(f["data"][idx], dtype=torch.float32)
-        #data = torch.tensor(f["data"][idx], dtype=torch.complex64)
+        if self.complex:
+            data = torch.tensor(f["data"][idx], dtype=torch.complex64)
+        else:
+            data = torch.tensor(f["data"][idx], dtype=torch.float32)
         label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
         label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
         subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
@@ -121,7 +128,8 @@ class HDF5Dataset(Dataset):
 class dataLoader:
     def __init__(self, config, fileStruct:"fileStruct", device):
         print(f"\n")
-        logger.info(f"--------------------  Get Data   ----------------------")
+        logger.info(f"--------------------  Init Dataloader   ----------------------")
+        logger.info(f"device: {device}")
         self.device = device
         self.regression = config['model']['regression']
         self.seed = config['trainer']['seed'] 
@@ -192,7 +200,15 @@ class dataLoader:
 
         # Setup the dataplotter
         self.dataPlotter = dataPlotter_class()
-    
+
+        self.complex = False # Are we using complex data, we need to know before we load the data from file
+
+    def setComplex(self, complex:bool):
+        self.complex = complex 
+        self.dataLoader_t.dataset.setComplex(complex)
+        self.dataLoader_v.dataset.setComplex(complex)
+        
+
     def get_peram(self, perams, peramName:str, asStr=False):
         mask = perams['parameter'] == peramName.encode()
         matches = perams[mask]
@@ -520,9 +536,6 @@ class dataLoader:
 
         # Running complex on the mac is broken, so force num_workers=0
         # for complex we can't run mps, so force to cpu
-        self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=0, shuffle=True)
-        self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, num_workers=0, shuffle=False)
-        '''
         if self.device == "mps":
             self.dataLoader_t = DataLoader(dataSet_t, batch_size=self.batchSize, num_workers=0, shuffle=True)
             self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, num_workers=0, shuffle=False)
@@ -534,7 +547,6 @@ class dataLoader:
             self.dataLoader_v = DataLoader(dataSet_v, batch_size=1, 
                                 num_workers=nWorkers, persistent_workers=True, pin_memory=True, 
                                 shuffle=False)
-        '''
 
         if writeLog: self.logDataShape()
     
