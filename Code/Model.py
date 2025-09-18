@@ -522,6 +522,7 @@ class leNet(nn.Module):
         torch.backends.cudnn.benchmark = False
 
         fc1InputCount = 517280 
+        self.complex = complex
 
         if complex: 
             logger.info(" ***************  Using Complex Layers ***************  ")
@@ -582,7 +583,11 @@ class leNet(nn.Module):
         #print(f"After flatten: {x.shape}, dtype: {x.dtype}")
 
         # Our loss functions are real valued, so we need to convert
-        #x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
+        if self.complex:
+            # The target is real valued, so we need to convert to real
+            #x = torch.cat((x.real, x.imag), dim=1).flatten(1)  # (N, 2*C*H*W) float32 
+            x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
+
         x = self.fc1(x) 
         #print(f"After fc1: {x.shape}, dtype: {x.dtype}")
         x = self.act_r(x)
