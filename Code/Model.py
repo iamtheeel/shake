@@ -492,15 +492,10 @@ class ComplexBatchNorm2d(nn.Module):
         return torch.complex(yr, yi)
     
 
-## Does not have an activation layer
-#from Complex_Neural_Networks.complex_neural_net import CAvgPool2d, CConv2d, CLinear
 ## complextorch requires: pip install depricated
 ##                        In the complextorch directory
 ##                        pip install  . --use-pep517
-#import complextorch.complextorch.nn.modules.conv as cplx_conv
-#import complextorch.complextorch.nn.modules.pooling as cplx_pool
-#import complextorch.complextorch.nn.modules.linear as cplx_lin
-#import complextorch.complextorch.nn.modules.activation.complex_relu as cplx_reLU  # Note: many more activations are available
+## Only using the activation layer from complextorch
 import complextorch as cplx_torch
 class leNet(nn.Module):
     def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, config = None):
@@ -526,8 +521,8 @@ class leNet(nn.Module):
 
         if complex: 
             logger.info(" ***************  Using Complex Layers ***************  ")
-            convolveLayer = cplx_torch.nn.Conv2d 
-            #convolveLayer = nn.Conv2d
+            #convolveLayer = cplx_torch.nn.Conv2d 
+            convolveLayer = nn.Conv2d
             batchNormLayer = ComplexBatchNorm2d
             activation = lambda: cplx_torch.nn.CReLU(inplace=False) #Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation:
 
@@ -549,14 +544,12 @@ class leNet(nn.Module):
 
 
         self.act = activation()
-        if complex: 
-            self.pool = poolLayer(kernel_size=2, stride=2)
-        else:
-            self.pool = poolLayer(kernel_size=2, stride=2)
+        self.pool = poolLayer(kernel_size=2, stride=2)
 
-        self.conv1 = convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0)
+        dtype = torch.cfloat if complex else torch.float
+        self.conv1 = convolveLayer(in_channels=nCh, out_channels=6, kernel_size=5, stride=1, padding=0, dtype=dtype)
         self.bn1 = batchNormLayer(6)
-        self.conv2 = convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0)
+        self.conv2 = convolveLayer(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0, dtype=dtype)
         self.bn2 = batchNormLayer(16)
 
         #TODO: add dropout layers?
