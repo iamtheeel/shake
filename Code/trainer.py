@@ -87,9 +87,10 @@ class Trainer:
             waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
 
         #add if it is folded or no, for time domain
-        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr},\n " \
+        self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}," \
                              f"Model: {self.model.__class__.__name__}, " \
-                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay}\n " \
+                             f"\n"\
+                             f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay} " \
                              f"epochs:{self.epochs}"  
         print(f"Hyper Parameters: {self.hyperPeramStr}")
 
@@ -329,10 +330,10 @@ class Trainer:
         fig, axis = plt.subplots(nPlots, 1)
         fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
         if validation: 
-            trainOrVal_str = "Validation"
+            trainOrVal_str = "V:"
             plotPerCount = self.configs['trainer']['validEveryNEpochs']
         else:          
-            trainOrVal_str = "Training"
+            trainOrVal_str = "T:"
             plotPerCount = 1
 
         #x_values = range(len(accArr))  # Original x-axis indices

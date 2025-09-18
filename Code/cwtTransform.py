@@ -66,10 +66,6 @@ class cwt:
 
         ## Note: some wavelets are complex, some are real
         asMagnitude = self.configs['cwt']['runAsMagnitude']
-        if wavelet_base == 'cmor' or wavelet_base == 'cmorl' or wavelet_base == 'cfmorl' or wavelet_base == 'cfstep' or wavelet_base == 'shan': 
-            complex = True  
-        else:
-            complex = False
 
         #if wavelet_base == "ricker" or  wavelet_base=="morl" or wavelet_base== 'spectroGram' or wavelet_base == 'None' or wavelet_base == 'db4':
         if wavelet_base == 'cmorl' or wavelet_base == 'shan':
@@ -84,9 +80,11 @@ class cwt:
         logger.info(f"Wavelet name: {self.wavelet_name}")
 
 
-        self.fileStructure.setCWT_dir(self, isComplex=complex, asMagnitude=asMagnitude) 
         if self.wavelet_name == 'None' or self.wavelet_name == 'spectroGram':
             logger.info(f"wavelet_name: {self.wavelet_name}")
+            self.fileStructure.setCWT_dir(self) 
+            #  None wavelet is never complex
+            #  Burn the spectrogram problem later
             return #Now that we have the name, we can skip the rest on None
 
         if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
@@ -103,7 +101,18 @@ class cwt:
         # Our wave function
         #self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(level=level)#, level=self.level) 
         self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(length=self.length)#, level=self.level) 
-        logger.info(f"{self.wavelet_name}, Complex:{np.iscomplexobj(self.wavelet_fun)}")
+        #if wavelet_base == 'cmor' or wavelet_base == 'cmorl' or wavelet_base == 'cfmorl' or wavelet_base == 'cfstep' or wavelet_base == 'shan': complex = True  
+        #else: complex = False
+        isComplex = np.iscomplexobj(self.wavelet_fun)
+        if isComplex:
+            if asMagnitude: self.wavelet_name = f"{self.wavelet_name}_mag"
+            else:           self.wavelet_name = f"{self.wavelet_name}_complex"
+        else:
+            self.wavelet_name = f"{self.wavelet_name}_real"
+
+        logger.info(f"{self.wavelet_name}, Complex:{isComplex}, len: {len(self.wavelet_fun)}, dt: {self.wavelet_Time[1]-self.wavelet_Time[0] }")
+
+        self.fileStructure.setCWT_dir(self, isComplex=complex, asMagnitude=asMagnitude) 
 
         #f0, bw
         f0, bw = self.getF0_BW()

@@ -106,7 +106,7 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: False #Roll this in to "wavelet"?
-    runAsMagnitude: True #Convert complex output to magnitude
+    runAsMagnitude: False #Convert complex output to magnitude
     #saveCWT: #True
 
     logScaleFreq: False
@@ -183,7 +183,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 10 #Set to upper limit and validate every... (see below)
+    epochs: 1 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs

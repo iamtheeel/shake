@@ -204,11 +204,13 @@ class fileStruct:
             waveletFolder_name = f"{waveletFolder_name}_fMin-{cwtClass.min_freq}_fMax-{cwtClass.max_freq}"
             waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
 
+        '''
         if isComplex:
             if asMagnitude: waveletFolder_name = f"{waveletFolder_name}_mag"
             else:           waveletFolder_name = f"{waveletFolder_name}_complex"
         else:
             waveletFolder_name = f"{waveletFolder_name}_real"
+        '''
 
         if cwtClass.useLogScaleFreq: 
             logScFreq_st = "_logScaleFreq"
