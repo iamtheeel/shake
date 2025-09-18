@@ -36,11 +36,11 @@ logger = logging.getLogger(__name__)
 class Trainer:
     def __init__(self,model, device, dataPrep:"dataLoader", fileStru:"fileStruct", configs, expNum, 
                  cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
-        self.device = device
 
+        logger.info(f"Initializing Trainer: device: {device}, model: {model.__class__.__name__}, loss: {lossFunction}, optimizer: {optimizer}, lr: {learning_rate}, weight_decay: {weight_decay}, gradiant_noise: {gradiant_noise}, epochs: {epochs}")
         
-
         self.dataPrep = dataPrep
+        self.device = device
         self.model = model.to(self.device)
         #self.train_data_loader = self.dataPrep.dataLoader_t 
         #self.val_data_loader   = self.dataPrep.dataLoader_v
