@@ -519,27 +519,30 @@ class leNet(nn.Module):
         fc1InputCount = 517280 
         self.complex = complex
 
+        convolveLayer = nn.Conv2d
         if complex: 
             logger.info(" ***************  Using Complex Layers ***************  ")
             #convolveLayer = cplx_torch.nn.Conv2d 
-            convolveLayer = nn.Conv2d
+
+            #batchNormLayer = cplx_torch.nn.BatchNorm2d  #RuntimeError: Expected both inputs to be Half, Float or Double tensors but got ComplexFloat and ComplexFloat
+                                                         # RuntimeError: The size of tensor a (2129) must match the size of tensor b (6) at non-singleton dimension 4
             batchNormLayer = ComplexBatchNorm2d
             activation = lambda: cplx_torch.nn.CReLU(inplace=False) #Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation:
 
             #poolLayer = cplx_torch.nn.AdaptiveAvgPool2d#cplx_pool.CAvgPool2d
-            poolLayer = ComplexAvgPool2d
-            #batchNormLayer = cplx_torch.nn.BatchNorm2d  #RuntimeError: Expected both inputs to be Half, Float or Double tensors but got ComplexFloat and ComplexFloat
-            linearLayer = cplx_torch.nn.Linear
+            poolLayer = ComplexAvgPool2d  
+            #linearLayer = cplx_torch.nn.Linear
 
             #The head is real valued for real valued loss functions
             self.fc1 = nn.Linear(2*fc1InputCount, 120) # We need to double the input size for R, I to real valued
         else:       
             logger.info(" ***************  Using Real Valued Layers ***************  ")
-            convolveLayer = nn.Conv2d
+
             batchNormLayer = nn.BatchNorm2d
             activation = lambda: nn.ReLU(inplace=True) # lambda to make it a function; Inplace to save memory (Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation: )
             poolLayer = nn.AvgPool2d
-            linearLayer = nn.Linear
+            #linearLayer = nn.Linear
+
             self.fc1 = nn.Linear(fc1InputCount, 120)
 
 

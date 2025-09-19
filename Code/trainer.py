@@ -84,11 +84,11 @@ class Trainer:
         waveletStr = ""
         if cwtClass.wavelet_name != "None":
             #self.doCWT = True
-            waveletStr = f"wavelet: {cwtClass.wavelet_name}, "
+            waveletStr = f"{cwtClass.wavelet_name}, "
 
         #add if it is folded or no, for time domain
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}," \
-                             f"Model: {self.model.__class__.__name__}, " \
+                             f"{self.model.__class__.__name__}, " \
                              f"\n"\
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay} " \
                              f"epochs:{self.epochs}"  
@@ -330,10 +330,10 @@ class Trainer:
         fig, axis = plt.subplots(nPlots, 1)
         fig.subplots_adjust(top = 0.90, hspace = .05, left= 0.125, right = 0.99)
         if validation: 
-            trainOrVal_str = "V:"
+            trainOrVal_str = "V"
             plotPerCount = self.configs['trainer']['validEveryNEpochs']
         else:          
-            trainOrVal_str = "T:"
+            trainOrVal_str = "T"
             plotPerCount = 1
 
         #x_values = range(len(accArr))  # Original x-axis indices
@@ -492,7 +492,7 @@ class Trainer:
         #logger.info(f"Type preds: {type(preds[0])}, targets: {type(targets[0])}")
         #logger.info(f"plot results: {len(preds)}, labels: {len(targets)}")
         plt.figure(figsize=(8, 6))
-        plt.title(f"Regresion Validation Results: {self.hyperPeramStr}, epoch: {epochNum}, Val Acc: {valAcc:.4f}rms")
+        plt.title(f"V: {self.hyperPeramStr}, \nepoch: {epochNum}, Val Acc: {valAcc:.4f}rms")
         plt.plot(range(len(preds)), preds, label=f"Predictions")    
         plt.plot(range(len(targets)), targets, label=f"targets")    
         plt.legend()

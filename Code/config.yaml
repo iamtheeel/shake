@@ -125,10 +125,10 @@ cwt:
     #waveLet_bandwidth_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_center_freq: [0.01, 0.1]  # best vor cmorl
     wavelet: ["cmorl"] 
-    #waveLet_bandwidth_freq:  [2] # cmorl mattching morl
-    #waveLet_center_freq: [0.7958]  # cmorl mattching morl 5/(2*pi)
-    waveLet_bandwidth_freq:  [10] # best for cmorl
-    waveLet_center_freq: [0.8]  # best vor cmorl
+    waveLet_bandwidth_freq:  [2] # cmorl mattching morl
+    waveLet_center_freq: [0.7958]  # cmorl mattching morl 5/(2*pi)
+    #waveLet_bandwidth_freq:  [10] # best for cmorl
+    #waveLet_center_freq: [0.8]  # best vor cmorl
     #wavelet: ['fstep'] #bw not used for fstep
     #waveLet_bandwidth_freq:  [0] # best for cmorl
     #waveLet_center_freq:  [2.14] #fstep center freq best for fStep

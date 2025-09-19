@@ -295,11 +295,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         timeD = True
 
     isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
-    logger.info(f"Running complex on {device},  if mps, force device to cpu")
+    logger.info(f"Running complex: {isComplex} on {device}")
     if isComplex:
         # We have already set the num_workers to 0 for mac in the dataLoader, so we can change to CPU now
         # This is the first use of device after the dataLoader
-        if device == "mps": device = "cpu" # Force CPU for complex on the MAC
+        if device == "mps": 
+            device = "cpu" # Force CPU for complex on the MAC
+            logger.info(f"if mps with complex data, force device to cpu")
         # Time Data can never be complex
         data_preparation.CWTDataSet.setComplex(True)
 
