@@ -8,6 +8,7 @@
 ###
 
 # Librarys needed
+# Use python 3.12
 from datetime import datetime           # Built in
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
