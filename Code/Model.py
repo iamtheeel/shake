@@ -681,7 +681,8 @@ class VGG(nn.Module):
 
         self.features = self.make_layers(cfg=self.VGG_cfg[VGG_cfg], nCh=nCh)
 
-        self.poolForClassifyer = nn.AdaptiveAvgPool2d((1, 1)) # Add a an adaptive pool to get a fixed size output to match the classifier input
+        # Add a an adaptive pool to get a fixed size output to match the classifier input
+        self.poolForClassifyer = nn.AdaptiveAvgPool2d((1, 1)) 
 
         ## We move to realvalued for the classifier
         self.classifier = nn.Sequential(
@@ -710,14 +711,14 @@ class VGG(nn.Module):
         x = self.features(x) # output: 512x8x66
         #print(f"After Features shape: {x.shape}, dtype: {x.dtype}", flush=True)
 
-        #x = x.view(x.size()[0], -1) instead of view, adaptive pool then flatten
 
-        if self.complex:
-            x = self.poolForClassifyer(x)        # output: (N, 512, 1, 1)
-            # The target is real valued, so we need to convert to real
-            x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
-
+        #x = x.view(x.size()[0], -1) instead of flatten, adaptive pool to get fixed size, then flatten
+        x = self.poolForClassifyer(x)        # output: (N, 512, 1, 1)
         #print(f"After pool shape: {x.shape}, dtype: {x.dtype}", flush=True)
+        if self.complex:
+            # The targets are real valued, so we need to convert to real
+            x = torch.view_as_real(x)  # (N, 2F) float32
+
         x = torch.flatten(x, 1)              # output: (N, 512)
         #print(f"After flatten shape: {x.shape}, dtype: {x.dtype}", flush=True)
         x = self.classifier(x) # oujtput: (N, numClasses)

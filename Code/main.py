@@ -231,7 +231,7 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer.writeheader()
 
 def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= False, complex= False):
-    logger.info(f"Loading model: {model_name}")
+    logger.info(f"Loading model: {model_name}, complex: {complex}")
     #      Each model gets a cwt and a non-cwt version
     #Batch Size, inputch, height, width
     #Info for the models: x, ch, datapoints, x
