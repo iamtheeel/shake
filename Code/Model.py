@@ -164,6 +164,10 @@ class MobileNet_v2(nn.Module):
 
 
         startFeature = 0 #Change to 1 to replace the first layer instead of adding a new layer
+
+        # Large batch and overfitting, re-check MobileNet with group norm, this was not done right?
+        #replacing batch norm with group norm: a must for time d, unfolded
+        replace_bn_with_gn(base_model)
         self.features  = base_model.features[startFeature:]
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
@@ -179,9 +183,6 @@ class MobileNet_v2(nn.Module):
             self.fc = nn.Linear(lastLayerFeatureMap_size, numOutputs)
             #print(self)
 
-        # Large batch and overfitting
-        #replacing batch norm with group norm: a must for time d, unfolded
-        replace_bn_with_gn(base_model)
 
 
     def forward(self, x: torch.Tensor):
@@ -620,10 +621,8 @@ class VGG(nn.Module):
                 continue
 
             # Each non-pooling layer gets Conv2d, BatchNorm, ReLU
-            layers += [nn.Conv2d(nCh, l, kernel_size=3, padding=1)]
-    
+            layers += [nn.Conv2d(nCh, l, kernel_size=3, padding=1, bias=False)]
             layers += [nn.BatchNorm2d(l)]
-    
             layers += [nn.ReLU(inplace=True)]
             nCh = l
     
@@ -649,6 +648,16 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, numClasses)
         )
+
+        replace_bn_with_gn(self.features) # Replace all batch norm layers with group norm layers
+
+        # Weight initialization
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
     
     
     def forward(self, x: torch.Tensor): # 4x downsampled: 9x256x2133

@@ -300,7 +300,8 @@ class Trainer:
             #Timing
             epoch_runTime = timer() - epoch_StartTime
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
-            logger.debug(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
+            #logger.debug.. wtf are my loggers not working
+            print(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
                 f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
                 #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
                 f"Time: {epoch_runTime:.1f}s")
