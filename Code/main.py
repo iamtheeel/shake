@@ -8,6 +8,7 @@
 ###
 
 ## Installs
+# use python 3.12
 # #conda install numpy=1.26.4  #But copmplex needs > 2
 # pip install torch torchvision
 # pip install torch torchinfo
