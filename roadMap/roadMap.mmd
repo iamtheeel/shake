@@ -22,7 +22,7 @@ graph TD
     class B3 done;
 
     %% Data acquistion, Walking Pace Tagged
-    subgraph First pass data Caputure
+    subgraph sg_C[First pass data Caputure]
         C1[Label Walking Pace with ADPM wearable BioSensor System]
         C2[Capture Labled Data]
     end
@@ -33,11 +33,20 @@ graph TD
 
 
     %% Footstep Wavelet
-    subgraph FootStep Wavelet
+    subgraph sg_d[FootStep Wavelet]
         D1[Footstep Wavelet]
+        class D1 done;
+        D1 --> sd_d1
+        subgraph sd_d1[Complex Footstep Wavelet]
+            direction TB
+            d1_0[Complex version of footstep wavelet: DD]
+            class d1_0 inprogress;
+            d1_1[computation of complex footstep wavelet transform]
+            class d1_1 done;
+            d1_0 --> d1_1
+        end
     end
-    D1 --> E1
-    class D1 done;
+    sg_d --> E1
 
 
     %% Model Development, data transform
@@ -115,19 +124,36 @@ graph TD
     H9 --> H7
     H7 --> H8
 
-    subgraph Math: Duy Summer 2025
-        I2[x -> X Location]
-        class I2 inprogress
-        I4[Complex Version of FootStep Wavelet]
-        class I4 done
+    subgraph sg_i[Locate Footsteps]
+
+        subgraph sg-i1[Closed Form Solution X, Y - Raphael]
+            sg-i1-0[Research Closed Form]
+            sg-i1-1[load data]
+            sg-i1-2[Implement Closed Form]
+        end
+
+        subgraph sg-i2[From camera]
+            sg-i2-1[x -> X Location:Duy]
+            sg-i2-2[x -> X Location:Mihir]
+            sg-i2-1 --> sg-i2-2
+            class sg-i2-1 inprogress
+            class sg-i2-2 inprogress
+        end
+
+        subgraph sg-i3[From Pose Estimation]
+        end
+
+        subgraph sg-i4[From CVCNN]
+        end
     end
-    H3 --> I2
-    I2 --> I3
+    SG_M --> sg-i4
+    H3 --> sg_i
+    sg_i --> I3
 
     %% From footstep wavelet
-    D1 --> I1 
-    D1 --> I4
-    D1 --> I8
+    sg_d --> I1 
+    sg_d --> sd_d1
+    sg_d --> I8
     subgraph Math: 
         I1[Filter]
         I3[X, Z Location with camera move]
@@ -136,14 +162,14 @@ graph TD
         I8[Improve FootStep Wavelet]
         I9[Investigate wavelet f0 and bw]
     end
-    I4 --> M0
+    sg_d --> sd_d1 --> SG_M
     I6 --> I7
 
     H8 --> J1
     E8 --> J1
 
 
-    subgraph Federated Learning
+    subgraph Federated Learning - Pareshbhai
         J1[Research Fed Learn]
         class J1 inprogress;
         J2[Load Data to Sensor Clusters]
@@ -176,7 +202,7 @@ graph TD
     K0 --> K1
     K1 --> K99
 
-    I2 -->L1
+    sg_i -->L1
     M99 --> L1
     I8 --> L99
     subgraph Stride Features
@@ -185,24 +211,66 @@ graph TD
     end
     L1 --> L99
 
-    E8 --> M0
-    I2 --> M0
-    subgraph Complex CNNs
+    E8 --> SG_M
+    sg_i --> SG_M
+    subgraph SG_M[Complex CNNs]
         M0[Complex Models in pyTorch]
         class M0 done;
         M1[Research Complex Models]
         class M1 inprogress;
         M2[Load Complex Data to DataLoader]
-        M3[Activation Function]
-        M4[Conv]
+        class M2 done;
+
+        M3[Conv]
+        class M3 done;
+        M4[Activation Function]
+        class M4 inprogress;
+        M5[Pool]
+        class M5 inprogress;
+        M6[Norm]
+        class M6 inprogress;
+
         M10[Real/Image Seperate Layers]
-        M11[Full Complex]
+        M11[Mag/phase Seperate Layers]
+        M12[Full Real/Imag]
+        M13[Full Mag/Phase]
+
         M20[Complex LeNet]
+        class M20 done;
+        M21[Complex VGG]
+
+
+        M40[experiment with Complex]
+
         M99[Compair Complex Results]
     end
     M0 --> M1
     M1 --> M2
-    M2 --> M99
+
+    sg_d --> M2
+
+    M2 --> M3
+    M2 --> M4
+    M2 --> M5
+    M2 --> M6
+    M3 --> M20
+    M4 --> M20
+    M5 --> M20
+    M6 --> M20
+    M20 --> M21
+
+    M21 --> M40
+
+    M4 --> M40
+    M5 --> M40
+    M6 --> M40
+    M10 --> M40
+    M11 --> M40
+    M12 --> M40
+    M13 --> M40
+
+    M40 --> M99
+
 
 
     %% Unphased issues
