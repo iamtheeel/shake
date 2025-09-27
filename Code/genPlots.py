@@ -12,6 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm  #progress bar
+import sys
 
 from jFFT import jFFT_cl
 from utils import *
@@ -33,7 +34,7 @@ configs = config.get_config()
 ## Logging
 import logging
 debug = configs['debugs']['debug']
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 if debug == False:
     logging.disable(level=logging.CRITICAL)
@@ -628,9 +629,8 @@ class saveCWT_Time_FFT_images():
 
     def generateAndSaveImages(self, logScaleData):
         #dataEnd = self.data_preparation.data_raw.shape[0]
-        #for dataumNumber in tqdm(range(0, dataEnd), desc="Generating CWT, FFT Plots For Movie", unit="Plot"):
         for thisWindowNum, (data_torch, label_speed, subjectLabel, subject, run, timeWindow) in  \
-                  tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Plotting CWT/Spectragram Data", unit="Window" ):
+                  tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Plotting CWT/Spectragram Data", unit="Window", file=sys.stdout):
 
             data = data_torch.numpy()
             #data, run, timeWindow, subjectLabel = self.data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels

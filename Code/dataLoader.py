@@ -10,7 +10,7 @@
 import h5py, csv
 import numpy as np
 import copy
-import os
+import os, sys
 from tqdm import tqdm  #progress bar
 from scipy.signal import spectrogram    # For spectrogram
 
@@ -29,7 +29,7 @@ if typing.TYPE_CHECKING: #Fix circular import
     from fileStructure import fileStruct
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
@@ -464,7 +464,7 @@ class dataLoader:
     def plotFromDataSet(self, freqDImageDir, dataSet, freqYLim):
         desc_str = f"Creating image set for {freqDImageDir}" 
         logger.info(desc_str)
-        for row, (data_tensor, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set" ):
+        for row, (data_tensor, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
             speed = label_speed.item()
             thisSubject = self.classes[subject]
             data_np = data_tensor.numpy()
@@ -480,7 +480,7 @@ class dataLoader:
         desc_str = f"Creating image set for {folder}" 
         logger.info(desc_str)
         print(f"subject: {len(subject)}")
-        for row, dataRow in tqdm(enumerate(data), total=len(data), desc=desc_str, unit=" Image Set", leave=False):
+        for row, dataRow in tqdm(enumerate(data), total=len(data), desc=desc_str, unit=" Image Set", leave=False, file=sys.stdout):
             thisSpeed = speed[row]
             fileN = f"subject-{subject}_run-{row}"
             title = f"Domain subject:{subject}, run:{row}, speed:{thisSpeed:.2f}"
@@ -1257,7 +1257,7 @@ class dataLoader:
         nElements = 0
 
         for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
-                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc=f"Generating {cwt_class.wavelet_name} Data", unit="Window" ):
+                  tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc=f"Generating {cwt_class.wavelet_name} Data", unit="Window", file=sys.stdout):
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
             if cwt_class.wavelet_name == 'spectroGram':

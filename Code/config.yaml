@@ -106,7 +106,7 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: False #Roll this in to "wavelet"?
-    runAsMagnitude: False #Convert complex output to magnitude
+    runAsMagnitude: True #Convert complex output to magnitude
     #saveCWT: #True
 
     logScaleFreq: False
@@ -124,7 +124,7 @@ cwt:
     #wavelet: ["shan"] 
     #waveLet_bandwidth_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_center_freq: [0.01, 0.1]  # best vor cmorl
-    wavelet: ["cmorl"] 
+    wavelet: ["morl"] 
     waveLet_bandwidth_freq:  [2] # cmorl mattching morl
     waveLet_center_freq: [0.7958]  # cmorl mattching morl 5/(2*pi)
     #waveLet_bandwidth_freq:  [10] # best for cmorl
@@ -191,13 +191,17 @@ trainer:
 
 model: 
     regression: True #Or Clasification
-    name: ["leNetV5"]
+    name: ["VGG"]
+    #name: ["leNetV5"]
     #name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #
     timeDImgHeight: 64 #240 Only on LeNet Folded
     dropOut: [0] #0.5 Not implemented on leNet
+
+    VGG:
+        cfg: 'VGG16' # 'VGG11', 'VGG13', 'VGG16', 'VGG19'
 
     multilayerPerceptron:
         hidden_neurons: 100

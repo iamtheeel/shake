@@ -114,7 +114,7 @@ from pathlib import Path
 
 import logging
 from pathlib import Path
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 class fileStruct:

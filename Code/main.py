@@ -1,3 +1,4 @@
+
 ###
 # main.py
 # Joshua Mehlman
@@ -23,12 +24,16 @@
 # For complex numbers
 # pip install deprecated
 
+
 # From MICLab
 ## Configuration
 import os, sys
 import datetime
 import csv
 import numpy as np #conda install numpy=1.26.4  #But copmplex needs > 2
+
+
+print(f"Python: {sys.version}, numpy: {np.__version__}", flush=True)
 
 #import time
 from utils import timeTaken
@@ -59,13 +64,15 @@ from fileStructure import fileStruct
 fileStructure = fileStruct()
 
 ## Logging
+print(f"Logging", flush=True)
 import logging
 debug = configs['debugs']['debug']
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 if debug == False:
     logging.disable(level=logging.CRITICAL)
     logger.disabled = True
+
 
 ## What platform are we running on
 import platform
@@ -77,10 +84,11 @@ device = "cpu"
 if torch.cuda.is_available(): 
     device = "cuda"
     torch.cuda.set_device(args.local_rank)
-    print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}")
+    print(f"[GPU {args.local_rank}] CUDA: {torch.cuda.get_device_name(args.local_rank)} available = {torch.cuda.is_available()}", flush=True)
 if torch.backends.mps.is_available() and torch.backends.mps.is_built(): 
     device = "mps"
 logger.info(f"device: {device}")
+
 
 def saveSumary(model, dataShape, complex=False):
     sumFile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{model.__class__.__name__}_modelInfo.txt'
@@ -218,7 +226,7 @@ expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'Data Scaler', 'Data 
                  f'Last {lastStats_n} epochs max', f'Last {lastStats_n} epochs mean', f'Last {lastStats_n} epochs std',
                  f'Class Acc {accStr}', 'Time(s)']
 with open(expTrackFile, 'w', newline='') as csvFile:
-    print(f"Writing hdr: {expTrackFile}")
+    print(f"Writing hdr: {expTrackFile}", flush=True)
     writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
@@ -242,12 +250,15 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= 
             #model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
     #elif model_name == "leNetV5_unFolded":
     #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+    elif model_name == "VGG":
+        model = VGG(numClasses=data_preparation.nClasses, nCh=nCh, complex=complex, 
+                    seed=configs['trainer']['seed'], cfg=configs['model']['VGG']['cfg'])
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs, timeD=timeD)
     elif model_name == "MobileNet_v2_folded":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, dropOut=dropOut_layers, config=configs)
     else: 
-        print(f"{model_name} is not a model that we have")
+        print(f"{model_name} is not a model that we have", flush=True)
         exit()
 
     '''
@@ -287,7 +298,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     # Add the batch size to the dataloader shape, but don't include the number of items
     #if configs['cwt']['doCWT']:
     #if configs['cwt']['wavelet'] != "None":
-    print(f"Wavelet base: {cwt_class.wavelet_base}")
+    print(f"Wavelet base: {cwt_class.wavelet_base}", flush=True)
     if wavelet_base != "None":
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
         timeD = False
@@ -325,7 +336,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     exp_runTime = timer() - exp_StartTime
     # Log the results
     with open(expTrackFile, 'a', newline='') as csvFile:
-        print(f"Writing data: {expTrackFile}")
+        print(f"Writing data: {expTrackFile}", flush=True)
         writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
         writer.writerow({'Test': expNum,
                          'BatchSize': batchSize,

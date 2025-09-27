@@ -24,7 +24,7 @@ from jFFT import jFFT_cl
 
 import logging
 from pathlib import Path
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 

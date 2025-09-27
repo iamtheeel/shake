@@ -12,7 +12,7 @@ from torchvision import models
 import math
 
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 # Add a reShape for everybody to use
@@ -592,5 +592,76 @@ class leNet(nn.Module):
         x = self.act_r(x)
         x = self.classifyer(x) 
         #print(f"After classification: {x.shape}, dtype: {x.dtype}")
+
+        return x
+
+class VGG(nn.Module):
+    '''
+        Very Deep Convolutional Networks for Large-Scale Image Recognition.
+        https://arxiv.org/abs/1409.1556v6
+        Karen Simonyan, Andrew Zisserman
+
+        VGG model implementation based on: "vgg in pytorch" 
+        https://github.com/weiaicunzai/pytorch-cifar100/blob/master/models/vgg.py
+    '''
+
+    VGG_cfg = {"VGG11": [ 64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+               "VGG13": [ 64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
+               "VGG16": [ 64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M", ],
+               "VGG19": [ 64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M", ]
+    }
+
+    def make_layers(self, cfg, nCh=3 ):
+        layers = []
+
+        for l in cfg:
+            if l == 'M':
+                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+                continue
+
+            # Each non-pooling layer gets Conv2d, BatchNorm, ReLU
+            layers += [nn.Conv2d(nCh, l, kernel_size=3, padding=1)]
+    
+            layers += [nn.BatchNorm2d(l)]
+    
+            layers += [nn.ReLU(inplace=True)]
+            nCh = l
+    
+        return nn.Sequential(*layers)
+
+    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, seed=86, cfg: str = "VGG16"):
+        super().__init__() 
+        # Keep it deterministic
+        self.seed = seed
+        torch.manual_seed(self.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+        self.features = self.make_layers(cfg=self.VGG_cfg[cfg], nCh=nCh)
+
+        self.poolForClassifyer = nn.AdaptiveAvgPool2d((1, 1)) # Add a an adaptive pool to get a fixed size output to match the classifier input
+        self.classifier = nn.Sequential(
+            nn.Linear(512, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, numClasses)
+        )
+    
+    
+    def forward(self, x: torch.Tensor): # 4x downsampled: 9x256x2133
+        #print(f"Initial shape: {x.shape}, dtype: {x.dtype}", flush=True)
+        x = self.features(x) # output: 512x8x66
+        #print(f"After Features shape: {x.shape}, dtype: {x.dtype}", flush=True)
+
+        #x = x.view(x.size()[0], -1) instead of view, adaptive pool then flatten
+        x = self.poolForClassifyer(x)        # output: (N, 512, 1, 1)
+        #print(f"After pool shape: {x.shape}, dtype: {x.dtype}", flush=True)
+        x = torch.flatten(x, 1)              # output: (N, 512)
+        #print(f"After flatten shape: {x.shape}, dtype: {x.dtype}", flush=True)
+        x = self.classifier(x) # oujtput: (N, numClasses)
+        #print(f"After classifyer shape: {x.shape}, dtype: {x.dtype}", flush=True)
 
         return x

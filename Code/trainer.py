@@ -12,6 +12,7 @@ import numpy as np
 from tqdm import tqdm  #progress bar
 import matplotlib.pyplot as plt
 import csv
+import sys
 #pyTorch
 import torch
 from torch import nn
@@ -30,7 +31,7 @@ if TYPE_CHECKING: #Fix circular import
     from dataLoader import dataLoader
     
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 class Trainer:
@@ -92,7 +93,7 @@ class Trainer:
                              f"\n"\
                              f"loss:{self.lossFunctionName}, opt:{self.optimizerName}, lr:{self.learning_rate}, wd:{self.weight_decay} " \
                              f"epochs:{self.epochs}"  
-        print(f"Hyper Parameters: {self.hyperPeramStr}")
+        print(f"Hyper Parameters: {self.hyperPeramStr}", flush=True)
 
         #Writh the headder for the validation acc by epoch file
         with open(self.validLog, 'a', newline='') as csvFile:
@@ -100,9 +101,9 @@ class Trainer:
             writer.writerow(["Epoch Num", "Loss", self.accStr, "Acc by Class"])
 
     def set_training_config(self):
-        #print(f"Selected Optimizer = {self.optimizerName}")
+        #print(f"Selected Optimizer = {self.optimizerName}", flush=True)
         if self.optimizerName == "SGD":
-            #print(self.model.parameters().shape)
+            #print(self.model.parameters().shape, flush=True)
             self.optimizer = torch.optim.SGD(params=self.model.parameters(), lr=self.learning_rate)
         elif self.optimizerName == "Adam":
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), 
@@ -122,17 +123,17 @@ class Trainer:
 )
 
         ## Loss Functions
-        #print(f"Selected Loss Function = {self.lossFunctionName}")
+        #print(f"Selected Loss Function = {self.lossFunctionName}", flush=True )
         if self.lossFunctionName == "MSE": 
-            #print(f"Loss function: Mean Squared Error, L2")
+            #print(f"Loss function: Mean Squared Error, L2", flush=True)
             self.criterion = nn.MSELoss()
             self.testCrit = nn.MSELoss()
         elif self.lossFunctionName == "MAE": 
-            #print(f"Loss function: Mean Absolute Error, L1")
+            #print(f"Loss function: Mean Absolute Error, L1",flush=True)
             self.criterion = nn.L1Loss() 
             self.testCrit = nn.L1Loss()
         elif self.lossFunctionName == "Huber": # 
-            #print(f"Loss function: Huber")
+            #print(f"Loss function: Huber", flush=True)
             self.criterion = nn.HuberLoss()
             self.testCrit = nn.MSELoss()
         elif self.lossFunctionName == "Sigmoid":
@@ -164,7 +165,7 @@ class Trainer:
 
         valAccStats = runStats()
 
-        print(f"Model device: {next(self.model.parameters()).device}")
+        print(f"Model device: {next(self.model.parameters()).device}", flush=True)
 
         fieldnames = ['epoch', 'lr', 'batch', 'batch correct', self.accStr, 'loss', 'time(s)']
         with open(self.trainLog, 'a', newline='') as csvFile:
@@ -172,7 +173,7 @@ class Trainer:
             writer.writeheader()
 
         #for epoch in range(self.epochs):
-        for epoch in tqdm(range(self.epochs), desc="Training Progress", unit="epoch"):
+        for epoch in tqdm(range(self.epochs), desc="Training Progress", unit="epoch", file=sys.stdout):
             batchNumber = 0
             correct_epoch = 0
             train_loss_epoch, train_acc_epoch = 0, 0
@@ -181,29 +182,29 @@ class Trainer:
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
             batchStartTime = time.time()
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False):
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False, file=sys.stdout):
                 dataLoadTime = time.time() - batchStartTime
                 #logger.info(f"Data Load time: {dataLoadTime}")
                 #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
 
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
-                #print(f"Label Data type: {type(labelsSpeed)}, {labelsSpeed.shape}, {labelsSpeed.dtype}")
+                #print(f"Label Data type: {type(labelsSpeed)}, {labelsSpeed.shape}, {labelsSpeed.dtype}", flush=True)
                 if self.regression:
                     labels, self.dataPrep.labNormConst = self.dataPrep.scale_data(data=labelsSpeed, writeToLog=False, norm=self.dataPrep.labNormConst, debug=False)
                 else:
                     labels = labelsSubject # we want ([batch size,])
-                #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}")
+                #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}", flush=True)
 
                 data = data.to(self.device)
-                #print(f"Data device: {data.device}")
+                #print(f"Data device: {data.device}", flush=True)
                 labels = labels.to(self.device)
 
                 batchNumber +=1
                 #for thisRun  in range(0, n):
                 batch_StartTime = timer()
 
-                #print(f"Data Shape: {data.shape}")
+                #print(f"Data Shape: {data.shape}", flush=True)
                 self.optimizer.zero_grad()
 
                 # Turn the crank 
@@ -215,13 +216,13 @@ class Trainer:
                 self.optimizer.step()
 
                 #Batch, input ch, height, width
-                #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}")
-                #print(f"Batch Labels: {labels}")
-                #print(f"output shape: {out_pred.shape}, dtype: {out_pred.dtype}")
+                #print(f"labels shape: {labels.shape}, dtype: {labels.dtype}", flush=True)
+                #print(f"Batch Labels: {labels}", flush=True)
+                #print(f"output shape: {out_pred.shape}, dtype: {out_pred.dtype}", flush=True)
 
                 ## The Accuracy 
                 if self.regression:
-                    #print(f"Regression: {out_pred.shape}, {labels.shape}")
+                    #print(f"Regression: {out_pred.shape}, {labels.shape}", flush=True)
                     # Calculate RMS accuracy between predictions and labels
                     # Output of unScale is numpy
                     preds_unSc = self.dataPrep.unScale_data(out_pred.squeeze().detach().cpu().numpy(), self.dataPrep.labNormConst)
@@ -230,7 +231,7 @@ class Trainer:
                     diff_sq = np.square(preds_unSc - targs_unSc)
                     rms_diff_sq = np.mean(diff_sq)
                     rms_diff = np.sqrt(rms_diff_sq)
-                    #print(f"Regression diff: {diff.shape}, rms_diff: {rms_diff}")
+                    #print(f"Regression diff: {diff.shape}, rms_diff: {rms_diff}", flush=True)
                     thisAcc = rms_diff
                     # keep track of the squared diffs for the epoch
                     epoch_squared_diff = np.append(epoch_squared_diff, diff_sq)
@@ -299,7 +300,7 @@ class Trainer:
             #Timing
             epoch_runTime = timer() - epoch_StartTime
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
-            print(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
+            logger.debug(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
                 f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
                 #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
                 f"Time: {epoch_runTime:.1f}s")
@@ -316,7 +317,7 @@ class Trainer:
                 
         # End Epochs
         valAccStats.finish()
-        print(f"Last {self.configs['trainer']['nEpochsStats']} epochs| min: {valAccStats.min}, max: {valAccStats.max}, mean: {valAccStats.mean}, std: {valAccStats.std}")
+        print(f"Last {self.configs['trainer']['nEpochsStats']} epochs| min: {valAccStats.min}, max: {valAccStats.max}, mean: {valAccStats.mean}, std: {valAccStats.std}", flush=True)
 
         self.plotLossAcc(lossArr=lossArr, accArr=accArr)
         self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
@@ -379,7 +380,7 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             #print(f"Test Data len: {nData}")
 
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window"):
+            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window", file=sys.stdout ):
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
