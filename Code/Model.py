@@ -49,15 +49,18 @@ def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):
     return x
 
 
-def replace_bn_with_gn(model):
-    for name, module in model.named_children():
+def replace_bn_with_gn(layers, complex=False):
+    if complex: groupNorm = ComplexGroupNorm
+    else:       groupNorm = nn.GroupNorm
+
+    for name, module in layers.named_children():
         if isinstance(module, nn.BatchNorm2d):
             num_channels = module.num_features
             num_groups = min(32, num_channels)  # Ensure num_groups does not exceed num_channels
             while num_channels % num_groups != 0 and num_groups > 1: # Ensure num_groups is a divisor of num_channels
                 num_groups -= 1  # Reduce num_groups until it cleanly divides num_channels
 
-            setattr(model, name, nn.GroupNorm(num_groups=num_groups, num_channels=num_channels))
+            setattr(layers, name, groupNorm(num_groups=num_groups, num_channels=num_channels))
         else:
             replace_bn_with_gn(module)
 
@@ -466,6 +469,7 @@ class leNetV5_cwt(nn.Module):
 
 
 # Our own implementation of complex layers
+# From ChatGPT
 # Average Pooling Layer
 class ComplexAvgPool2d(nn.Module):
     def __init__(self, kernel_size, stride=None, padding=0):
@@ -478,6 +482,7 @@ class ComplexAvgPool2d(nn.Module):
             self.pool(x.imag)
         )
     
+# From ChatGPT
 class ComplexBatchNorm2d(nn.Module):
     def __init__(self, num_features, **bn_kwargs):
         super().__init__()
@@ -490,6 +495,23 @@ class ComplexBatchNorm2d(nn.Module):
         xr, xi = x.real, x.imag
         yr = self.bn_r(xr)
         yi = self.bn_i(xi)
+        return torch.complex(yr, yi)
+
+# From ChatGPT
+class ComplexGroupNorm(nn.Module):
+    def __init__(self, num_groups: int, num_channels: int, **gn_kwargs):
+        super().__init__()
+        # mirror GN params for real and imag
+        self.gn_r = nn.GroupNorm(num_groups, num_channels, **gn_kwargs)
+        self.gn_i = nn.GroupNorm(num_groups, num_channels, **gn_kwargs)
+
+    def forward(self, x: torch.Tensor):
+        """
+        x: (N, C, H, W), dtype=torch.complex64/complex128
+        """
+        xr, xi = x.real, x.imag
+        yr = self.gn_r(xr)
+        yi = self.gn_i(xi)
         return torch.complex(yr, yi)
     
 
@@ -612,23 +634,37 @@ class VGG(nn.Module):
                "VGG19": [ 64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M", ]
     }
 
-    def make_layers(self, cfg, nCh=3 ):
+    def make_layers(self, cfg, nCh=3):
+        if self.complex:
+            dType = torch.cfloat
+            poolLayer = ComplexAvgPool2d
+            batchNormLayer = ComplexBatchNorm2d
+            activation = lambda: cplx_torch.nn.CReLU(inplace=False) #Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation:
+
+        else:
+            dType = torch.float
+            poolLayer = nn.AvgPool2d
+            batchNormLayer = nn.BatchNorm2d
+            activation = lambda: nn.ReLU(inplace=True) # lambda to make it a function; 
+                                                       # Inplace to save memory (Set to false if:one of the variables needed for gradient computation has been modified by an inplace operation: )
+
+
         layers = []
 
         for l in cfg:
             if l == 'M':
-                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+                layers += [poolLayer(kernel_size=2, stride=2)]
                 continue
 
             # Each non-pooling layer gets Conv2d, BatchNorm, ReLU
-            layers += [nn.Conv2d(nCh, l, kernel_size=3, padding=1, bias=False)]
-            layers += [nn.BatchNorm2d(l)]
-            layers += [nn.ReLU(inplace=True)]
+            layers += [nn.Conv2d(nCh, l, kernel_size=3, padding=1, bias=False, dtype=dType)]
+            layers += [batchNormLayer(l)] #This will be replaced with group norm later
+            layers += [activation()]
             nCh = l
     
         return nn.Sequential(*layers)
 
-    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, seed=86, cfg: str = "VGG16"):
+    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, seed=86, VGG_cfg: str = "VGG16"):
         super().__init__() 
         # Keep it deterministic
         self.seed = seed
@@ -636,11 +672,20 @@ class VGG(nn.Module):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        self.features = self.make_layers(cfg=self.VGG_cfg[cfg], nCh=nCh)
+
+        self.complex = complex
+        if self.complex:
+            fcMult = 2 # Double the input size for R, I to real valued
+        else:
+            fcMult = 1
+
+        self.features = self.make_layers(cfg=self.VGG_cfg[VGG_cfg], nCh=nCh)
 
         self.poolForClassifyer = nn.AdaptiveAvgPool2d((1, 1)) # Add a an adaptive pool to get a fixed size output to match the classifier input
+
+        ## We move to realvalued for the classifier
         self.classifier = nn.Sequential(
-            nn.Linear(512, 4096),
+            nn.Linear(fcMult*512, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
@@ -649,7 +694,7 @@ class VGG(nn.Module):
             nn.Linear(4096, numClasses)
         )
 
-        replace_bn_with_gn(self.features) # Replace all batch norm layers with group norm layers
+        replace_bn_with_gn(self.features, complex=self.complex) # Replace all batch norm layers with group norm layers
 
         # Weight initialization
         for m in self.modules():
@@ -666,7 +711,12 @@ class VGG(nn.Module):
         #print(f"After Features shape: {x.shape}, dtype: {x.dtype}", flush=True)
 
         #x = x.view(x.size()[0], -1) instead of view, adaptive pool then flatten
-        x = self.poolForClassifyer(x)        # output: (N, 512, 1, 1)
+
+        if self.complex:
+            x = self.poolForClassifyer(x)        # output: (N, 512, 1, 1)
+            # The target is real valued, so we need to convert to real
+            x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
+
         #print(f"After pool shape: {x.shape}, dtype: {x.dtype}", flush=True)
         x = torch.flatten(x, 1)              # output: (N, 512)
         #print(f"After flatten shape: {x.shape}, dtype: {x.dtype}", flush=True)

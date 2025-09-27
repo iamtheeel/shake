@@ -252,7 +252,7 @@ def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= 
     #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
     elif model_name == "VGG":
         model = VGG(numClasses=data_preparation.nClasses, nCh=nCh, complex=complex, 
-                    seed=configs['trainer']['seed'], cfg=configs['model']['VGG']['cfg'])
+                    seed=configs['trainer']['seed'], VGG_cfg=configs['model']['VGG']['cfg'])
     elif model_name == "MobileNet_v2":
         model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, folded=False, dropOut=dropOut_layers , config=configs, timeD=timeD)
     elif model_name == "MobileNet_v2_folded":

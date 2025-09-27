@@ -106,7 +106,7 @@ cwt:
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
     doCWT: False #Roll this in to "wavelet"?
-    runAsMagnitude: True #Convert complex output to magnitude
+    runAsMagnitude: False #Convert complex output to magnitude
     #saveCWT: #True
 
     logScaleFreq: False
@@ -124,9 +124,9 @@ cwt:
     #wavelet: ["shan"] 
     #waveLet_bandwidth_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_center_freq: [0.01, 0.1]  # best vor cmorl
-    wavelet: ["morl"] 
+    wavelet: ["cmorl"] 
     waveLet_bandwidth_freq:  [2] # cmorl mattching morl
-    waveLet_center_freq: [0.7958]  # cmorl mattching morl 5/(2*pi)
+    waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
     #waveLet_bandwidth_freq:  [10] # best for cmorl
     #waveLet_center_freq: [0.8]  # best vor cmorl
     #wavelet: ['fstep'] #bw not used for fstep
