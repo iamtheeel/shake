@@ -96,7 +96,7 @@ cwt:
     #  'coif1', 'coif2', 'coif3', 'coif4', 'coif5', 'coif6', 'coif7', 'coif8', 'coif9', 'coif10', 'coif11', 'coif12', 'coif13', 'coif14', 'coif15', 'coif16', 'coif17', 
     #  'db1', 'db2', 'db3', 'db4', 'db5', 'db6', 'db7', 'db8', 'db9', 'db10', 'db11', 'db12', 'db13', 'db14', 'db15', 'db16', 'db17', 'db18', 'db19', 'db20', 'db21', 'db22', 'db23', 'db24', 'db25', 'db26', 'db27', 'db28', 'db29', 'db30', 'db31', 'db32', 'db33', 'db34', 'db35', 'db36', 'db37', 'db38', 
     #  'dmey', 
-    #  'fbsp', 
+    #  'fbsp',
     #  'gaus1', 'gaus2', 'gaus3', 'gaus4', 'gaus5', 'gaus6', 'gaus7', 'gaus8', 
     #  'haar', 
     #  'mexh', <Ricker>
@@ -105,7 +105,6 @@ cwt:
     #  'shan', 
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
-    doCWT: False #Roll this in to "wavelet"?
     runAsMagnitude: False #Convert complex output to magnitude
     #saveCWT: #True
 
@@ -115,7 +114,7 @@ cwt:
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
-    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no CWT
+    #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
     #wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
@@ -124,7 +123,7 @@ cwt:
     #wavelet: ["shan"] 
     #waveLet_bandwidth_freq:  [1, 5] #fstep center freq best4 for fStep 0.5 to 10hz
     #waveLet_center_freq: [0.01, 0.1]  # best vor cmorl
-    wavelet: ["cmorl"] 
+    wavelet: ["None"] 
     waveLet_bandwidth_freq:  [2] # cmorl mattching morl
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
     #waveLet_bandwidth_freq:  [10] # best for cmorl
@@ -150,7 +149,7 @@ trainer:
     #batchSize: [64, 128] 
 
     #batchSize: [8, 16, 32] #8 #For mobilenet timeD
-    batchSize: [1] #Should be power of 2
+    batchSize: [8] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -191,9 +190,9 @@ trainer:
 
 model: 
     regression: True #Or Clasification
-    name: ["VGG"]
+    #name: ["VGG"]
     #name: ["leNetV5"]
-    #name: ["MobileNet_v2"] #
+    name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #

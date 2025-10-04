@@ -81,10 +81,8 @@ class Trainer:
 
         self.set_training_config()
         self.cwtClass = cwtClass
-        #self.doCWT = False
         waveletStr = ""
         if cwtClass.wavelet_name != "None":
-            #self.doCWT = True
             waveletStr = f"{cwtClass.wavelet_name}, "
 
         #add if it is folded or no, for time domain

@@ -142,17 +142,17 @@ class MobileNet_v2(nn.Module):
             self.timePoints = dataShape[2]
             base_model.features[0][0] = nn.Conv2d(self.nCh, 32, kernel_size=3, stride=2, padding=1, bias=False)
         
-        #if(config['cwt']['doCWT']):
-        self.timDData = timeD
+        self.timeDData = timeD
+        logger.info(f"Time Domain data: {self.timeDData}")
         '''
         if(config['cwt']['wavelet']) != "None":
             # [Batch, Ch, Frequencies, TimePoints]
             logger.info(f"Wavelet Shape: {config['cwt']['wavelet']}")
-            self.timDData = False
+            self.timeDData = False
         else:
             # [Batch, Ch, TimePoints]
             logger.info(f"Time Domain Shape")
-            self.timDData = True
+            self.timeDData = True
             #the new count must be more than the number of timepoints
 
             #base_model.features[0][0] = nn.Conv1d(
@@ -190,9 +190,10 @@ class MobileNet_v2(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # run the new layers if timed
-        if self.timDData: 
+        if self.timeDData: 
             if self.folded == False:
                 x = x.unsqueeze(-1) # Reshape the data to fit
+                #x = x.unsqueeze(2) # Reshape the data to fit
             else:
                 x = self.convForReshape(x) # Run it through a 1D conve first
                 # Reshape the data
