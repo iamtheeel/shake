@@ -10,7 +10,7 @@
 
 ## Installs
 # use python 3.12
-# #conda install numpy=1.26.4  #But copmplex needs > 2
+# #conda install numpy
 # pip install torch torchvision
 # pip install torch torchinfo
 # pip install matplotlib
@@ -53,11 +53,13 @@ from utils import checkFor_CreateDir
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--local_rank', type=int, default=0)
+parser.add_argument('--local_rank', type=int, default=0) # For multi-GPU, set to 0 for single GPU or CPU
+parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Path to the configuration file')
 args = parser.parse_args()
 
+configFile = args.config
 from ConfigParser import ConfigParser
-config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
+config = ConfigParser(os.path.join(os.getcwd(), args.config))
 configs = config.get_config()
 
 from fileStructure import fileStruct
