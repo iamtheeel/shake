@@ -6,6 +6,7 @@ class ConfigParser:
         self.config = self._parse_config()
 
     def _parse_config(self):
+        print(f"Loading configuration from {self.config_file}")
         with open(self.config_file, 'r') as stream:
             try:
                 return yaml.safe_load(stream)
