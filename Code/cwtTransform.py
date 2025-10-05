@@ -87,8 +87,10 @@ class cwt:
             #  Burn the spectrogram problem later
             return #Now that we have the name, we can skip the rest on None
 
-        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
-            self.wavelet = FootStepWavelet(central_frequency=f0, complex=complex)
+        if self.wavelet_base == 'fstep' :
+            self.wavelet = FootStepWavelet(central_frequency=f0, complex=False)
+        elif self.wavelet_base == 'cfstep':
+            self.wavelet = FootStepWavelet(central_frequency=f0, complex=True)
         else:
             #Center freq and bw are imbedded in the name, or not used
             if self.wavelet_base == 'ricker':
@@ -112,7 +114,7 @@ class cwt:
 
         logger.info(f"{self.wavelet_name}, Complex:{isComplex}, len: {len(self.wavelet_fun)}, dt: {self.wavelet_Time[1]-self.wavelet_Time[0] }")
 
-        self.fileStructure.setCWT_dir(self, isComplex=complex, asMagnitude=asMagnitude) 
+        self.fileStructure.setCWT_dir(self, isComplex=isComplex, asMagnitude=asMagnitude) 
 
         #f0, bw
         f0, bw = self.getF0_BW()
