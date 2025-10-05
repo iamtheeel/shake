@@ -10,7 +10,7 @@
 
 ## Installs
 # use python 3.12
-# #conda install numpy=1.26.4  #But copmplex needs > 2
+# #conda install numpy
 # pip install torch torchvision
 # pip install torch torchinfo
 # pip install matplotlib
@@ -53,11 +53,13 @@ from utils import checkFor_CreateDir
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--local_rank', type=int, default=0)
+parser.add_argument('--local_rank', type=int, default=0) # For multi-GPU, set to 0 for single GPU or CPU
+parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Path to the configuration file')
 args = parser.parse_args()
 
+configFile = args.config
 from ConfigParser import ConfigParser
-config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
+config = ConfigParser(os.path.join(os.getcwd(), args.config))
 configs = config.get_config()
 
 from fileStructure import fileStruct
@@ -90,7 +92,7 @@ if torch.backends.mps.is_available() and torch.backends.mps.is_built():
 logger.info(f"device: {device}")
 
 
-def saveSumary(model, dataShape, complex=False):
+def saveSumary(model, dataShape, timeD= False, complex=False):
     sumFile = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{model.__class__.__name__}_modelInfo.txt'
     logger.info(f"Save modelinfo | fileName: {sumFile} | dataShape: {type(dataShape)}, {dataShape}")
 
@@ -141,7 +143,6 @@ def writeDataTrackSum_hdr(dataConfigs):
     
 
         writer.writerow([f'', '--------- CWT '])
-        #writer.writerow(['Do CWT', configs['cwt']['doCWT']])
         writer.writerow(['log scale freq', configs['cwt']['logScaleFreq']])
         writer.writerow(['log scale data', configs['cwt']['logScale']])
         writer.writerow(['Num Scales', configs['cwt']['numScales']])
@@ -294,19 +295,19 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     if(logScaleData): scaleStr = f"{scaleStr}, Log"
 
 
-    logger.info(f"Get Model")
     # Add the batch size to the dataloader shape, but don't include the number of items
-    #if configs['cwt']['doCWT']:
-    #if configs['cwt']['wavelet'] != "None":
-    print(f"Wavelet base: {cwt_class.wavelet_base}", flush=True)
-    if wavelet_base != "None":
+    if cwt_class.wavelet_base != None:
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
         timeD = False
     else:
         dataShape = (batchSize,) + data_preparation.timeDDataSet.shape[1:]
         timeD = True
 
-    isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
+    isComplex = False
+    logger.info(f"wavelet_base: {cwt_class.wavelet_base}, timeD: {timeD}, dataShape: {dataShape}")
+    if cwt_class.wavelet_base != None and cwt_class.wavelet_base != "spectroGram":
+        isComplex = np.iscomplexobj(cwt_class.wavelet_fun) and configs['cwt']['runAsMagnitude'] == False
+
     logger.info(f"Running complex: {isComplex} on {device}")
     if isComplex:
         # We have already set the num_workers to 0 for mac in the dataLoader, so we can change to CPU now
@@ -317,12 +318,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         # Time Data can never be complex
         data_preparation.CWTDataSet.setComplex(True)
 
+    logger.info(f"Get Model")
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD, 
                      complex= isComplex)
 
     #print(model)
 
-    if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape, complex=isComplex)
+    if configs['debugs']['saveModelInfo']: saveSumary(model, dataShape, timeD=timeD, complex=isComplex)
 
     logger.info(f"Load Trainer")
     model = model.to(device)
@@ -371,8 +373,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
 
 expNum = 1
 wavelet_bases = configs['cwt']['wavelet']
-#wavelet_bases = ['None']
-#if configs['cwt']['doCWT']: wavelet_bases = configs['cwt']['wavelet']
 
 for batchSize in configs['trainer']['batchSize']:
     data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt

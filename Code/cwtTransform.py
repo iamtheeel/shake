@@ -87,8 +87,10 @@ class cwt:
             #  Burn the spectrogram problem later
             return #Now that we have the name, we can skip the rest on None
 
-        if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
-            self.wavelet = FootStepWavelet(central_frequency=f0, complex=complex)
+        if self.wavelet_base == 'fstep' :
+            self.wavelet = FootStepWavelet(central_frequency=f0, isComplex=False)
+        elif self.wavelet_base == 'cfstep':
+            self.wavelet = FootStepWavelet(central_frequency=f0, isComplex=True)
         else:
             #Center freq and bw are imbedded in the name, or not used
             if self.wavelet_base == 'ricker':
@@ -112,7 +114,7 @@ class cwt:
 
         logger.info(f"{self.wavelet_name}, Complex:{isComplex}, len: {len(self.wavelet_fun)}, dt: {self.wavelet_Time[1]-self.wavelet_Time[0] }")
 
-        self.fileStructure.setCWT_dir(self, isComplex=complex, asMagnitude=asMagnitude) 
+        self.fileStructure.setCWT_dir(self, isComplex=isComplex, asMagnitude=asMagnitude) 
 
         #f0, bw
         f0, bw = self.getF0_BW()
@@ -185,11 +187,12 @@ class cwt:
             logger.info(f"Transforming data: {type(data)}")
 
         start_time = time.time()
+        isComplex = np.iscomplexobj(self.wavelet_fun)
         if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
-            if debug: logger.info(f"{self.wavelet_base}.foot_step_cwt, complex: {complex}")
+            if debug: logger.info(f"{self.wavelet_base}.foot_step_cwt, complex: {isComplex}")
             [data_coefficients, data_frequencies] = foot_step_cwt(data=data, scales=self.scales, 
                                                                   sampling_period=self.samplePeriod, f_0=self.f0, 
-                                                                  complex=complex)
+                                                                  isComplex=isComplex)
             if debug:
                 logger.info(f"data_coefficients dtype: {data_coefficients.dtype}, complex: {data_coefficients.dtype.kind == 'c'}")
         else:
@@ -234,7 +237,9 @@ class cwt:
 
         # Plot the time Domain
         expStr = ""
-        if self.wavelet_base == "fstep" or self.wavelet_base == 'cfstep':
+        if self.wavelet_base == "fstep" :
+            titleStr = f"Wavelet: {expStr}cCust"
+        elif self.wavelet_base == 'cfstep':
             titleStr = f"Wavelet: {expStr}cust"
         else:
             titleStr = f"Wavelet: {expStr}{self.wavelet_base}"

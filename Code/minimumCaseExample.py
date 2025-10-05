@@ -34,14 +34,14 @@ from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum foots
 ## First dataset
 # No trigger time
 # Wrong sample rate in file
-sampleRate = 1706.666667
-dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
+#sampleRate = 1706.666667
+#dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
 
 ## Stars Data
 # Has trigger time
 # Correct sample rate in file
-#sampleRate = None # Get from file
-#dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+sampleRate = None # Get from file
+dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
 
 # What data are we interested in
 dataTimeRange_s = [0, 0] # [0 0] for full dataset
