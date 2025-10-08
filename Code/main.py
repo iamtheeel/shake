@@ -48,7 +48,6 @@ from trainer import Trainer
 # CWT Transform
 from cwtTransform import cwt
 
-#from genPlots import saveMovieFrames
 from utils import checkFor_CreateDir
 
 import argparse
@@ -63,7 +62,7 @@ config = ConfigParser(os.path.join(os.getcwd(), args.config))
 configs = config.get_config()
 
 from fileStructure import fileStruct
-fileStructure = fileStruct()
+fileStructure = fileStruct(configs=configs)
 
 ## Logging
 print(f"Logging", flush=True)

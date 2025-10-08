@@ -1196,7 +1196,7 @@ class dataLoader:
             if configs['debugs']['generateCWTPlots']:
                 timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
-                    dataPlotter = saveCWT_Time_FFT_images(data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
+                    dataPlotter = saveCWT_Time_FFT_images(configs, data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
                     dataPlotter.generateAndSaveImages(logScaleData)
 
     def specGramTransform(self, data, timeRes = 1.0, overlap = 0.95, debug=False):

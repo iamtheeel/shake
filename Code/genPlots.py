@@ -378,16 +378,17 @@ def plotRunFFT(data, samRate, subject, timeStart, name):
 
 
 class saveCWT_Time_FFT_images():
-    def __init__(self, data_preparation:"dataLoader", cwt_class:"cwt", expDir):
+    def __init__(self, configs, data_preparation:"dataLoader", cwt_class:"cwt", expDir):
+        self.configs = configs
         self.axisFontSize = 20
         self.colorList = ['r', 'g', 'b', 'y', 'm', 'c', 'k']
 
         print(f"\n")
         logger.info(f"----------     Generate Plots  ----------------")
         self.data_preparation = data_preparation
-        self.showImageNoSave = configs['plts']['showFilesForAnimation']
-        sensorChList = configs['data']['chList']
-        self.chPlotList = configs['plts']['rgbPlotChList']
+        self.showImageNoSave = self.configs['plts']['showFilesForAnimation']
+        sensorChList = self.configs['data']['chList']
+        self.chPlotList = self.configs['plts']['rgbPlotChList']
         if self.chPlotList == 0: self.chPlotList = sensorChList
         self.cwt_class = cwt_class
 
@@ -406,8 +407,8 @@ class saveCWT_Time_FFT_images():
             if np.iscomplexobj(cwt_class.wavelet_fun): self.complexInput = True
 
         #Renorm the data
-        self.normTo_max = configs['cwt']['normTo_max'] 
-        self.normTo_min = configs['cwt']['normTo_min'] 
+        self.normTo_max = self.configs['cwt']['normTo_max'] 
+        self.normTo_min = self.configs['cwt']['normTo_min'] 
         # Find what the min and max will be after scaling
         if self.normTo_max == 0: 
             if data_preparation.dataNormConst.type == "std":
@@ -474,7 +475,7 @@ class saveCWT_Time_FFT_images():
         if self.data_preparation.dataNormConst.scale != 1:
             normStr = f"{normStr}, {self.data_preparation.dataNormConst.scale}"
         self.regClasStr = "Classification"
-        if configs['model']['regression']:
+        if self.configs['model']['regression']:
             self.regClasStr = "Regression"
 
         textstr = f'Run: {run}\n' \
@@ -521,7 +522,7 @@ class saveCWT_Time_FFT_images():
 
     def setFreqD_Plot(self, axs, asLogScale):
         # Plot the Frequency domain data
-        yLim = configs['plts']['yLim_freqD']
+        yLim = self.configs['plts']['yLim_freqD']
         if asLogScale: #Is the mag log scale?
             # Set x-axis to log scale for frequency plot
             axs[1, 0].set_xscale('log')
@@ -592,8 +593,8 @@ class saveCWT_Time_FFT_images():
                          #extent=[min(times), max(times), min(freqs), max(freqs)]) 
         
         #logger.info(f"Freqs: {data_preparation.cwtFrequencies}")
-        #if configs['cwt']['logScaleFreq']: plt.yscale('log')
-        if configs['cwt']['logScaleFreq']: axs[1, 1].set_yscale('log')
+        #if self.configs['cwt']['logScaleFreq']: plt.yscale('log')
+        if self.configs['cwt']['logScaleFreq']: axs[1, 1].set_yscale('log')
         fontSize = 20
         #axs[1, 1].set_xlim(0, time[-1] + (time[1] - time[0])) # add the end data point.
         axs[1, 1].tick_params(axis='x', labelsize=fontSize)

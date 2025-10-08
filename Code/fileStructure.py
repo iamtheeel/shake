@@ -101,12 +101,6 @@ class dataDirFiles_class:
         freq:str = "freq"
     plotDirNames = plotDirNames_class()
 
-
-import os
-from ConfigParser import ConfigParser
-config = ConfigParser(os.path.join(os.getcwd(), 'config.yaml'))
-configs = config.get_config()
-
 from cwtTransform import cwt
 from dataLoader import normClass
 
@@ -118,9 +112,10 @@ logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 class fileStruct:
-    def __init__(self):
-        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=configs['data']['dataOutDir'])
-        self.expTrackFiles = expTrackFiles_class(expTrackDir_name=configs['expTrackDir'])
+    def __init__(self, configs:dict):
+        self.configs = configs
+        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=self.configs['data']['dataOutDir'])
+        self.expTrackFiles = expTrackFiles_class(expTrackDir_name=self.configs['expTrackDir'])
 
     def makeDir(self, dir_str):
         '''
@@ -132,7 +127,7 @@ class fileStruct:
     def setExpTrack_dir(self, dateTime_str=None ):
         '''
         '''
-        self.expTrackFiles.expTrackDir_name = f"{configs['expTrackDir']}/{dateTime_str}"
+        self.expTrackFiles.expTrackDir_name = f"{self.configs['expTrackDir']}/{dateTime_str}"
         if dateTime_str != None: self.expTrackFiles.expTrackDateTime = dateTime_str
         #The experiment tracking
         self.expTrackFiles.expTrack_log_file = f"{dateTime_str}_DataTrack_Log.csv"
@@ -156,9 +151,9 @@ class fileStruct:
         #dataFolder =self.dataDirFiles.saveDataDir.saveDataFolder_name 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
 
-        chList_str = "_".join(map(str, configs['data']['chList']))
+        chList_str = "_".join(map(str, self.configs['data']['chList']))
         downSample_Str = ""
-        downSample = configs['data']['downSample']
+        downSample = self.configs['data']['downSample']
         if downSample > 1:
             downSample_Str = f"_DownSample-{downSample}x"
 
@@ -170,24 +165,24 @@ class fileStruct:
     
     def setWindowedData_dir(self):
         # We drop the 0 vel for regression
-        self.regression = configs['model']['regression']
+        self.regression = self.configs['model']['regression']
         if self.regression: regClas = "regression"
         else:               regClas = "classification"
         dataFolder = f"{regClas}"
 
         #Window len and step size
-        dataFolder = f"{dataFolder}_winLen-{configs['data']['windowLen']}"
-        dataFolder = f"{dataFolder}_step-{configs['data']['stepSize']}"
+        dataFolder = f"{dataFolder}_winLen-{self.configs['data']['windowLen']}"
+        dataFolder = f"{dataFolder}_step-{self.configs['data']['stepSize']}"
 
-        stompThresh = configs['data']['stompThresh'] 
+        stompThresh = self.configs['data']['stompThresh'] 
         if isinstance(stompThresh, str):
             dataFolder = f"{dataFolder}_StompThresh-File"
         else:
             dataFolder = f"{dataFolder}_StompThresh-{stompThresh}"
-        dataFolder = f"{dataFolder}_DataThresh-{configs['data']['dataThresh']}"
+        dataFolder = f"{dataFolder}_DataThresh-{self.configs['data']['dataThresh']}"
 
-        limitRuns = configs['data']['limitRuns']
-        limitWindows = configs['data']['limitWindowLen']
+        limitRuns = self.configs['data']['limitRuns']
+        limitWindows = self.configs['data']['limitWindowLen']
         if limitRuns !=0: dataFolder = f"{dataFolder}_runLim-{limitRuns}"
         if limitWindows !=0: dataFolder = f"{dataFolder}_windowLim-{limitWindows}"
 
