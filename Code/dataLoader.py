@@ -525,7 +525,7 @@ class dataLoader:
 
     def createDataloaders(self, dataSet, writeLog=True):
         # Split sizes
-        trainRatio = configs['data']['trainRatio']
+        trainRatio = self.configs['data']['trainRatio']
         train_size = int(trainRatio * len(dataSet))  # 80% for training
         val_size = len(dataSet) - train_size  # 20% for validation
 
@@ -860,7 +860,7 @@ class dataLoader:
     def getDataInfo(self, file):
         general_parameters = file['experiment/general_parameters'][:]
         #logger.info(f"Data File parameters: {general_parameters}")
-        self.dataConfigs.sampleRate_hz = configs['data']['sampleRate']
+        self.dataConfigs.sampleRate_hz = self.configs['data']['sampleRate']
         if self.dataConfigs.sampleRate_hz == None:
             self.dataConfigs.sampleRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
 
@@ -1193,7 +1193,7 @@ class dataLoader:
             logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
 
             # Plot the saved images
-            if configs['debugs']['generateCWTPlots']:
+            if self.configs['debugs']['generateCWTPlots']:
                 timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
                     dataPlotter = saveCWT_Time_FFT_images(configs, data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
