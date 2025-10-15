@@ -108,7 +108,7 @@ class Trainer:
                                               lr=self.learning_rate,
                                               weight_decay=self.weight_decay)
         elif self.optimizerName == "AdamW":
-            optimizer = AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=(0.9, 0.999), amsgrad=True)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay, betas=(0.9, 0.999), amsgrad=True)
         else:
             raise NotImplementedError("Unsuppported optimiser")
 
