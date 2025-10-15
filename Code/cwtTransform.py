@@ -99,6 +99,7 @@ class cwt:
                 self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         #level = 10 #Number of iterations, for descrete wavelets
         self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
+        #self.length = 4096 #at 256 with f_0 = 10, it looks a little ragged
 
         # Our wave function
         #self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(level=level)#, level=self.level) 

@@ -107,8 +107,13 @@ class Trainer:
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), 
                                               lr=self.learning_rate,
                                               weight_decay=self.weight_decay)
+        elif self.optimizerName == "AdamW":
+            self.optimizer = torch.optim.AdamW(params=self.model.parameters(), 
+                                              lr=self.learning_rate,
+                                              weight_decay=self.weight_decay,
+                                              betas=(0.9,0.999), amsgrad=True)
         else:
-            raise NotImplementedError("Only SGD is supported for now")
+            raise NotImplementedError("Unsupported optimiser for now")
 
         if self.configs['trainer']['LR_sch'] == 'CosineAnnealingWarmRestarts':
             eta_min = float(self.configs['trainer']['eta_min'])

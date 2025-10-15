@@ -210,7 +210,6 @@ Data Preparation
 """
 from dataLoader import dataLoader
 data_preparation = dataLoader(configs, fileStructure, device) # Device is sent to determine num_workers (0 for mac)
-writeDataTrackSum_hdr(data_preparation.dataConfigs)
 
 if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
     data_preparation.get_data()
@@ -219,6 +218,10 @@ if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
 lastStats_n = configs['trainer']['nEpochsStats']
+
+
+## Init the experiment tracking and data tracking log files
+writeDataTrackSum_hdr(data_preparation.dataConfigs)  
 expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
                  'Train Loss', f'Train {accStr}', 'Last Epoch Val Loss', 

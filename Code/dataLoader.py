@@ -268,7 +268,7 @@ class dataLoader:
             speed =  self.getSpeedLabels(label_file_csv)
             #print(f"speeds: {speed}")
 
-            if configs['debugs']['generateTimeFreqPlots']:
+            if self.configs['debugs']['generateTimeFreqPlots']:
                 yLim = configs['plts']['yLim_freqD']
                 self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
 
@@ -1193,7 +1193,7 @@ class dataLoader:
             logger.info(f"CWT Datashape: {self.CWTDataSet.shape}")
 
             # Plot the saved images
-            if configs['debugs']['generateCWTPlots']:
+            if self.configs['debugs']['generateCWTPlots']:
                 timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
                     dataPlotter = saveCWT_Time_FFT_images(configs, data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
@@ -1218,8 +1218,8 @@ class dataLoader:
         Sxx_np = np.stack(Sxx_list, axis=0)  # Shape: (n_channels, n_frequencies, n_time)
 
         # Trim the data to our fMin and fMax
-        fMin = configs['cwt']['fMin']
-        fMax = configs['cwt']['fMax']
+        fMin = self.configs['cwt']['fMin']
+        fMax = self.configs['cwt']['fMax']
         freq_mask = (freqs >= fMin) & (freqs <= fMax)
         freqs_trimmed = freqs[freq_mask]
         Sxx_np_trimmed = Sxx_np[:, freq_mask, :]  # preserves shape: (n_channels, n_selected_freqs, n_time)
