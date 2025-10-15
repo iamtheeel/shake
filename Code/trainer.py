@@ -113,7 +113,7 @@ class Trainer:
                                               weight_decay=self.weight_decay,
                                               betas=(0.9,0.999), amsgrad=True)
         else:
-            raise NotImplementedError("Unsupported optimiser for now")
+            raise NotImplementedError("Unsupported optimiser")
 
         if self.configs['trainer']['LR_sch'] == 'CosineAnnealingWarmRestarts':
             eta_min = float(self.configs['trainer']['eta_min'])
