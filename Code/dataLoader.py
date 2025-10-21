@@ -1249,11 +1249,11 @@ class dataLoader:
         cwtFrequencies = None
         #sum = 0
         mean = 0
-        variance = 0
+        M2 = 0
         mean_Real = 0
         mean_Imag = 0
-        variance_Real = 0
-        variance_Imag = 0
+        M2_real = 0
+        M2_image = 0
         nElements = 0
 
         for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
@@ -1290,15 +1290,15 @@ class dataLoader:
                 mean_Real += delta_real / (i+1)
                 mean_Imag += delta_imag / (i+1)
 
-                # Running variance
-                variance_Real += np.sum((real - mean_Real) *delta_real) #delta is before updating mean
-                variance_Imag += np.sum((imag - mean_Imag) *delta_imag) #delta is before updating mean
+                # Running sum squared of the squared deviations frm the mean
+                M2_real += np.sum((real - mean_Real) *delta_real) #delta is before updating mean
+                M2_image += np.sum((imag - mean_Imag) *delta_imag) #delta is before updating mean
 
             else:
                 this_mean = np.mean(thisCwtData_raw)
                 delta = this_mean - mean
                 mean += delta/(i+1)
-                variance += np.sum((thisCwtData_raw - mean) *delta) #delta is before updating mean
+                M2 += np.sum((thisCwtData_raw - mean) *delta) #delta is before updating mean
 
             if min < self.dataNormConst.min: self.dataNormConst.min = min
             if max > self.dataNormConst.max: self.dataNormConst.max = max
@@ -1317,10 +1317,10 @@ class dataLoader:
 
         if np.iscomplexobj(data):
             mean = mean_Real + 1j * mean_Imag
-            std  = np.sqrt(variance_Real/(nElements-1)) + 1j * np.sqrt(variance_Imag/(nElements-1)) 
+            std  = np.sqrt(M2_real/(nElements-1)) + 1j * np.sqrt(M2_image/(nElements-1)) 
         else:
             #print("NOT COMPLEX")
-            std = np.sqrt(variance/(nElements-1)) # n-1 for sampel std
+            std = np.sqrt(M2/(nElements-1)) # n-1 for sampel std
         self.dataNormConst.mean = mean
         self.dataNormConst.std = std
 

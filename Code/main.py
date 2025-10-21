@@ -334,7 +334,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
     trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
-    valLoss, valAcc, classAcc = trainer.validation(epochs)
+    valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
     
 
     exp_runTime = timer() - exp_StartTime

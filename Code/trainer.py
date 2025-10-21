@@ -345,13 +345,13 @@ class Trainer:
         #x_labels = [i * plotPerCount for i in x_values]  # Scale x-axis labels
         axis[0].plot(range(len(lossArr)), lossArr)    
         # Define tick positions based on the multiple (plotPerCount)
-        if validation:
-            tick_positions = range(0, len(lossArr), plotPerCount)  # Ensure it's within the range of lossArr
-            tick_labels = [i * plotPerCount for i in tick_positions] # Define corresponding tick labels (scaled by plotPerCount)
+        #if validation:
+        #    tick_positions = range(0, len(lossArr), plotPerCount)  # Ensure it's within the range of lossArr
+        #    tick_labels = [i * plotPerCount for i in tick_positions] # Define corresponding tick labels (scaled by plotPerCount)
 
-            # Apply to the x-axis
-            axis[0].set_xticks(tick_positions)  # Set tick positions
-            axis[0].set_xticklabels(tick_labels)  # Set labels to reflect scaling
+        #    # Apply to the x-axis
+        #    axis[0].set_xticks(tick_positions)  # Set tick positions
+        #    axis[0].set_xticklabels(tick_labels)  # Set labels to reflect scaling
 
         axis[0].set_title(f"{trainOrVal_str}: {self.hyperPeramStr}")
         axis[0].set_ylabel(f"{trainOrVal_str} Loss by Epoch")
@@ -359,9 +359,9 @@ class Trainer:
 
         #axis[1].plot(x_labels, lossArr)    
         axis[1].plot(range(len(accArr)), accArr)    
-        if validation:
-            axis[1].set_xticks(tick_positions)  # Set tick positions
-            axis[1].set_xticklabels(tick_labels)  # Set labels to reflect scaling
+        #if validation:
+        #    axis[1].set_xticks(tick_positions)  # Set tick positions
+        #    axis[1].set_xticklabels(tick_labels)  # Set labels to reflect scaling
         axis[1].set_ylabel(self.accStr)
         axis[1].get_xaxis().set_visible(True)
         axis[1].set_xlabel("Epoch Number")
