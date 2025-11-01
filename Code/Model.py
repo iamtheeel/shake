@@ -170,7 +170,7 @@ class MobileNet_v2(nn.Module):
 
         # Large batch and overfitting, re-check MobileNet with group norm, this was not done right?
         #replacing batch norm with group norm: a must for time d, unfolded
-        #replace_bn_with_gn(base_model)
+        replace_bn_with_gn(base_model)
         self.features  = base_model.features[startFeature:]
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
