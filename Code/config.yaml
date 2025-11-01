@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: True
     generateTimeFreqWindowPlots: True
@@ -171,7 +171,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 225 #Set to upper limit and validate every... (see below)
+    epochs: 1 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
@@ -184,7 +184,9 @@ model:
     name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
-    #
+    
+    batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
+
     timeDImgHeight: 64 #240 Only on LeNet Folded
     dropOut: [0] #0.5 Not implemented on leNet
 

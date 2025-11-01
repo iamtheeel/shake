@@ -101,7 +101,7 @@ class multilayerPerceptron(nn.Module):
         return x 
     
 class MobileNet_v2(nn.Module):
-    def __init__(self, numClasses:int, dataShape, folded=True, dropOut=0, config=None, timeD=False):
+    def __init__(self, numClasses:int, dataShape, folded=True, dropOut=0, timeD=False, complex=False, config=None ):
         super().__init__() 
         #TODO: Modify so its the same code for resnet
         '''
@@ -170,7 +170,8 @@ class MobileNet_v2(nn.Module):
 
         # Large batch and overfitting, re-check MobileNet with group norm, this was not done right?
         #replacing batch norm with group norm: a must for time d, unfolded
-        replace_bn_with_gn(base_model)
+        if config['model']['batchNorm2GroupNorm']: replace_bn_with_gn(base_model)
+
         self.features  = base_model.features[startFeature:]
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
@@ -665,10 +666,11 @@ class VGG(nn.Module):
     
         return nn.Sequential(*layers)
 
-    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, seed=86, VGG_cfg: str = "VGG16"):
+    def __init__(self, numClasses: int = 1, nCh: int = 3, complex: bool = False, config = None):
         super().__init__() 
         # Keep it deterministic
-        self.seed = seed
+        self.seed = config['trainer']['seed']
+
         torch.manual_seed(self.seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -680,7 +682,9 @@ class VGG(nn.Module):
         else:
             fcMult = 1
 
-        self.features = self.make_layers(cfg=self.VGG_cfg[VGG_cfg], nCh=nCh)
+        vggCFG = config['model']['VGG']['cfg']
+        logger.info(f"VGG with: {vggCFG} configuration")
+        self.features = self.make_layers(cfg=self.VGG_cfg[vggCFG], nCh=nCh)
 
         # Add a an adaptive pool to get a fixed size output to match the classifier input
         self.poolForClassifyer = nn.AdaptiveAvgPool2d((1, 1)) 
@@ -696,7 +700,8 @@ class VGG(nn.Module):
             nn.Linear(4096, numClasses)
         )
 
-        replace_bn_with_gn(self.features, complex=self.complex) # Replace all batch norm layers with group norm layers
+        if config['model']['batchNorm2GroupNorm']: replace_bn_with_gn(self.features, complex=self.complex) # Replace all batch norm layers with group norm layers
+
 
         # Weight initialization
         for m in self.modules():
