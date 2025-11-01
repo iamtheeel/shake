@@ -14,7 +14,7 @@ import math
 # For complex valued layers
 ## Only using the activation layer from complextorch
 import complextorch as cplx_torch
-from Model_ComplexUtils import ComplexBatchNorm2d, ComplexGroupNorm, ComplexAvgPool2d
+from Model_ComplexUtils import ComplexBatchNorm2d, ComplexGroupNorm, ComplexAvgPool2d, model2Complex
 
 import logging
 logging.basicConfig(level=logging.INFO, force=True)
@@ -115,6 +115,7 @@ class MobileNet_v2(nn.Module):
         MobileNet
         '''
         self.folded = folded
+        self.complex = complex
 
         self.seed = config['trainer']['seed']
         self.isRegresh = config['model']['regression']
@@ -181,13 +182,16 @@ class MobileNet_v2(nn.Module):
 
         self.features  = base_model.features[startFeature:]
 
+        if complex: # If complex valued model, convert layers
+            model2Complex(self.features, debug=True)
+
+
+        ## Head (aka Clasifyer)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
-
-
         lastLayerFeatureMap_size = 1280
+        if complex: lastLayerFeatureMap_size *= 2  # R, I
+
         if dropOut > 0: # Add dropout layers to for overfitting
-            #add_dropout(base_model, p=dropOut) #
-            #self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
             self.fc = nn.Sequential( nn.Dropout(p=dropOut),  # Explicit dropout before FC
                                      nn.Linear(lastLayerFeatureMap_size, numOutputs) )
         else:
@@ -211,9 +215,13 @@ class MobileNet_v2(nn.Module):
 
         # Run mobilenet
         x = self.features(x)
+        x = self.global_pool(x)
+
+        if self.complex:
+            # The target is real valued, so we need to convert to real
+            x = torch.view_as_real(x).flatten(1)  # (N, 2F) float32
 
         #Clasifyer
-        x = self.global_pool(x)
         x = torch.flatten(x, 1)  # Flatten before FC
         x = self.fc(x)  # Final classification
 

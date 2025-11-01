@@ -179,9 +179,9 @@ trainer:
 
 model: 
     regression: True #Or Clasification
-    name: ["VGG"]
+    #name: ["VGG"]
     #name: ["leNetV5"]
-    #name: ["MobileNet_v2"] #
+    name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     
