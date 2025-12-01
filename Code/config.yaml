@@ -160,7 +160,7 @@ trainer:
     #loss_regresh: ["MSE", "MAE", "Huber"] # for regresion
     loss_class: ["CrossEntropyLoss"] #For classification
 
-    optimizer: ["AdamW"]
+    optimizer: ["Adam"]
     #optimizer: ["Adam", "AdamW" "SGD"]
     learning_rate: [0.00005]  #
     weight_decay:  [0.0005]  #

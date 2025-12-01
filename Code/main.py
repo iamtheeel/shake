@@ -148,6 +148,7 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow(['Freq range', configs['cwt']['fMin'], configs['cwt']['fMax']])
 
         writer.writerow(['wavelets/center freq/Bandwidth', configs['cwt']['wavelet'], configs['cwt']['waveLet_center_freq'], configs['cwt']['waveLet_bandwidth_freq']])
+        writer.writerow(['As Magnitude', configs['cwt']['runAsMagnitude']])
         writer.writerow(['Norm to min/max', configs['cwt']['normTo_min'], configs['cwt']['normTo_max'] ])
 
 
@@ -175,10 +176,19 @@ def writeExpSum(cwt_class:cwt,
                 modelName, dropoutLayers, batchSize, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
     expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackSum_fileName}'
 
+    dataType = "real"
+    isComplex = np.iscomplexobj(cwt_class.wavelet_fun) 
+    if isComplex:
+        if configs['cwt']['runAsMagnitude'] == False:
+            dataType = "complex"
+        else:
+            dataType = "magnitude"
+
     with open(expTrackSum_fileName, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow(['---- wavelet peramiters -----'])
         writer.writerow(['wavelet', cwt_class.wavelet_base])
+        writer.writerow(['dataType', dataType])
         writer.writerow(['wavelet_center_freq', cwt_class.f0])
         writer.writerow(['wavelet_bandwidth', cwt_class.bw])
         writer.writerow(['---- data peramiters -----'])
@@ -187,8 +197,10 @@ def writeExpSum(cwt_class:cwt,
         writer.writerow(['dataScale', dataScale])
         writer.writerow(['labelScaler', labelScaler])
         writer.writerow(['labelScale', labelScale])
-        writer.writerow(['---- training peramiters -----'])
+        writer.writerow(['---- Model peramiters -----'])
         writer.writerow(['modelName', modelName])
+        writer.writerow(['Group Norm', configs['model']['batchNorm2GroupNorm']])
+        writer.writerow(['---- training peramiters -----'])
         writer.writerow(['dropoutLayers', dropoutLayers])
         writer.writerow(['batchSize', batchSize])
         writer.writerow(['loss', lossFunction])
