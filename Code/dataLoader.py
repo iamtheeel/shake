@@ -829,6 +829,7 @@ class dataLoader:
     def getSubjects(self):
         if((self.test == "Test_2") or (self.test == "Test_3")):
             subjects = ['001', '002', '003']
+            #subjects = ['002']
         elif(self.test == "Test_4"):
             subjects = ['three_people_ritght_after_the_other_001_002_003', 
                         'two_people_next_to_each_other_001_003' , 

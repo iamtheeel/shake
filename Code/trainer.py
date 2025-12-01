@@ -327,6 +327,12 @@ class Trainer:
         self.plotLossAcc(lossArr=valLossArr, accArr=valAccArr, validation=True)
         #print(f"valAccArr: {valAccArr}")
 
+        if self.configs['trainer']['saveModel']:
+            # Save the model
+            modelPath = f"{self.logDir}/model_exp{self.expNum}.pt"
+            torch.save(self.model.state_dict(), modelPath)
+            print(f"Model saved to: {modelPath}", flush=True)
+
         return train_loss_epoch, train_acc_epoch, valAccStats
 
     def plotLossAcc(self, lossArr, accArr, validation=False):

@@ -66,7 +66,7 @@ class ComplexHardtanh(nn.Module): # From ChatGPT
                              xi.clamp(self.min_val, self.max_val))
     
 
-def model2Complex(layers, debug=False):
+def model2Complex(layers, debug=True):
     for name, module in layers.named_children():
         if debug: print(f"Converting layer: {name} | Type: {type(module)}")
         if isinstance(module, nn.Conv2d):
@@ -74,7 +74,6 @@ def model2Complex(layers, debug=False):
             if debug: print(f" - Converting Conv2d to complex")
             module.to(dtype=torch.cfloat)  # Change to complex float is all that is nessisary 
 
-            #model2Complex(module) # Recursive call
         ### Normalization layers
         elif isinstance(module, nn.GroupNorm):
             # nn.BatchNorm2d --> ComplexBatchNorm2d
@@ -100,23 +99,13 @@ def model2Complex(layers, debug=False):
             if debug: print(f" - **** Converting BatchNorm2d to ComplexBatchNorm2d   *****   NOT IMPLEMENTED YET")
 
         ### The activation functions
-        elif isinstance(module, nn.ReLU):
-            # nn.ReLU --> complextorch.CReLU
-            if debug: print(f" - Converting ReLU to ComplexReLU")
-            layers._modules[name] = cplx_torch.nn.CReLU(inplace=False)
-            continue  # IMPORTANT: don't recurse into the replacement
-
         elif isinstance(module, (nn.ReLU, nn.ReLU6)):
             if debug: print(" - Replacing ReLU/ReLU6 -> CReLU(inplace=False)")
             layers._modules[name] = cplx_torch.nn.CReLU(inplace=False)
-            continue  # IMPORTANT: don't recurse into the replacement
-
-        # Optional safety, in case any model uses nn.Hardtanh directly:
-        elif isinstance(module, nn.Hardtanh):
+        elif isinstance(module, nn.Hardtanh): # MobileNet uses nn.Hardtanh directly:
             if debug: print(" - Replacing Hardtanh -> ComplexHardtanh")
             layers._modules[name] =  ComplexHardtanh(min_val=module.min_val, max_val=module.max_val)
-            continue
+            #continue
 
         else:
-            model2Complex(module, debug=False) # Recursive call
-            #model2Complex(module, debug=debug) # Recursive call
+            model2Complex(module, debug=debug) # Recursive call

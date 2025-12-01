@@ -25,8 +25,6 @@
 # pip install deprecated
 
 
-# From MICLab
-## Configuration
 import os, sys
 import datetime
 import csv
@@ -48,7 +46,7 @@ from trainer import Trainer
 # CWT Transform
 from cwtTransform import cwt
 
-from utils import checkFor_CreateDir
+from utils import runStats
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -56,6 +54,8 @@ parser.add_argument('--local_rank', type=int, default=0) # For multi-GPU, set to
 parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Path to the configuration file')
 args = parser.parse_args()
 
+# From MICLab
+## Configuration
 configFile = args.config
 from ConfigParser import ConfigParser
 config = ConfigParser(os.path.join(os.getcwd(), args.config))
@@ -233,50 +233,7 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
-def getModel(wavelet_name, model_name, dataShape, dropOut_layers = None, timeD= False, complex= False):
-    logger.info(f"Loading model: {model_name}, complex: {complex}")
-    #      Each model gets a cwt and a non-cwt version
-    #Batch Size, inputch, height, width
-    #Info for the models: x, ch, datapoints, x
-    nCh = dataShape[1]
 
-    if model_name == "multilayerPerceptron":
-        nDataPts = dataShape[2]
-        model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=data_preparation.nClasses, config=configs['model']['multilayerPerceptron'])
-    elif model_name == "leNetV5":
-        # For now use the ch as the height, and the npoints as the width
-        if wavelet_name == "None":
-            #TODO: rewrite lenet to take timeD as an argument
-            model = leNetV5_folded(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
-        else:
-            model = leNet(numClasses=data_preparation.nClasses,nCh=nCh, config=configs, complex=complex)
-            #model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
-    #elif model_name == "leNetV5_unFolded":
-    #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
-    elif model_name == "VGG":
-        model = VGG(numClasses=data_preparation.nClasses, nCh=nCh, complex=complex, config=configs)
-                    #seed=configs['trainer']['seed'], VGG_cfg=configs['model']['VGG']['cfg'])
-    elif model_name == "MobileNet_v2":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, 
-                             folded=False, dropOut=dropOut_layers, timeD=timeD,
-                             complex=complex, config=configs)
-    elif model_name == "MobileNet_v2_folded":
-        model = MobileNet_v2(numClasses=data_preparation.nClasses, dataShape=dataShape, 
-                             dropOut=dropOut_layers, config=configs)
-    else: 
-        print(f"{model_name} is not a model that we have", flush=True)
-        exit()
-
-    '''
-    from torchviz import make_dot
-    x = torch.randn(dataShape)
-    y = model(x)
-    make_dot(y, params=dict(model.named_parameters())).render("modelFile", format="png")
-    '''
-    return model
-
-
-    
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            cwt_class, #, f0, bw, #sgTimeRes, sgOverlap,
@@ -324,8 +281,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         data_preparation.CWTDataSet.setComplex(True)
 
     logger.info(f"Get Model")
-    model = getModel(cwt_class.wavelet_name, model_name, dataShape, dropOut_layers = dropOut_layers, timeD=timeD, 
-                     complex= isComplex)
+    model = getModel(cwt_class.wavelet_name, model_name, dataShape, nClasses=data_preparation.nClasses,
+                     dropOut_layers = dropOut_layers, timeD=timeD, complex= isComplex, configs=configs)
 
     #print(model)
 
@@ -336,7 +293,21 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
                            cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
-    trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
+    if configs['debugs']['trainModel']:
+        trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
+    else:
+        ## load the model weights
+        modelWeights_file = configs['model']['modelWeights']
+        logger.info(f"Loading model weights from: {modelWeights_file}")
+        model.load_state_dict(torch.load(modelWeights_file, map_location=device))
+        ## We are not training, so set dummy values
+        trainLoss, trainAcc = 0, 0
+        valAccStats = runStats()
+        valAccStats.min = 0
+        valAccStats.max = 0
+        valAccStats.mean = 0
+        valAccStats.std = 0
+
     valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
     
 

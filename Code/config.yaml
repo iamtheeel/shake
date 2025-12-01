@@ -5,10 +5,12 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: True
+    trainModel: False
+    validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
-    generateCWTPlots: True
+    generateTimeFreqPlots: False
+    generateTimeFreqWindowPlots: False
+    generateCWTPlots: False
 
 plts:
     pltDir: "plots"
@@ -16,6 +18,7 @@ plts:
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
+    #rgbPlotChList: [6, 5, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
     rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList (Must be in chList)
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
@@ -41,26 +44,27 @@ data:
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
 
-    downSample: 8 # Downsample by n-times
+    downSample: 4 # Downsample by n-times
     #sampleRate: None # early data has the wrong sample rate
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 
     classes: ['No Step', '001', '002', '003']
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
+    #chList: [6, 5, 3] # Try for 3 color plot
     chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 1 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
     ## Use stomp from file
     stompThresh: "stompTimes.csv" #1.5 #If 0, then no stomp detection
-    dataThresh: 2 # If 0, then no, non-walking detection
+    dataThresh: 0 #2 # If 0, then no, non-walking detection
 
-    windowLen: 5 #2 #sec
-    stepSize: 1 #1 #sec
+    windowLen: 5 #sec
+    stepSize: 1 #0.0333 #sec
 
     dataScalers: ["std"]
     #dataScalers: ["std", "meanNorm"]
@@ -105,11 +109,11 @@ cwt:
     #  'shan', 
     #  'sym2', 'sym3', 'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20']
 
-    runAsMagnitude: False #Convert complex output to magnitude
+    runAsMagnitude: True #Convert complex output to magnitude
 
     logScaleFreq: False
     logScale: False
-    numScales: 64 #256 # Seems like a good number to work with
+    numScales: 256 #256 # Seems like a good number to work with
     fMin: 1 #0.5 0 = 0... so don't use 0 makes for div by 0
     fMax: 100 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
@@ -124,7 +128,7 @@ cwt:
     wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
     #waveLet_bandwidth_freq:  [2, 10] # best for cmorl
-    waveLet_bandwidth_freq:  [2] # cmorl mattching morl
+    waveLet_bandwidth_freq:  [10] # cmorl mattching morl
 
     #wavelet: ['fstep'] #bw not used for fstep
     #waveLet_bandwidth_freq:  [0] # best for cmorl
@@ -148,7 +152,7 @@ trainer:
     #batchSize: [64, 128] 
 
     #batchSize: [8, 16, 32] #8 #For mobilenet timeD
-    batchSize: [8] #Should be power of 2
+    batchSize: [1] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -158,8 +162,8 @@ trainer:
 
     optimizer: ["AdamW"]
     #optimizer: ["Adam", "AdamW" "SGD"]
-    learning_rate: [0.00075]  #
-    weight_decay:  [0.00002]  #
+    learning_rate: [0.00005]  #
+    weight_decay:  [0.0005]  #
 
     # Learing rate schetuler use 2x to 3x the lr
     #LR_sch: None #None to not use
@@ -171,11 +175,13 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 1 #Set to upper limit and validate every... (see below)
+    epochs: 2 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
     seed: 4601
+
+    saveModel: True
 
 model: 
     regression: True #Or Clasification
@@ -184,6 +190,7 @@ model:
     name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
+    modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
     
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 

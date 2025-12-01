@@ -21,6 +21,48 @@ logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
 
+def getModel(wavelet_name, model_name, dataShape, nClasses, dropOut_layers = None, timeD= False, complex= False, configs=None):
+    logger.info(f"Loading model: {model_name}, complex: {complex}")
+    #      Each model gets a cwt and a non-cwt version
+    #Batch Size, inputch, height, width
+    #Info for the models: x, ch, datapoints, x
+    nCh = dataShape[1]
+
+    if model_name == "multilayerPerceptron":
+        nDataPts = dataShape[2]
+        model = multilayerPerceptron(input_features=nCh*nDataPts, num_classes=nClasses, config=configs['model']['multilayerPerceptron'])
+    elif model_name == "leNetV5":
+        # For now use the ch as the height, and the npoints as the width
+        if wavelet_name == "None":
+            #TODO: rewrite lenet to take timeD as an argument
+            model = leNetV5_folded(numClasses=nClasses, dataShape=dataShape, config=configs)
+        else:
+            model = leNet(numClasses=nClasses,nCh=nCh, config=configs, complex=complex)
+            #model = leNetV5_cwt(numClasses=data_preparation.nClasses,nCh=nCh, config=configs)
+    #elif model_name == "leNetV5_unFolded":
+    #        model = leNetV5_timeDomain(numClasses=data_preparation.nClasses, dataShape=dataShape, config=configs)
+    elif model_name == "VGG":
+        model = VGG(numClasses=nClasses, nCh=nCh, complex=complex, config=configs)
+                    #seed=configs['trainer']['seed'], VGG_cfg=configs['model']['VGG']['cfg'])
+    elif model_name == "MobileNet_v2":
+        model = MobileNet_v2(numClasses=nClasses, dataShape=dataShape, 
+                             folded=False, dropOut=dropOut_layers, timeD=timeD,
+                             complex=complex, config=configs)
+    elif model_name == "MobileNet_v2_folded":
+        model = MobileNet_v2(numClasses=nClasses, dataShape=dataShape, 
+                             dropOut=dropOut_layers, config=configs)
+    else: 
+        print(f"{model_name} is not a model that we have", flush=True)
+        exit()
+
+    '''
+    from torchviz import make_dot
+    x = torch.randn(dataShape)
+    y = model(x)
+    make_dot(y, params=dict(model.named_parameters())).render("modelFile", format="png")
+    '''
+    return model
+
 
 # Add a reShape for everybody to use
 def reShapeTimeD(x, nCh, timePoints, target_height, target_width, target_size):

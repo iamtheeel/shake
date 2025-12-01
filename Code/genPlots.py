@@ -479,7 +479,7 @@ class saveCWT_Time_FFT_images():
             self.regClasStr = "Regression"
 
         textstr = f'Run: {run}\n' \
-                  f'Time Window: {timeWindow}\n' \
+                  f'Time Window: {timeWindow:.3f}\n' \
                   f'Subject: {subjectLabel}\n' \
                   f'cwt: {self.cwt_class.wavelet_name}\n' \
                   f'{normStr}\n' \
