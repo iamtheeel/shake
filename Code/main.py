@@ -366,7 +366,8 @@ for batchSize in configs['trainer']['batchSize']:
     data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
     # we get data freq rate here, and need it for below
     # The hyperperamiters setup for expTracking
-    cwt_class = cwt(fileStructure=fileStructure, configs=configs,  dataConfigs = data_preparation.dataConfigs)
+    sRate = data_preparation.dataConfigs.sampleRate_hz
+    cwt_class = cwt(fileStructure=fileStructure, sampleRate=sRate, configs=configs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")

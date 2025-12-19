@@ -5,6 +5,10 @@
 % To generate: pdflatex <filename>
 %%
 \subimport{/Users/theeel/src/laTex/PlotNeuralNet/layers/}{init}
+
+%%\tikzset{ every node/.append style={font=\Large} }
+\tikzset{ every node/.append style={ font=\fontsize{30}{36}\selectfont } }
+
 \usetikzlibrary{positioning}
 \usetikzlibrary{3d} %for including external image 
 
@@ -31,12 +35,20 @@
 \node[canvas is zy plane at x=0] (temp) at (-1,-5,0) {\includegraphics[width=42.66 cm,height=5.18 cm]{cwt.png}};
 
 \pic[shift={(2,-5,0)}] at (0,0,0) 
-        {Box={name=input,caption=Input,%
-              xlabel={{"9x256","dummy"}},zlabel="    2133",
+        {Box={name=input,
+              caption={},%
+              %caption=Input,%
+              xlabel={{"9x256","dummy"}},
+              zlabel={},
+              %zlabel="2133",
               fill=\InputColor,%
               height=25.9,width=0.9,depth=213.3}
          };
-
+% Big caption (lower)
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-235, yshift=-275]input-south) {Input};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-170,yshift=-270]input-east) {2133};
 %%
 % Output Shapes: note: in cm
 %%
@@ -44,23 +56,47 @@
 
 % Convolve2D, Group Norm, RFeLU6
 \pic[shift={(4,0,0)}] at (input-east)
-    {RightBandedBox={ name=inpConv, caption=Conv, xlabel={{"32x128", }}, zlabel=1067,
+    {RightBandedBox={ name=inpConv, 
+        caption={}, 
+        %caption={Conv}, 
+        xlabel={{"32x128", }}, 
+        zlabel={},
+        %zlabel=1067,
         fill=\ConvColor,bandfill=\ConvReluColor,%
         height=12.8,width=3.2,depth=107 } };
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-130, yshift=-155]inpConv-south) {Conv};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-70,yshift=-125]inpConv-east) {1067};
 
 % Inverted Res 1
-\pic[shift={(2,0,0)}] at (inpConv-east) {RightBandedBox={name=invRes1,caption=InvRes,%
-        xlabel={{"16x128", }},zlabel=1067,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(2,0,0)}] at (inpConv-east) {RightBandedBox={name=invRes1,caption={},%
+        xlabel={{"",}},zlabel={},
+        fill=\InvResColor,bandfill=\ConvReluColor,%
         height=12.8,width=1.6,depth=106.7}};
+\node[font=\fontsize{30}{34}\selectfont]
+  at ([xshift=-90, yshift=-130]invRes1-south) {16x128};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-90, yshift=-155]invRes1-south) {InvRes};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-70,yshift=-125]invRes1-east) {1067};
 % Inverted Res 2, 3
-\pic[shift={(2,0,0)}] at (invRes1-east) {RightBandedBox={name=invRes2,caption=InvRes,%
-        xlabel={{"24x64",}},zlabel=534,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(2,0,0)}] at (invRes1-east) {RightBandedBox={name=invRes2,caption={},%
+        xlabel={{"24x64",}},zlabel={},fill=\InvResColor,bandfill=\ConvReluColor,%
         height=6.4,width={2.4,2.4},depth=53.4}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-50, yshift=-95]invRes2-south) {InvRes};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-20,yshift=-55]invRes2-east) {534};
 % Inverted Res 4, 5, 6
-\pic[shift={(1.8,0,0)}] at (invRes2-east) {RightBandedBox={name=invRes4,caption=InvRes,%
-        xlabel={{, "32x32", }},zlabel=267,
+\pic[shift={(1.8,0,0)}] at (invRes2-east) {RightBandedBox={name=invRes4,caption={},%
+        xlabel={{, "32x32", }},zlabel={},
         fill=\InvResColor,bandfill=\ConvReluColor,%
         height=3.2,width={3.2, 3.2, 3.2},depth=26.7}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-65]invRes4-south) {InvRes};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-5,yshift=-35]invRes4-east) {267};
 % Inverted Res 7, 8, 9, 10
 \pic[shift={(1.5,0,0)}] at (invRes4-east) {RightBandedBox={name=invRes7,caption=InvRes,%
         xlabel={{,"64x16", ,}},zlabel=134,fill=\InvResColor,bandfill=\ConvReluColor,%

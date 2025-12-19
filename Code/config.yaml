@@ -6,7 +6,7 @@ debugs:
     saveModelInfo: True
     runModel: True
     trainModel: False
-    validateModel: False
+    validateModel: True
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -49,19 +49,19 @@ data:
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
 
     classes: ['No Step', '001', '002', '003']
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 3] # Try for 3 color plot
-    chList: [6, 5, 4] # Try for 3 color plot
+    #chList: [6, 5, 4] # Try for 3 color plot
 
-    limitRuns: 1 # Limit the number of runs to load: 0 to load all the data
+    limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
     ## Use stomp from file
     stompThresh: "stompTimes.csv" #1.5 #If 0, then no stomp detection
-    dataThresh: 0 #2 # If 0, then no, non-walking detection
+    dataThresh: 2 # If 0, then no, non-walking detection
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -166,8 +166,8 @@ trainer:
     weight_decay:  [0.0005]  #
 
     # Learing rate schetuler use 2x to 3x the lr
-    #LR_sch: None #None to not use
-    LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
+    LR_sch: None #None to not use
+    #LR_sch: 'CosineAnnealingWarmRestarts' #None to not use
     T_0: 10       # Restart every N epochs (hop over local minima)
     T-mult: 1     # A factor by which :math:`T_{i}` increases after a restart. Default: 1
     eta_min: 1e-7 # Minimum learning rate. Default: 0
@@ -175,7 +175,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 2 #Set to upper limit and validate every... (see below)
+    epochs: 100 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
@@ -190,11 +190,11 @@ model:
     name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
-    modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
+    #modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
+    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
     
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 
-    timeDImgHeight: 64 #240 Only on LeNet Folded
     dropOut: [0] #0.5 Not implemented on leNet
 
     VGG:
@@ -204,4 +204,5 @@ model:
         hidden_neurons: 100
 
     leNetV5:
+        timeDImgHeight: 64 #240 Only on LeNet Folded
         hidden_neurons: 100
