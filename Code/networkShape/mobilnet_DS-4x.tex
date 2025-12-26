@@ -98,26 +98,48 @@
 \node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
   at ([xshift=-5,yshift=-35]invRes4-east) {267};
 % Inverted Res 7, 8, 9, 10
-\pic[shift={(1.5,0,0)}] at (invRes4-east) {RightBandedBox={name=invRes7,caption=InvRes,%
-        xlabel={{,"64x16", ,}},zlabel=134,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(1.5,0,0)}] at (invRes4-east) {RightBandedBox={name=invRes7,caption={},
+        xlabel={{,"64x16", ,}},
+        zlabel={\scalebox{2.8}{134}},
+        fill=\InvResColor,bandfill=\ConvReluColor,%
         height=1.6,width={6.4,6.4,6.4,6.4},depth=13.4}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-50]invRes7-south) {InvRes};
 % Inverted Res 11, 12, 13
-\pic[shift={(1.5,0,0)}] at (invRes7-east) {RightBandedBox={name=invRes11,caption=InvRes,%
-        xlabel={{,"96x16", }},zlabel=134,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(1.5,0,0)}] at (invRes7-east) {RightBandedBox={name=invRes11,caption={},%
+        xlabel={{,"96x16", }},
+        zlabel={\scalebox{2.8}{134}},
+        fill=\InvResColor,bandfill=\ConvReluColor,%
         height=1.6,width={9.6,9.6,9.6},depth=13.4}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-50]invRes11-south) {InvRes};
 % Inverted Res 14, 15, 16
-\pic[shift={(1.5,0,0)}] at (invRes11-east) {RightBandedBox={name=invRes14,caption=InvRes,%
-        xlabel={{,"160x8", ,}},zlabel=67,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(1.5,0,0)}] at (invRes11-east) {RightBandedBox={name=invRes14,caption={},%
+        xlabel={{,"160x8", ,}},
+        zlabel={\scalebox{2.8}{67}},
+        fill=\InvResColor,bandfill=\ConvReluColor,%
         height=0.8,width={16,16,16},depth=6.7}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-45]invRes14-south) {InvRes};
 % Inverted Res 17
-\pic[shift={(1.5,0,0)}] at (invRes14-east) {RightBandedBox={name=invRes17,caption=InvRes,%
-        xlabel={{"320x8",}},zlabel=67,fill=\InvResColor,bandfill=\ConvReluColor,%
+\pic[shift={(1.5,0,0)}] at (invRes14-east) {RightBandedBox={name=invRes17,caption={},%
+        xlabel={{"320x8",}},
+        zlabel={\scalebox{2.8}{67}},
+        fill=\InvResColor,bandfill=\ConvReluColor,%
         height=0.8,width={32},depth=6.7}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-45]invRes17-south) {InvRes};
 
 % Conv2d, NormActivation
-\pic[shift={(1.5,0,0)}] at (invRes17-east) {RightBandedBox={name=conv18,caption=Conv-GroupNorm-ReLU,%
-        xlabel={{"1280x8",}},zlabel=67,fill=\ConvColor,bandfill=\ConvReluColor,%
+\pic[shift={(1.5,0,0)}] at (invRes17-east) {RightBandedBox={name=conv18,caption={},%
+        xlabel={{"1280x8",}},
+        zlabel={},
+        fill=\ConvColor,bandfill=\ConvReluColor,%
         height=0.8,width={128},depth=6.7}};
+\node[font=\bfseries\fontsize{30}{34}\selectfont]
+  at ([xshift=-20, yshift=-45]conv18-south) {Conv-GroupNorm-ReLU};
+\node[font=\fontsize{24}{28}\selectfont, rotate=45 ]
+  at ([xshift=-0,yshift=-25]conv18-east) {67};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 %%% Output
