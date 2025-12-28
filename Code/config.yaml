@@ -6,11 +6,11 @@ debugs:
     saveModelInfo: True
     runModel: True
     trainModel: False
-    validateModel: True
+    validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateTimeFreqPlots: True
+    generateTimeFreqWindowPlots: True
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -36,24 +36,32 @@ plts:
     #freqYLim:  .01 #0.5
 
 data:
-    trainRatio: .8 # 80% train, 20% of the data for validation
-    inputData: "../TestData" # The input data
     dataOutDir: "../data_out" # Link on the MAC
+    dataInDir: "../TestData" # The input data
+    vibDataDir: "vib/Data" # The input data
+    APDMDataDir: "APDM_Data" # The input data
 
-    test: "Test_2" #One person fixed pace, straight path, has labels
+    test: "20251124_Testing" #One person fixed pace, straight path, has labels
+    #test: "Test_2" #One person fixed pace, straight path, has labels
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
 
-    downSample: 4 # Downsample by n-times
-    #sampleRate: None # early data has the wrong sample rate
-    sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 
+    ## Must be in order 
+    #classes: ['No Step', '001', '002', '003']
+    #classes: ['No Step', '001', '002', '003']
+    classes: ['No Step', '001', '002', '003', '004', '005', '006']
 
-    classes: ['No Step', '001', '002', '003']
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    downSample: 4 # Downsample by n-times: 4
+    sampleRate: None # early data has the wrong sample rate
+    #sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667
+
+    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 3] # Try for 3 color plot
     #chList: [6, 5, 4] # Try for 3 color plot
 
+    trainRatio: 0.01 #.8 # 80% train, 20% of the data for validation
     limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
@@ -61,7 +69,7 @@ data:
     stompSens: [5, 6, 7]
     ## Use stomp from file
     stompThresh: "stompTimes.csv" #1.5 #If 0, then no stomp detection
-    dataThresh: 2 # If 0, then no, non-walking detection
+    dataThresh: 0.5 # If 0, then no, non-walking detection: 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -127,7 +135,7 @@ cwt:
 
     wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
-    #waveLet_bandwidth_freq:  [2, 10] # best for cmorl
+    ##waveLet_bandwidth_freq:  [2, 10] # best for cmorl
     waveLet_bandwidth_freq:  [10] # cmorl mattching morl
 
     #wavelet: ['fstep'] #bw not used for fstep

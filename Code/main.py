@@ -122,7 +122,7 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow([f'', '--------- data '])
 
         writer.writerow(['Test', configs['data']['test']])
-        writer.writerow(['Data Path', configs['data']['inputData']])
+        writer.writerow(['Data Path', configs['data']['dataInDir']])
         writer.writerow(['Ch List', dataConfigs.chList])
         writer.writerow(['Classes', configs['data']['classes']])
 

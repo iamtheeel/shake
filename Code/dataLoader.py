@@ -10,7 +10,7 @@
 import h5py, csv
 import numpy as np
 import copy
-import os, sys
+import os, sys, glob
 from tqdm import tqdm  #progress bar
 from scipy.signal import spectrogram    # For spectrogram
 
@@ -135,9 +135,9 @@ class dataLoader:
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
         # Load up the dataset info
-        self.inputData = config['data']['inputData']# Where the data is
+        self.testDir = f"{config['data']['dataInDir']}/{config['data']['test']}" # The test data directory
         self.downSample = config['data']['downSample']# Where the data is
-        self.test = config['data']['test']         # e.x. "Test_2"
+        #self.test = config['data']['test']         # e.x. "Test_2"
         self.batchSize = config['trainer']['batchSize']
 
         #TODO: Get from file
@@ -154,7 +154,7 @@ class dataLoader:
         self.stompFromFile = False
         if isinstance(self.stompThresh, str):
             self.stompFromFile = True
-            self.stompTimes_np = self.getStompTimes(f"{config['data']['inputData']}/{self.stompThresh}")
+            self.stompTimes_np = self.getStompTimes(f"{self.testDir}/{self.stompThresh}")
 
         self.dataConfigs = dataConfigs()
         self.dataConfigs.sampleRate_hz = 0
@@ -212,14 +212,18 @@ class dataLoader:
     def get_peram(self, perams, peramName:str, asStr=False):
         mask = perams['parameter'] == peramName.encode()
         matches = perams[mask]
+
         if len(matches) > 0:
-            if asStr:
+            print(f"Found peram: {peramName}, value: {matches['value']}, units: {matches['units']}")
+            #if asStr:
+            if isinstance(matches['value'][0], bytes):
                 peram_value = matches['value'][0].decode('utf8')
                 #peram_value = perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
             else:
                 peram_value= perams[perams['parameter'] == peramName.encode()]['value'][0] 
             units_value = perams[perams['parameter'] == peramName.encode()]['units'][0].decode('utf-8')
         else: 
+            print(f"Peram: {peramName} not found")
             peram_value = None
             units_value = None
         #print(f"{peramName}: {peram_value} {units_value}")
@@ -252,28 +256,29 @@ class dataLoader:
         run_list = []
         sTime_list = []
 
-        self.subjects = self.getSubjects()
-        for subjectName in self.subjects:
-            data_file_hdf5, label_file_csv = self.getFileName(subjectName)
+        self.subjects = self.configs['data']['classes'][1:] # Skip No Step
+
+        for subjectId in self.subjects:
+            data_file_hdf5 = f"{self.testDir}/{self.configs['data']['vibDataDir']}/*_{subjectId}.hdf5"
+            label_file_csv = f"{self.testDir}/{self.configs['data']['APDMDataDir']}/*_{subjectId}_*/*.csv"
+
             logger.info(f"Dataloader, datafile: {data_file_hdf5}")
 
             # Load data file
             subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want. Sets the sample rate and friends
             subDataShape = np.shape(subjectData) 
-            logger.info(f"Subject: {subjectName}, subject shape: {np.shape(subjectData)}")
-
-
+            logger.info(f"Subject: {subjectId}, subject shape: {np.shape(subjectData)}")
 
 
             speed =  self.getSpeedLabels(label_file_csv)
-            #print(f"speeds: {speed}")
+            print(f"speeds: {speed}")
 
             if self.configs['debugs']['generateTimeFreqPlots']:
                 yLim = configs['plts']['yLim_freqD']
-                self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectName, speed=speed, folder=f"../FullRunPlots/Subject-{subjectName}", fromRaw=True)
+                self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/Subject-{subjectId}", fromRaw=True)
 
             # Window the data and get the labels
-            windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectName, speed=speed)
+            windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectId, speed=speed)
             logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
             logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
             logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
@@ -288,14 +293,14 @@ class dataLoader:
             sTime_list.append(startTimes)
 
             #logger.info(f"Labels: {thisSubLabels}")
-            #logger.info(f"Up to: {subjectName}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
+            #logger.info(f"Up to: {subjectId}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
 
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.writer(csvFile, dialect='unix')
                 writer.writerow([f'', '--------- Load Data From Files '])
             with open(self.logfile, 'a', newline='') as csvFile:
                 writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
-                writer.writerow({'subject': subjectName,
+                writer.writerow({'subject': subjectId,
                                 'data file': data_file_hdf5, 
                                 'label file': label_file_csv, 
                                 'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
@@ -486,7 +491,7 @@ class dataLoader:
             title = f"Domain subject:{subject}, run:{row}, speed:{thisSpeed:.2f}"
             self.gen_TimeFreq_plots(fileN=fileN, title=title, dataRow=dataRow, freqDImageDir=freqDImageDir, freqYLim=freqYLim)
             #logger.info(f"Freq max: {self.dataPlotter.freqMax}")
-            #plotRunFFT(subjectData, self.dataConfigs.sampleRate_hz, subjectName, 0, "ByRun")
+            #plotRunFFT(subjectData, self.dataConfigs.sampleRate_hz, subjectId, 0, "ByRun")
             sTime += self.stepSize_s
 
     def gen_TimeFreq_plots(self, fileN, title, dataRow, freqDImageDir, freqYLim):
@@ -578,10 +583,16 @@ class dataLoader:
                 dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
                 if self.stompFromFile:
                     #print(f"Subject: {subject}, run: {run}")
-                    sTime_sec = self.getStompTime(subject, run)
+                    sTime_sec, skipRun = self.getStompTime(subject, run)
+                    #print("---------------------")
+                    #print(f"Subject: {subject}, run: {run}, sTime: {sTime_sec}, skipRun: {skipRun}")
                     startPoint = sTime_sec * self.dataConfigs.sampleRate_hz
                 else:
                     startPoint = 0 #points
+
+                if skipRun: 
+                    logger.info(f"Skipping subject: {subject}, run: {run} due to no data marked bad in stomp file")
+                    continue
 
                 while True:
                     startPoint = int(startPoint)
@@ -631,9 +642,12 @@ class dataLoader:
     
                     # append the data
                     thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
+
+                    #print(f"dataPtsAfterStomp: {dataPtsAfterStomp}, nSkips: {nSkips}")
                     if dataPtsAfterStomp >= nSkips:
                         # TODO: make this one data structure
                         thisSubjectId = self.getSubjectLabel(subject, rms_ratio) # Returns 0 for no step
+
                         #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
                         #print(f"rms_allCh = {rms_allCh}")
                         #print(f"rms_BaseLin = {rms_BaseLine}")
@@ -643,26 +657,30 @@ class dataLoader:
                         #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
                         #if False:
                         if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
-                            windowsWithData += 1
-                            #print(f"using | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
-                            thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
+                                windowsWithData += 1
+                                #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
+                                thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
 
-                            # Append the data, labels, and all that junk
-                            try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-                            except NameError: windowedData = thisDataBlock
-                            try:              labels_speed = np.append(labels_speed, speed[run])
-                            except NameError: labels_speed = speed[run]
-                            try:              labels_subject = np.append(labels_subject, thisSubjectId)
-                            except NameError: labels_subject = thisSubjectId
-                            thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
-                            try:              subjects = np.append(subjects, thisSubjectNumber)
-                            except NameError: subjects = thisSubjectNumber
-                            try:              runs = np.append(runs, run)
-                            except NameError: runs = run
-                            try:              startTimes = np.append(startTimes, thisStartTime)
-                            except NameError: startTimes = thisStartTime
+                                # Append the data, labels, and all that junk
+                                try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
+                                except NameError: windowedData = thisDataBlock
+                                try:              labels_speed = np.append(labels_speed, speed[run])
+                                except NameError: labels_speed = speed[run]
+                                try:              labels_subject = np.append(labels_subject, thisSubjectId)
+                                except NameError: labels_subject = thisSubjectId
+                                thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
+                                try:              subjects = np.append(subjects, thisSubjectNumber)
+                                except NameError: subjects = thisSubjectNumber
+                                try:              runs = np.append(runs, run)
+                                except NameError: runs = run
+                                try:              startTimes = np.append(startTimes, thisStartTime)
+                                except NameError: startTimes = thisStartTime
 
                     # Do we want to log the 0 vel data for regresion too? Yes
+                    if windowsWithData == 0:
+                        logger.error(f" No steps detected for subject: {subject}, run: {run}, stompThresh: {self.stompThresh}, nSkips: {nSkips}, check dataThresh")
+                        exit()
+
                     csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {dataPtsAfterStomp}, {thisSubjectId}")
                     for i in range(len(rms_allCh)): # Each ch
                         csvFile.write(f", {rms_allCh[i]}")
@@ -699,6 +717,13 @@ class dataLoader:
         return thisSubjectID, dataPtsAfterStomp
 
     def getSubjectData(self, data_file_name):
+        data_file_name = glob.glob(data_file_name)
+        if not data_file_name:
+            logger.error(f"Data file not found for pattern: {data_file_name}")
+            raise FileNotFoundError(f"Data file not found for pattern: {data_file_name}")
+        data_file_name = data_file_name[0]  # Take the first matching file
+        logger.info(f"Loading data file: {data_file_name}")
+
         with h5py.File(data_file_name, 'r') as file:
             # Get peramiters
             ####
@@ -707,12 +732,12 @@ class dataLoader:
             ####
 
             filePerams = file['experiment/general_parameters'][:]
-            dataCapRate_hz, dataCapUnits = self.get_peram(filePerams, 'fs', asStr=True)
-            recordLen_s, _ = self.get_peram(filePerams, 'record_length', asStr=True)
-            preTrigger_s, _ = self.get_peram(filePerams, 'pre_trigger', asStr=True)
+
+            recordLen_s, _ = self.get_peram(filePerams, 'record_length' )
+            preTrigger_s, _ = self.get_peram(filePerams, 'pre_trigger')
             print(f"   *******")
-            print(f"Data Cap: {dataCapRate_hz}, {dataCapUnits}, Record Len: {recordLen_s} sec, pre trigger: {preTrigger_s}")
-            subID, _ = self.get_peram(filePerams, 'Subject4_ID', asStr=True)
+            print(f"Record Len: {recordLen_s} sec, pre trigger: {preTrigger_s}")
+            subID, _ = self.get_peram(filePerams, 'Subject_ID', asStr=True)
             subHeight, hUnits = self.get_peram(filePerams, 'Height', asStr=True) 
             subAge, aUnits = self.get_peram(filePerams, 'Age', asStr=True) 
             subWeight, wUnits = self.get_peram(filePerams, 'Weight', asStr=True) 
@@ -735,12 +760,12 @@ class dataLoader:
                 except NameError: accelerometer_data = thisChData
 
             logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
+
             if self.downSample > 1:
                 # must be prior to calculating the info
                 accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
-            # Get just the sensors we want
-            if self.dataConfigs.sampleRate_hz == 0: 
+            if self.dataConfigs.sampleRate_hz == 0: #only do this once, it's 0, we have not done it yet
                 # get the peramiters if needed
                 # ex: Sample Freq
                 self.getDataInfo(file) # gets the sample rate from the file
@@ -789,10 +814,18 @@ class dataLoader:
                 break
         return label
 
-    def getSubjectNumber(self, subjectNumber):
-        return(self.classes.index(subjectNumber))
+    def getSubjectNumber(self, subjectName):
+        return(self.classes.index(subjectName))
 
     def getSpeedLabels(self, csv_file_name ):
+        csv_file_name = glob.glob(csv_file_name)
+        if not csv_file_name:
+            logger.error(f"CSV file not found for pattern: {csv_file_name}")
+            raise FileNotFoundError(f"CSV file not found for pattern: {csv_file_name}")
+        csv_file_name = csv_file_name[0]  # Take the first matching file
+        logger.info(f"Loading CSV file for speed labels: {csv_file_name}")
+
+
         with open(csv_file_name, mode='r') as speedFile:
             speedFile_csv = csv.DictReader(speedFile)
             for line_number, row in enumerate(speedFile_csv, start=1):
@@ -807,6 +840,8 @@ class dataLoader:
         return speedList
     
     def getStompTimes(self, csv_file_name):
+        logger.info(f"Loading CSV file for stomp times: {csv_file_name}")
+
         with open(csv_file_name, mode='r') as stompTimesFile:
             stompTimes_reader = csv.reader(stompTimesFile)
             header = next(stompTimes_reader)
@@ -815,59 +850,41 @@ class dataLoader:
                 subjects = row[0]
                 runs = int(row[1])
                 times = float(row[2])
-                data.append((subjects, runs, times))
-        #startTimes_np = np.array(data)
-        startTimes_np = np.array(data, dtype=[("name", "U50"), ("run", "i4"), ("startTime", "f4")])
+                # Some CSVs don't have skipRun
+                if len(row) > 3 and row[3] != "":
+                    skipRun = int(row[3])
+                else:
+                    skipRun = 0   # sensible default
+                data.append((subjects, runs, times, skipRun))
+
+        startTimes_np = np.array(data, dtype=[("subject_num", "i4"), ("run_num", "i4"), ("startTime", "f4"), ("skipRun", "i4")])
 
         #print(startTimes_np)
         return startTimes_np
 
     def getStompTime(self, subject, run):
-        mask = (self.stompTimes_np["name"] == subject) & (self.stompTimes_np["run"] == run)
-        return self.stompTimes_np["startTime"][mask][0]
+        subjectNumber = self.getSubjectNumber(subject)
 
-    def getSubjects(self):
-        if((self.test == "Test_2") or (self.test == "Test_3")):
-            subjects = ['001', '002', '003']
-            #subjects = ['002']
-        elif(self.test == "Test_4"):
-            subjects = ['three_people_ritght_after_the_other_001_002_003', 
-                        'two_people_next_to_each_other_001_003' , 
-                        'two_people_next_to_each_other_002_003']
+        #logger.info(f"Getting stomp time for subject: {subjectNumber}, run: {run}")
+        mask = (self.stompTimes_np["subject_num"] == subjectNumber) & (self.stompTimes_np["run_num"] == run)
+        dataStart = self.stompTimes_np["startTime"][mask][0]
+        skipRun = self.stompTimes_np["skipRun"][mask][0]
 
-        return subjects
+        return dataStart, skipRun
 
-    def getFileName(self, subjectNumber):
-        trial_str = None
-        csv_str = None
-        if(self.test == "Test_2"):
-            trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}"
-            csv_str = f"APDM_data_fixed_step/MLK Walk_trials_{subjectNumber}_fixedstep"
-            #walking_hallway_single_person_APDM_
-        elif(self.test == "Test_3"):
-            trial_str = f"walking_hallway_single_person_APDM_{subjectNumber}_free_pace"
-            csv_str = f"APDM_data_freepace/MLK Walk_trials_{subjectNumber}_freepace"
-        elif(self.test == "Test_4"):
-            trial_str = f"walking_hallway_classroom_{subjectNumber}"
-            #TestData/Test_4/data/walking_hallway_classroom_three_people_ritght_after_the_other_001_002_003.hdf5
-        else:
-            logger.error(f"ERROR: No such subject, test: {self.test}, {subjectNumber}")
-        
-        trial_str = f"{self.inputData}/{self.test}/data/{trial_str}.hdf5"
-        csv_str = f"{self.inputData}/{self.test}/{csv_str}.csv"
-
-        return trial_str, csv_str
 
     def getDataInfo(self, file):
         general_parameters = file['experiment/general_parameters'][:]
+
         #logger.info(f"Data File parameters: {general_parameters}")
         self.dataConfigs.sampleRate_hz = self.configs['data']['sampleRate']
-        if self.dataConfigs.sampleRate_hz == None:
-            self.dataConfigs.sampleRate_hz = int(general_parameters[0]['value'].decode('utf-8'))
+        if self.dataConfigs.sampleRate_hz == "None" or self.dataConfigs.sampleRate_hz == 0:
+            self.dataConfigs.sampleRate_hz, self.dataConfigs.units = self.get_peram(general_parameters, 'fs')
 
+        #logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
+
+        # Keep the original sample rate
         self.dataConfigs.origSRate_hz = self.dataConfigs.sampleRate_hz
-        self.dataConfigs.units = general_parameters[0]['units'].decode('utf-8')
-        logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
         dataBlockSize = file['experiment/data'].shape 
         #logger.info(f"File Size: {dataBlockSize}")
