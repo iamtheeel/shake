@@ -880,6 +880,8 @@ class dataLoader:
         self.dataConfigs.sampleRate_hz = self.configs['data']['sampleRate']
         if self.dataConfigs.sampleRate_hz == "None" or self.dataConfigs.sampleRate_hz == 0:
             self.dataConfigs.sampleRate_hz, self.dataConfigs.units = self.get_peram(general_parameters, 'fs')
+        else:
+            self.dataConfigs.units = "Hz"
 
         #logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
