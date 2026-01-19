@@ -7,7 +7,8 @@ export TRITON_CACHE_DIR="${TRITON_CACHE_DIR:-/tmp/$USER/.local_triton_cache}"
 mkdir -p "$TRITON_CACHE_DIR" || true
 
 # --- pick the best physical GPU (most free MiB). require at least MIN_FREE MiB if set.
-MIN_FREE_MIB=44000
+MIN_FREE_MIB=22000
+#MIN_FREE_MIB=44000
 MIN_FREE_MIB="${MIN_FREE_MIB:-0}"   # e.g., export MIN_FREE_MIB=60000 to require >= ~60 GiB free
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
