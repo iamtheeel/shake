@@ -8,8 +8,8 @@ debugs:
     trainModel: True
     validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
+    generateTimeFreqPlots: False
+    generateTimeFreqWindowPlots: False
     generateCWTPlots: False
 
 plts:
