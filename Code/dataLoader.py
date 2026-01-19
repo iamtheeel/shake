@@ -266,6 +266,9 @@ class dataLoader:
 
             # Load data file
             subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want. Sets the sample rate and friends
+            if subjectData is None:
+                logger.error(f"No data loaded for subject: {subjectId}, skipping to next subject")
+                continue
             subDataShape = np.shape(subjectData) 
             logger.info(f"Subject: {subjectId}, subject shape: {np.shape(subjectData)}")
 
@@ -720,7 +723,8 @@ class dataLoader:
         data_file_name = glob.glob(data_file_name)
         if not data_file_name:
             logger.error(f"Data file not found for pattern: {data_file_name}")
-            raise FileNotFoundError(f"Data file not found for pattern: {data_file_name}")
+            return
+            #raise FileNotFoundError(f"Data file not found for pattern: {data_file_name}")
         data_file_name = data_file_name[0]  # Take the first matching file
         logger.info(f"Loading data file: {data_file_name}")
 
@@ -820,6 +824,7 @@ class dataLoader:
     def getSpeedLabels(self, csv_file_name ):
         csv_file_name = glob.glob(csv_file_name)
         if not csv_file_name:
+            #There was a data file, but no csv with speed labels
             logger.error(f"CSV file not found for pattern: {csv_file_name}")
             raise FileNotFoundError(f"CSV file not found for pattern: {csv_file_name}")
         csv_file_name = csv_file_name[0]  # Take the first matching file
