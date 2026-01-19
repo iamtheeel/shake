@@ -10,6 +10,8 @@
 
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+
 import numpy as np
 from tqdm import tqdm  #progress bar
 import sys
@@ -193,9 +195,11 @@ class dataPlotter_class():
         fig.subplots_adjust(top = 0.95, bottom = 0.05, hspace=0, left = 0.10, right=0.99) 
         fig.suptitle(plotTitle_str)
     
+        n = data.shape[0]
         thisRow = 0
         thisMax = None
-        for chData in data:
+        for i, chData in enumerate(data):
+
             if isFreq:
                 windowedData = self.fftClass.appWindow(chData, window="Hanning")
                 freqData = self.fftClass.calcFFT(windowedData) #Mag, phase
@@ -213,14 +217,33 @@ class dataPlotter_class():
     
             #logger.info(f"Ylim: {yLim}")
             axs[thisRow].set_ylim(yLim)
-            if xLim != None:
-                axs[thisRow].set_xlim(xLim)
-            axs[thisRow].get_xaxis().set_visible(False)
+            if xLim != None: axs[thisRow].set_xlim(xLim)
+            
+            #axs[thisRow].get_xaxis().set_visible(False)
+            # hide x tick labels on all but last (keeps axis alive so grids can draw)
+            if i != n - 1:
+                axs[i].tick_params(axis="x", which="both", labelbottom=False)
     
             thisRow +=1
+
+        # X axis grid lines
+        for ax in axs:
+            ax.minorticks_on()
+
+            ax.yaxis.set_major_locator(MultipleLocator(5))
+            ax.yaxis.set_minor_locator(MultipleLocator(1))
+
+            ax.set_axisbelow(True)
+            ax.grid(True, axis="x", which="major", linewidth=0.8, alpha=0.8)
+            ax.grid(True, axis="x", which="minor", linewidth=0.5, linestyle=":", alpha=0.6)
+
+            ax.margins(x=0) # prevent 0 from shifting
+            if xLim is not None: ax.set_xlim(xLim)
+
+
         #Only show the x-axis on the last plot
-        axs[thisRow-1].get_xaxis().set_visible(True)
-        axs[thisRow-1].set_xlabel(xlabel)
+        #axs[thisRow-1].get_xaxis().set_visible(True)
+        axs[-1].set_xlabel(xlabel)
 
         self.plotOrShow(plt, fig, fileName, show)
         #logger.info(f"thisMax: {thisMax}")

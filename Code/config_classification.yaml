@@ -4,12 +4,12 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
-    trainModel: False
+    runModel: True
+    trainModel: True
     validateModel: False
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: False
+    generateTimeFreqWindowPlots: True
     generateCWTPlots: False
 
 plts:
@@ -50,7 +50,8 @@ data:
     vibDataDir: "data" # The input data
     APDMDataDir: "APDM_data_fixed_step" # The input data
     sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
-    classes: ['No Step', '001', '002', '003']
+    #classes: ['No Step', '001', '002', '003']
+    classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008']
     dataThresh: 2 # If 0, then no, non-walking detection: 2
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
@@ -60,13 +61,13 @@ data:
 
     downSample: 4 # Downsample by n-times: 4
 
-    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # Test_2 has a bad ch 10
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 3] # Try for 3 color plot
     #chList: [6, 5, 4] # Try for 3 color plot
 
-    trainRatio: 0.01 #.8 # 80% train, 20% of the data for validation
+    trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
@@ -187,7 +188,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 100 #Set to upper limit and validate every... (see below)
+    epochs: 50 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
@@ -196,7 +197,7 @@ trainer:
     saveModel: True
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #

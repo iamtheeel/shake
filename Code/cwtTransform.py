@@ -29,13 +29,13 @@ logger = logging.getLogger(__name__)
 
 
 class cwt:
-    def __init__(self, fileStructure:"fileStruct", configs, dataConfigs):
+    def __init__(self, fileStructure:"fileStruct", sampleRate, configs):
         print(f"\n")
         logger.info(f"----------------------      Get cwt peramiters   ----------------------")
         self.fileStructure = fileStructure
         #Data information
-        self.samplePeriod = 1/dataConfigs.sampleRate_hz
-        self.sampleRate_hz = dataConfigs.sampleRate_hz
+        self.samplePeriod = 1/sampleRate
+        self.sampleRate_hz = sampleRate
         self.configs = configs
 
         #self.saveDir = f"{configs['plts']['pltDir']}/cwt"
@@ -52,7 +52,7 @@ class cwt:
         self.f0 = None
         self.bw = None
 
-    def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, useLogForFreq=False):
+    def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, length = 512, useLogForFreq=False, savePlots = True, showPlots=False):
         self.useLogScaleFreq  = useLogForFreq
 
         self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
@@ -98,8 +98,7 @@ class cwt:
             else:
                 self.wavelet = pywt.ContinuousWavelet(self.wavelet_name)
         #level = 10 #Number of iterations, for descrete wavelets
-        self.length = 512 #at 256 with f_0 = 10, it looks a little ragged
-        #self.length = 4096 #at 256 with f_0 = 10, it looks a little ragged
+        self.length = length #at 256 with f_0 = 10, it looks a little ragged
 
         # Our wave function
         #self.wavelet_fun, self.wavelet_Time = self.wavelet.wavefun(level=level)#, level=self.level) 
@@ -115,15 +114,15 @@ class cwt:
 
         logger.info(f"{self.wavelet_name}, Complex:{isComplex}, len: {len(self.wavelet_fun)}, dt: {self.wavelet_Time[1]-self.wavelet_Time[0] }")
 
-        self.fileStructure.setCWT_dir(self, isComplex=isComplex, asMagnitude=asMagnitude) 
+        if savePlots: self.fileStructure.setCWT_dir(self, isComplex=isComplex, asMagnitude=asMagnitude) 
 
         #f0, bw
         f0, bw = self.getF0_BW()
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
-        f0, bw = self.plotWavelet(sRate=0, save=True, show=False ) #Use 0 to use the wavelet default
-        f0, bw = self.plotWavelet(sRate=sampleRate_hz, save=True, show=False )
+        f0, bw = self.plotWavelet(sRate=0, save=savePlots, show=showPlots ) #Use 0 to use the wavelet default
+        f0, bw = self.plotWavelet(sRate=sampleRate_hz, save=savePlots, show=showPlots )
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
     def setFreqScale(self, freqLogScale=True):
@@ -237,14 +236,20 @@ class cwt:
         if np.iscomplexobj(self.wavelet_fun): complexInput = True
 
         # Plot the time Domain
-        expStr = ""
-        if self.wavelet_base == "fstep" :
-            titleStr = f"Wavelet: {expStr}cCust"
-        elif self.wavelet_base == 'cfstep':
-            titleStr = f"Wavelet: {expStr}cust"
-        else:
-            titleStr = f"Wavelet: {expStr}{self.wavelet_base}"
         print(f"wavelet base: {self.wavelet_base}")
+        waveletName = self.wavelet_base
+        if self.wavelet_base == "fstep" :
+            waveletName = "Footstep"
+        elif self.wavelet_base == 'cfstep':
+            waveletName = "Complex Footstep"
+        elif self.wavelet_base == 'morl':
+            waveletName = "Morlet"
+        elif self.wavelet_base == 'cmorl':
+            waveletName = "Complex Morlet"
+        elif self.wavelet_base == 'ricker':
+            waveletName = "Ricker"
+
+        titleStr = f"Wavelet: {waveletName}"
 
         if self.wavelet_base != 'ricker' and self.wavelet_base != 'morl':
             if self.wavelet_base == 'fstep' or self.wavelet_base == 'cfstep':
@@ -313,6 +318,11 @@ class cwt:
         azimRot_deg = -10 # 10 deg ccw about z
         ax.view_init(elev=30, azim=-60+azimRot_deg)
 
+        # Axis limits
+        #ax.set_xlim(t_min, t_max) # Time
+        #ax.set_ylim(-1, 1) #Real part
+        #ax.set_zlim(-1, 1) #Imag part
+
         ax.set_title(f'{titleStr}', fontsize=tFontSize)
         ax.set_xlabel('Time')
         ax.set_ylabel('Real Part')
@@ -326,8 +336,11 @@ class cwt:
         plt.plot(self.wavelet_Time, np.real(self.wavelet_fun), label='Real')
         if np.iscomplexobj(self.wavelet_fun):
             plt.plot(self.wavelet_Time, np.imag(self.wavelet_fun), label='Imaginary')
-        plt.xlabel('Time')
-        plt.ylabel('Amplitude')
+        plt.xlabel('Time', fontsize=16)
+        plt.ylabel('Amplitude', fontsize=16)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.ylim(-1, 1)
         plt.legend()
         plt.grid(True)
 

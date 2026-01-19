@@ -41,7 +41,8 @@ from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum foots
 # Has trigger time
 # Correct sample rate in file
 sampleRate = None # Get from file
-dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+#dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
+dataFile = "../TestData/20251124_Testing/vib/Data/TestSetupt_006.hdf5" # Has trigger time
 
 # What data are we interested in
 dataTimeRange_s = [0, 0] # [0 0] for full dataset
@@ -88,7 +89,8 @@ def get_peram(perams, peramName:str, asStr=False):
     mask = perams['parameter'] == peramName.encode()
     matches = perams[mask]
     if len(matches) > 0:
-        if asStr:
+        #if asStr:
+        if isinstance(matches['value'][0], bytes):
             peram_value = matches['value'][0].decode('utf8')
             #peram_value = perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
         else:
@@ -117,6 +119,7 @@ def loadPeramiters(dataFile):
         # Move this to a saved peramiter
         nTrials = h5file['experiment/data'][:].shape[0] #Load all the rows of data to the block, will not work without the [:]
         filePerams = h5file['experiment/general_parameters'][:]
+        runPerams = h5file['experiment/specific_parameters'][:]
 
     #Extract the data capture info from the file
     if sampleRate == None:
@@ -130,8 +133,12 @@ def loadPeramiters(dataFile):
     recordLen_s = float(recordLen_s)
     preTrigger_s, _ = get_peram(filePerams, 'pre_trigger')
 
-    #print(filePerams.dtype.names)   # Show the peramiter field names
-    #print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
+    print("--- File Peramiters ---")
+    print(filePerams.dtype.names)   # Show the peramiter field names
+    print(f"experiment/general_parameters: {filePerams}")          #Show the peramiters
+    print("--- Run Peramiters ---")
+    print(runPerams.dtype.names)   # Show the peramiter field names     
+    print(f"experiment/specific_parameters: {runPerams}")          #Show the peramiters
 
     # Now that we know which is the timepoints
     #print(f"The data was taken at {dataCapRate_hz} {dataCapUnits}, and is {recordLen_s} seconds long")
@@ -479,7 +486,8 @@ trialList = [21, 34, 35, 36, 37, 39, 42, 45, 46,
                      22, 23, 24, 25, 26, 27, 28, 30,
                      50, 51, 53, 54, 57, 58, 60, 61, 62, 64]
 '''
-trialList = [0, 1]
+trialList = [14]
+#trialList = [0, 1]
 
 #for trial in range(20): # Cycle through the trials
 #for trial in range(dataBlock_numpy.shape[0]): # Cycle through the trials

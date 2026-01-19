@@ -114,7 +114,8 @@ logger = logging.getLogger(__name__)
 class fileStruct:
     def __init__(self, configs:dict):
         self.configs = configs
-        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=self.configs['data']['dataOutDir'])
+        dataOutDir = f"{self.configs['data']['dataOutDir']}/{self.configs['data']['test']}"
+        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=dataOutDir)
         self.expTrackFiles = expTrackFiles_class(expTrackDir_name=self.configs['expTrackDir'])
 
     def makeDir(self, dir_str):
