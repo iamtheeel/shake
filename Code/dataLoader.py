@@ -830,14 +830,20 @@ class dataLoader:
         csv_file_name = csv_file_name[0]  # Take the first matching file
         logger.info(f"Loading CSV file for speed labels: {csv_file_name}")
 
-
         with open(csv_file_name, mode='r') as speedFile:
             speedFile_csv = csv.DictReader(speedFile)
             for line_number, row in enumerate(speedFile_csv, start=1):
-                speed_L = float(row['Gait - Lower Limb - Gait Speed L (m/s) [mean]'])
-                speed_R = float(row['Gait - Lower Limb - Gait Speed R (m/s) [mean]'])
-                #logger.info(f"Line {line_number}: mean: L={speed_L}, R={speed_R}(m/s) ")
-                aveSpeed = (speed_L+speed_R)/2
+                val = row['Gait - Lower Limb - Gait Speed L (m/s) [mean]']
+                if val is None or val.strip() == '':
+                    #If there is no value, set to 0
+                    aveSpeed = 0.0
+                else:
+                    # We never have NULL in one, but not the other.
+                    speed_L = float(val)
+                    speed_R = float(row['Gait - Lower Limb - Gait Speed R (m/s) [mean]'])
+                    #logger.info(f"Line {line_number}: mean: L={speed_L}, R={speed_R}(m/s) ")
+                    aveSpeed = (speed_L+speed_R)/2
+
                 try:              speedList = np.append(speedList, aveSpeed)
                 except NameError: speedList = aveSpeed
 
