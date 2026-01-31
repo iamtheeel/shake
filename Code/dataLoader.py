@@ -154,7 +154,7 @@ class dataLoader:
         self.stompFromFile = False
         if isinstance(self.stompThresh, str):
             self.stompFromFile = True
-            self.stompTimes_np = self.getStompTimes(f"{self.testDir}/{self.stompThresh}")
+            self.runPerams_np = self.getRunConfigs(f"{self.testDir}/{self.stompThresh}")
 
         self.dataConfigs = dataConfigs()
         self.dataConfigs.sampleRate_hz = 0
@@ -581,21 +581,25 @@ class dataLoader:
             windowsWithData = 0
             for run in range(runsEnd): # test with the first few dataums
                 nWindows = 0
-                firstDataPoint = True
 
                 dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
                 if self.stompFromFile:
                     #print(f"Subject: {subject}, run: {run}")
-                    sTime_sec, skipRun = self.getStompTime(subject, run)
+                    sTime_sec, skipRun = self.getRunConfig(subject, run)
                     #print("---------------------")
-                    #print(f"Subject: {subject}, run: {run}, sTime: {sTime_sec}, skipRun: {skipRun}")
+                    logger.info(f"Subject: {subject}, run: {run}, sTime: {sTime_sec}, skipRun: {skipRun}")
                     startPoint = sTime_sec * self.dataConfigs.sampleRate_hz
                 else:
                     startPoint = 0 #points
 
                 if skipRun: 
-                    logger.info(f"Skipping subject: {subject}, run: {run} due to no data marked bad in stomp file")
+                    logger.info(f"%%% Skipping subject: {subject}, run: {run} due to data marked bad in run peramiters file")
                     continue
+
+                # Get a baseline RMS for this run the frist window
+                thisDataBlock = data[run, :, 0:self.windowLen]  # trial, sensor, dataPoint
+                rms_BaseLine = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
+                logger.info(f"RMS Baseline for subject: {subject}, run: {run} is {rms_BaseLine}")
 
                 while True:
                     startPoint = int(startPoint)
@@ -618,11 +622,7 @@ class dataLoader:
                         except NameError: rms_allCh = rms_thisCh
                         #print(f"rms_allCh: {rms_allCh.shape}")
 
-                    # Keep the RMS of time = 0 for a baseline
-                    if firstDataPoint:
-                        rms_BaseLine = rms_allCh.copy()
-                        firstDataPoint = False
-                    rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for stomp and no step
+                    rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for step/no step
 
                     # Look for stomp, and keeps track of how many windows since the stomp
                     # The detection of no step is done in getSubjectLabel
@@ -849,37 +849,35 @@ class dataLoader:
 
         #print(f"Labels: {speedList}")
         return speedList
-    
-    def getStompTimes(self, csv_file_name):
+
+    def getRunConfigs(self, csv_file_name):
         logger.info(f"Loading CSV file for stomp times: {csv_file_name}")
 
-        with open(csv_file_name, mode='r') as stompTimesFile:
-            stompTimes_reader = csv.reader(stompTimesFile)
-            header = next(stompTimes_reader)
+        with open(csv_file_name, mode='r') as runPeramsFile:
+            runPeram_reader = csv.DictReader(runPeramsFile)
             data = []
-            for row in stompTimes_reader:
-                subjects = row[0]
-                runs = int(row[1])
-                times = float(row[2])
+            for row in runPeram_reader:
+                subjects = row["Subject"] 
+                runs = int(row["Run"])
+                times = float(row["Start Time (s)"])
                 # Some CSVs don't have skipRun
-                if len(row) > 3 and row[3] != "":
-                    skipRun = int(row[3])
+                if len(row) > 3 and row["Skip Run"] != "":
+                    skipRun = int(row["Skip Run"])
                 else:
                     skipRun = 0   # sensible default
-                data.append((subjects, runs, times, skipRun))
+                data.append((subjects, runs, times, skipRun))       
 
-        startTimes_np = np.array(data, dtype=[("subject_num", "i4"), ("run_num", "i4"), ("startTime", "f4"), ("skipRun", "i4")])
+        runPerams_np = np.array(data, dtype=[("subject_num", "i4"), ("run_num", "i4"), ("startTime", "f4"), ("skipRun", "i4")])
+        return runPerams_np
 
-        #print(startTimes_np)
-        return startTimes_np
+    def getRunConfig(self, subject, run):
 
-    def getStompTime(self, subject, run):
         subjectNumber = self.getSubjectNumber(subject)
 
         #logger.info(f"Getting stomp time for subject: {subjectNumber}, run: {run}")
-        mask = (self.stompTimes_np["subject_num"] == subjectNumber) & (self.stompTimes_np["run_num"] == run)
-        dataStart = self.stompTimes_np["startTime"][mask][0]
-        skipRun = self.stompTimes_np["skipRun"][mask][0]
+        mask = (self.runPerams_np["subject_num"] == subjectNumber) & (self.runPerams_np["run_num"] == run)
+        dataStart = self.runPerams_np["startTime"][mask][0]
+        skipRun = self.runPerams_np["skipRun"][mask][0]
 
         return dataStart, skipRun
 
