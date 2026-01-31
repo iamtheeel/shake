@@ -5,8 +5,8 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: True
-    trainModel: True
-    validateModel: False
+    trainModel: False
+    validateModel: True
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -39,20 +39,21 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    #test: "20251124_Testing" #One person fixed pace, straight path, has labels
-    #vibDataDir: "vib/Data" # The input data
-    #APDMDataDir: "APDM_Data" # The input data
-    #sampleRate: None 
-    #classes: ['No Step', '001', '002', '003', '004', '005', '006']
-    #dataThresh: 0.5 # If 0, then no, non-walking detection: 2
+    test: "20251124_Testing" #One person fixed pace, straight path, has labels
+    vibDataDir: "vib/Data" # The input data
+    APDMDataDir: "APDM_Data" # The input data
+    sampleRate: None 
+    classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing
+    dataThresh: 0.5 # If 0, then no, non-walking detection: 2
 
-    test: "Test_2" #One person fixed pace, straight path, has labels
-    vibDataDir: "data" # The input data
-    APDMDataDir: "APDM_data_fixed_step" # The input data
-    sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
-    #classes: ['No Step', '001', '002', '003']
-    classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008']
-    dataThresh: 2 # If 0, then no, non-walking detection: 2
+    #test: "Test_2" #One person fixed pace, straight path, has labels
+    #vibDataDir: "data" # The input data
+    #APDMDataDir: "APDM_data_fixed_step" # The input data
+    #sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
+    ##classes: ['No Step', '001', '002', '003']
+    #classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008']
+    #dataThresh: 2 # If 0, then no, non-walking detection: 2
+
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
 
@@ -67,7 +68,7 @@ data:
     #chList: [6, 5, 3] # Try for 3 color plot
     #chList: [6, 5, 4] # Try for 3 color plot
 
-    trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
+    trainRatio: 0.01 #0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
@@ -204,8 +205,9 @@ model:
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
-    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
-    
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt" #Regression trained on Test_2
+    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/classification/cMorl/20260119-104826/exp-1/model_exp1.pt" #Classification trained on 20251124_Testing
+
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 
     dropOut: [0] #0.5 Not implemented on leNet

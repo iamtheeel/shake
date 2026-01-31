@@ -8,7 +8,7 @@ debugs:
     trainModel: False
     validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
+    generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
     generateCWTPlots: False
 
@@ -39,34 +39,35 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    #test: "20251124_Testing" #One person fixed pace, straight path, has labels
-    #vibDataDir: "vib/Data" # The input data
-    #APDMDataDir: "APDM_Data" # The input data
-    #sampleRate: None 
-    #classes: ['No Step', '001', '002', '003', '004', '005', '006']
-    #dataThresh: 0.5 # If 0, then no, non-walking detection: 2
+    #test: "Test_2" #One person fixed pace, straight path, has labels
+    #vibDataDir: "data" # The input data
+    #APDMDataDir: "APDM_data_fixed_step" # The input data
+    #sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
+    #classes: ['No Step', '001', '002', '003']
+    #dataThresh: 2 # If 0, then no, non-walking detection: 2
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
-    test: "Test_2" #One person fixed pace, straight path, has labels
-    vibDataDir: "data" # The input data
-    APDMDataDir: "APDM_data_fixed_step" # The input data
-    sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
-    classes: ['No Step', '001', '002', '003']
-    dataThresh: 2 # If 0, then no, non-walking detection: 2
     #test: "Test_3" #One person, down hall, into and around lab, has labels, 
     #test: "Test_4" #Multiple people variyed pace, no labels
+
+    test: "20251124_Testing" #One person fixed pace, straight path, has labels
+    vibDataDir: "vib/Data" # The input data
+    APDMDataDir: "APDM_Data" # The input data
+    sampleRate: None 
+    classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
+    dataThresh: 2 # If 0, then no, non-walking detection: 2
+    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
     ## Must be in order 
     #classes: ['No Step', '001', '002', '003']
 
     downSample: 4 # Downsample by n-times: 4
 
-    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [6, 5, 3] # Try for 3 color plot
     #chList: [6, 5, 4] # Try for 3 color plot
 
-    trainRatio: 0.01 #.8 # 80% train, 20% of the data for validation
+    trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
     limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
@@ -130,14 +131,14 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
-    #wavelet: ["None"] 
+    wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
     # Shannon shanB-F : Freq precision, less time localization
     #wavelet: ["shan"] 
 
-    wavelet: ["cmorl"] 
+    #wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
     ##waveLet_bandwidth_freq:  [2, 10] # best for cmorl
     waveLet_bandwidth_freq:  [10] # cmorl mattching morl
@@ -196,7 +197,7 @@ trainer:
     saveModel: True
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
