@@ -566,7 +566,7 @@ class dataLoader:
 
     def logDataLoaders(self, dataSet, setName):
         # We can change the batch size per experiment, but probably won't
-        csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/{setName}_bSize-{dataSet.batch_size}_DataLoader_log.csv"
+        csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/DataLoader_Log_{setName}_bSize-{dataSet.batch_size}.csv"
         logger.info(f"Logging DataLoader info to: {csvFile}")
         logger.info(f"DataLoader {setName}: {len(dataSet)}, batch size: {dataSet.batch_size}, batches per epoch: {len(dataSet)}")
         #logger.info(f"DataLoader Val: {len(self.dataLoader_v.dataset)}, batch size: {self.dataLoader_v.batch_size}, batches per epoch: {len(self.dataLoader_v)}")   

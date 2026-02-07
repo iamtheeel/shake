@@ -177,7 +177,10 @@ def writeExpSum(cwt_class:cwt,
     expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackSum_fileName}'
 
     dataType = "real"
-    isComplex = np.iscomplexobj(cwt_class.wavelet_fun) 
+    isComplex = False
+    if(cwt_class.wavelet_base != None and cwt_class.wavelet_base != "spectroGram"):
+        isComplex = np.iscomplexobj(cwt_class.wavelet_fun) 
+
     if isComplex:
         if configs['cwt']['runAsMagnitude'] == False:
             dataType = "complex"
