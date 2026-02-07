@@ -15,8 +15,8 @@ from tqdm import tqdm  #progress bar
 from scipy.signal import spectrogram    # For spectrogram
 
 import torch
-import torch.nn.functional as tFun
-from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
+#import torch.nn.functional as tFun
+from torch.utils.data import DataLoader, Dataset, random_split
 import pickle
 import time
 
@@ -135,7 +135,8 @@ class dataLoader:
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
         # Load up the dataset info
-        self.testDir = f"{config['data']['dataInDir']}/{config['data']['test']}" # The test data directory
+        self.dataSetName = config['data']['test'] # e.x. "Test_2"
+        self.testDir = f"{config['data']['dataInDir']}/{self.dataSetName}" # The test data directory
         self.downSample = config['data']['downSample']# Where the data is
         #self.test = config['data']['test']         # e.x. "Test_2"
         self.batchSize = config['trainer']['batchSize']
@@ -556,8 +557,36 @@ class dataLoader:
                                 num_workers=nWorkers, persistent_workers=True, pin_memory=True, 
                                 shuffle=False)
 
+        # Log the data
+        self.logDataLoaders(self.dataLoader_t, "Train")
+        self.logDataLoaders(self.dataLoader_v, "Validation")
+
         if writeLog: self.logDataShape()
     
+
+    def logDataLoaders(self, dataSet, setName):
+        # We can change the batch size per experiment, but probably won't
+        csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/{setName}_bSize-{dataSet.batch_size}_DataLoader_log.csv"
+        logger.info(f"Logging DataLoader info to: {csvFile}")
+        logger.info(f"DataLoader {setName}: {len(dataSet)}, batch size: {dataSet.batch_size}, batches per epoch: {len(dataSet)}")
+        #logger.info(f"DataLoader Val: {len(self.dataLoader_v.dataset)}, batch size: {self.dataLoader_v.batch_size}, batches per epoch: {len(self.dataLoader_v)}")   
+        csvWriter = csv.writer(open(csvFile, 'w', newline=''), dialect='unix')
+        csvWriter.writerow([f"DataLoader {setName}: {len(dataSet)}"])
+        csvWriter.writerow([f"batch size: {dataSet.batch_size}"])
+        csvWriter.writerow([f"batches per epoch: {len(dataSet)}"])
+
+        csvWriter.writerow(['Dataset', 'Batch', 'Subject (string)', 'label subject (int)', 'run', 'window start time (seconds)', 'speed (m/s)'])
+        for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
+            #Validation is batch size 1, so we can log the subject, run, time, and speed for each batch
+            #Data set, Subject, run, <time>, speed
+            for i in range(data.shape[0]):
+                subject = self.classes[subjects[i].item()]
+                labelsSubject = labelsSubject[i].item()
+                run = runs[i].item()
+                sTime = sTimes[i].item()
+                labelSpeed = labelsSpeed[i].item()
+                #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
+                csvWriter.writerow([f"{setName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
 
     def windowData(self, data:np.ndarray, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
@@ -599,7 +628,7 @@ class dataLoader:
                 # Get a baseline RMS for this run the frist window
                 thisDataBlock = data[run, :, 0:self.windowLen]  # trial, sensor, dataPoint
                 rms_BaseLine = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
-                logger.info(f"RMS Baseline for subject: {subject}, run: {run} is {rms_BaseLine}")
+                #logger.info(f"RMS Baseline for subject: {subject}, run: {run} is {rms_BaseLine}")
 
                 while True:
                     startPoint = int(startPoint)
