@@ -586,7 +586,7 @@ class dataLoader:
                 sTime = sTimes[i].item()
                 labelSpeed = labelsSpeed[i].item()
                 #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
-                csvWriter.writerow([f"{setName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
+                csvWriter.writerow([f"{self.dataSetName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
 
     def windowData(self, data:np.ndarray, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")

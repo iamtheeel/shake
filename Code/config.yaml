@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
-    trainModel: False
+    runModel: True
+    trainModel: True
     validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateTimeFreqPlots: True
+    generateTimeFreqWindowPlots: True
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -68,8 +68,9 @@ data:
     #chList: [6, 5, 4] # Try for 3 color plot
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns: 0 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
+    limitWindowLen: 20 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+                        #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
 
     ## Depricated
     stompSens: [5, 6, 7]
@@ -188,7 +189,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 100 #Set to upper limit and validate every... (see below)
+    epochs: 1 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
