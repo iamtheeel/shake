@@ -528,7 +528,11 @@ class Trainer:
         #clas_flat = true_classes.flatten().cpu().numpy()
         print(f"flat pred: {pred_classes.shape}, class: {true_classes.shape}")
 
-        cm = confusion_matrix(true_classes, pred_classes)
+        # If you don't force the lables, it will only include the ones that are present in the data, which can mess up the CM if some classes are missing
+        nClasses = len(self.classes)
+        labels = list(range(nClasses))  # if nCasses is 4, this will be [0, 1, 2, 3]
+
+        cm = confusion_matrix(true_classes, pred_classes, labels=labels)
         logger.info(f"Confusion Matrix:\n{cm}")
 
         # save to log
