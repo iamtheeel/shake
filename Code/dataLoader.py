@@ -684,7 +684,7 @@ class dataLoader:
                     # If we are limiting the number of windows, check that
                     if self.configs['data']['limitWindowLen'] > 0:
                         if windowsWithData >= self.configs['data']['limitWindowLen']: 
-                            logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
+                            #logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
                             #csvFile.write("\n")
                             break
 
@@ -697,12 +697,12 @@ class dataLoader:
                         inWalking = True
 
                     if windowEndPoint > blockEndPoint:
-                        logger.info(f"Window end point is past the block end time, breaking loop | subject: {subject}, run: {run}, windowEndPoint: {windowEndPoint}, blockEndPoint: {blockEndPoint}")
+                        #logger.info(f"Window end point is past the block end time, breaking loop | subject: {subject}, run: {run}, windowEndPoint: {windowEndPoint}, blockEndPoint: {blockEndPoint}")
                         break
 
                     if (not inWalking) and (not inNoStep):
                         # Note: we could be in the gap 
-                        logger.info(f"Window is not in walking or no step time, | subject: {subject}, run: {run},  windowEnd: {windowEndPoint}, noStepStart_pts: {noStepStart_pts}, noStepEnd_pts: {noStepEnd_pts}, dataStart_pts: {dataStart_pts}, blockEndPoint: {blockEndPoint}")
+                        #logger.info(f"Window is not in walking or no step time, | subject: {subject}, run: {run},  windowEnd: {windowEndPoint}, noStepStart_pts: {noStepStart_pts}, noStepEnd_pts: {noStepEnd_pts}, dataStart_pts: {dataStart_pts}, blockEndPoint: {blockEndPoint}")
                         windowStartPoint += self.stepSize
                         continue
 

@@ -274,6 +274,7 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
+            print(f"Training Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} " )
             valEveryNEpochs = self.configs['trainer']['validEveryNEpochs']
             if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau": valEveryNEpochs = 1
             if epoch%valEveryNEpochs == 0 and epoch >= self.configs['trainer']['epochValiStart']:
@@ -305,8 +306,6 @@ class Trainer:
             #print(f"Correct: = {correct_epoch}, nRun: {batchNumber}")
             #logger.debug.. wtf are my loggers not working
             print(f"Training Epoch: {epoch} | LR = {self.optimizer.param_groups[0]['lr']} | " \
-                f"Train Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} | " \
-                #f"Validation Loss: {valLoss:.4f} | {self.accStr}: {valAcc:.4f} | " \
                 f"Time: {epoch_runTime:.1f}s")
 
             # Log the per/epoch results 
@@ -462,7 +461,7 @@ class Trainer:
                 y_targs= torch.stack(y_targs, dim=0)
                 y_preds = y_preds.view(y_preds.shape[0], -1)  # [datusm*batch, classes]Keeps batch size, removes extra dimension
                 y_targs = y_targs.view(y_targs.shape[0], -1)  # Keeps batch size, removes extra dimension
-                print(f"pred: {y_preds.shape}, lab: {y_targs.shape} ")
+                #print(f"pred: {y_preds.shape}, lab: {y_targs.shape} ")
 
             print(f"Validation Loss: {finalValLoss:.3f} | {self.accStr}: {test_acc:.4}")
 
@@ -526,7 +525,7 @@ class Trainer:
 
         #pred_flat = predicted_classes.flatten().cpu().numpy() # Shape: [datums*batches]
         #clas_flat = true_classes.flatten().cpu().numpy()
-        print(f"flat pred: {pred_classes.shape}, class: {true_classes.shape}")
+        #print(f"flat pred: {pred_classes.shape}, class: {true_classes.shape}")
 
         # If you don't force the lables, it will only include the ones that are present in the data, which can mess up the CM if some classes are missing
         nClasses = len(self.classes)
