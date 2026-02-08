@@ -68,14 +68,15 @@ data:
     #chList: [6, 5, 4] # Try for 3 color plot
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns: 2 # Limit the number of runs to load: 0 to load all the data
-    limitWindowLen: 20 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitRuns: 0 # 2  Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
+    limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     ## Depricated
     stompSens: [5, 6, 7]
     ## Use stomp from file
-    stompThresh: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
+    # depricated name stompThresh: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
+    dataRunPeramiters: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -189,7 +190,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 1 #Set to upper limit and validate every... (see below)
+    epochs: 10 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs

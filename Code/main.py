@@ -129,7 +129,7 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
 
-        writer.writerow(['stompThresh', configs['data']['stompThresh'], "If not file, use:", configs['data']['stompSens']])
+        writer.writerow(['dataRunPeramiters', configs['data']['dataRunPeramiters'], "If a number, use:", configs['data']['stompSens']])
         writer.writerow(['dataThresh', configs['data']['dataThresh']])
 
         writer.writerow(['dataScalers', configs['data']['dataScalers'], configs['data']['dataScale_values']])

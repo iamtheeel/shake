@@ -175,11 +175,11 @@ class fileStruct:
         dataFolder = f"{dataFolder}_winLen-{self.configs['data']['windowLen']}"
         dataFolder = f"{dataFolder}_step-{self.configs['data']['stepSize']}"
 
-        stompThresh = self.configs['data']['stompThresh'] 
-        if isinstance(stompThresh, str):
-            dataFolder = f"{dataFolder}_StompThresh-File"
+        dataRunPeramiters = self.configs['data']['dataRunPeramiters'] 
+        if isinstance(dataRunPeramiters, str):
+            dataFolder = f"{dataFolder}_DataRunPeramiters-File"
         else:
-            dataFolder = f"{dataFolder}_StompThresh-{stompThresh}"
+            dataFolder = f"{dataFolder}_DataRunPeramiters-{dataRunPeramiters}"
         dataFolder = f"{dataFolder}_DataThresh-{self.configs['data']['dataThresh']}"
 
         limitRuns = self.configs['data']['limitRuns']

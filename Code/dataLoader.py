@@ -151,11 +151,13 @@ class dataLoader:
         #Data
         self.stompCh = config['data']['stompSens']
         self.dataThresh = config['data']['dataThresh']
-        self.stompThresh = config['data']['stompThresh']
+        self.dataRunPerams = config['data']['dataRunPeramiters']
         self.stompFromFile = False
-        if isinstance(self.stompThresh, str):
+        if isinstance(self.dataRunPerams, str):
             self.stompFromFile = True
-            self.runPerams_np = self.getRunConfigs(f"{self.testDir}/{self.stompThresh}")
+            #runPerams_np is a structured numpy array with columns: subject_num, run_num, skipRun
+            #           noStep_start, noStep_end, data_start, data_end
+            self.runPerams_np = self.getRunConfigs(f"{self.testDir}/{self.dataRunPerams}") 
 
         self.dataConfigs = dataConfigs()
         self.dataConfigs.sampleRate_hz = 0
@@ -594,57 +596,122 @@ class dataLoader:
 
         #CSVdataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
         with open(self.CSVdataFile , 'a', newline='') as csvFile:
-            csvFile.write('Subject, speed (m/s), run, startTime (s), dataPtsAfterStomp, label')
-            for i in range(data.shape[1]):
-                thisCh = self.dataConfigs.chList[i]
-                csvFile.write(f", sensor {thisCh} rms")
+            csvFile.write('Subject, speed (m/s), run, startTime (s), label')
+            #for i in range(data.shape[1]):
+            #    thisCh = self.dataConfigs.chList[i]
+            #    csvFile.write(f", sensor {thisCh} rms")
             csvFile.write("\n")
 
-            # do while endPoint <= thisPoint + data len
             #logger.debug(f"windowData, Data: {data.shape}")
             if self.configs['data']['limitRuns'] > 0:
                 runsEnd = self.configs['data']['limitRuns']
             else:
                 runsEnd = data.shape[0] # How many runs in this subjects dataset
             #for run in range(data.shape[0]): # make sure the data is in order one run at a time
-            windowsWithData = 0
-            for run in range(runsEnd): # test with the first few dataums
-                nWindows = 0
 
-                dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
+            windowsWithData = 0
+
+            for run in range(runsEnd): # Have the ability to limit the number of runs we use for debugging
+                nWindows = 0 #How many windows of data we have for this run: used for debugging and logging
+
+                # Sort out where the no-step data and walking data are
+                noStepStart_sec, noStepEnd_sec, data_start_sec, data_end_sec, skipRun = self.getRunConfig(subject, run)
+                if skipRun: 
+                    logger.info(f"%%% Skipping subject: {subject}, run: {run} due to data marked bad in run peramiters file")
+                    continue
+
+                noStepStart_pts = int(noStepStart_sec * self.dataConfigs.sampleRate_hz)
+                noStepEnd_pts = int(noStepEnd_sec * self.dataConfigs.sampleRate_hz)
+                dataStart_pts = int(data_start_sec * self.dataConfigs.sampleRate_hz)
+                if data_end_sec == 0:
+                    dataEnd_pts = self.dataConfigs.dataLen_pts
+                else:
+                    dataEnd_pts = int(data_end_sec * self.dataConfigs.sampleRate_hz)
+
+                logger.info(f"Subject: {subject}, run: {run}, dataEnd_pts: {dataEnd_pts}, dataEnd_sec: {data_end_sec}, {dataEnd_pts/self.dataConfigs.sampleRate_hz}")
+
+                #assume the data starts after the no step time, and ends at the data end time, 
+                # But leave room for the data to be before the no-step
+                # or even interlaced
+                windowStartPoint = noStepStart_pts
+                if windowStartPoint > dataStart_pts: #but make sure we are not before the data start time
+                    windowStartPoint = dataStart_pts
+
+                blockEndPoint = dataEnd_pts
+                if blockEndPoint < noStepEnd_pts: # make sure we are not after the data end time
+                    blockEndPoint = noStepEnd_pts
+
+                logger.info(f"Subject: {subject}, run: {run}, noStepStart_sec: {noStepStart_sec}, noStepEnd_sec: {noStepEnd_sec}, data_start_sec: {data_start_sec}, data_end_sec: {data_end_sec}, windowStartPoint: {windowStartPoint}, blockEndPoint: {blockEndPoint}")
+
+                ''' Depricated 
+                #dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
                 if self.stompFromFile:
                     #print(f"Subject: {subject}, run: {run}")
                     sTime_sec, skipRun = self.getRunConfig(subject, run)
                     #print("---------------------")
                     logger.info(f"Subject: {subject}, run: {run}, sTime: {sTime_sec}, skipRun: {skipRun}")
-                    startPoint = sTime_sec * self.dataConfigs.sampleRate_hz
+                    windowStartPoint = sTime_sec * self.dataConfigs.sampleRate_hz
                 else:
-                    startPoint = 0 #points
+                    windowStartPoint = 0 #points
+                '''
 
-                if skipRun: 
-                    logger.info(f"%%% Skipping subject: {subject}, run: {run} due to data marked bad in run peramiters file")
-                    continue
 
                 # Get a baseline RMS for this run the frist window
-                thisDataBlock = data[run, :, 0:self.windowLen]  # trial, sensor, dataPoint
-                rms_BaseLine = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
-                #logger.info(f"RMS Baseline for subject: {subject}, run: {run} is {rms_BaseLine}")
+                ## Depricated, but maybe we want to use this again
+                #thisDataBlock = data[run, :, noStepStart_pts:noStepStart_pts+self.windowLen]  # Data is in: trial, sensor, dataPoint
+                #rms_BaseLine = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
+                #logger.info(f"RMS Baseline for subject: {subject}, run: {run} at time: {noStepStart_sec} (sec), {noStepStart_pts} is {rms_BaseLine}")
 
-                while True:
-                    startPoint = int(startPoint)
-                    nWindows += 1
-                    endPoint = startPoint + self.windowLen
-                    #Why is endPoint working with 3 ch of data, but not 9??
-                    #logger.info(f"window run: {run},  startPoint: {startPoint}, windowlen: {self.windowLen}, endPoint: {endPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
-                    if self.dataConfigs.dataLen_pts <= endPoint: break # Don't walk of the end of the data
+                # do while windowEndPoint <= thisPoint + data len
+                while True: # Window the run
+                    windowStartPoint = int(windowStartPoint)
+                    windowEndPoint = windowStartPoint + self.windowLen
+
+                    inWalking = False
+                    inNoStep = False
+
+                    #logger.info(f"window run: {run},  windowStartPoint: {windowStartPoint}, windowlen: {self.windowLen}, windowEndPoint: {windowEndPoint}, dataLen: {self.dataConfigs.dataLen_pts}, step: {self.stepSize}")
+                    #are we about to walk off the end?
+                    if self.dataConfigs.dataLen_pts <= windowEndPoint: 
+                        #print(f"Window end point is past the data end time, breaking loop | subject: {subject}, run: {run}, windowStartPoint: {windowStartPoint}, windowEndPoint: {windowEndPoint}, dataLen_pts: {self.dataConfigs.dataLen_pts}")
+                        csvFile.write("\n")
+                        break # Don't walk of the end of the data
+                    if windowEndPoint > blockEndPoint: 
+                        #print(f"Window end point is past the block end time, breaking loop | subject: {subject}, run: {run}, windowStartPoint: {windowStartPoint}, windowEndPoint: {windowEndPoint}, blockEndPoint: {blockEndPoint}")
+                        csvFile.write("\n")
+                        break # No point in going past the data end time
+
+                    # If we are limiting the number of windows, check that
                     if self.configs['data']['limitWindowLen'] > 0:
                         if windowsWithData >= self.configs['data']['limitWindowLen']: 
                             logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
+                            #csvFile.write("\n")
                             break
 
-                    thisDataBlock = data[run, :, startPoint:endPoint]  # trial, sensor, dataPoint
+                    # Are we in the no step time and/or walking time?
+                    if windowStartPoint >= noStepStart_pts and windowEndPoint <= noStepEnd_pts: 
+                        #logger.info(f"Window is in no step time | subject: {subject}, run: {run}, noStepStart_pts: {noStepStart_pts}, noStepEnd_pts: {noStepEnd_pts}")
+                        inNoStep = True
+                    if windowStartPoint >= dataStart_pts and windowEndPoint <= blockEndPoint:     
+                        #logger.info(f"Window is in walking time | subject: {subject}, run: {run}, dataStart_pts: {dataStart_pts}, blockEndPoint: {blockEndPoint}")
+                        inWalking = True
+
+                    if windowEndPoint > blockEndPoint:
+                        logger.info(f"Window end point is past the block end time, breaking loop | subject: {subject}, run: {run}, windowEndPoint: {windowEndPoint}, blockEndPoint: {blockEndPoint}")
+                        break
+
+                    if (not inWalking) and (not inNoStep):
+                        # Note: we could be in the gap 
+                        logger.info(f"Window is not in walking or no step time, | subject: {subject}, run: {run},  windowEnd: {windowEndPoint}, noStepStart_pts: {noStepStart_pts}, noStepEnd_pts: {noStepEnd_pts}, dataStart_pts: {dataStart_pts}, blockEndPoint: {blockEndPoint}")
+                        windowStartPoint += self.stepSize
+                        continue
+
+                    nWindows += 1 # All is good, we have a window of data, so count it and load it up
+                    thisDataBlock = data[run, :, windowStartPoint:windowEndPoint]  
                     #logger.info(f"window data shape: {thisDataBlock.shape}")
 
+                    ''' 
+                    ##Depricated, but maybe we want to use this again 
                     for i in range(thisDataBlock.shape[0]): # Each ch
                         rms_thisCh = np.sqrt(np.mean(np.square(thisDataBlock[i,:])))
                         try:              rms_allCh = np.append(rms_allCh, rms_thisCh)
@@ -662,7 +729,8 @@ class dataLoader:
                     else: 
                         dataPtsAfterStomp = 1
                         nSkips = 0
-                    #print(f"stompThresh: {self.stompThresh}, nSkips: {nSkips}")
+                    #print(f"dataRunPerams: {self.dataRunPerams}, nSkips: {nSkips}")
+                    '''
 
                     '''
                     ### for investigation
@@ -673,53 +741,55 @@ class dataLoader:
                     '''
     
                     # append the data
-                    thisStartTime = startPoint/self.dataConfigs.sampleRate_hz
+                    thisStartTime = windowStartPoint/self.dataConfigs.sampleRate_hz
 
                     #print(f"dataPtsAfterStomp: {dataPtsAfterStomp}, nSkips: {nSkips}")
-                    if dataPtsAfterStomp >= nSkips:
-                        # TODO: make this one data structure
-                        thisSubjectId = self.getSubjectLabel(subject, rms_ratio) # Returns 0 for no step
+                    # Depricated: if dataPtsAfterStomp >= nSkips:
+                    # TODO: make this one data structure
+                    #thisSubjectId = self.getSubjectLabel(subject, rms_ratio) # Returns 0 for no step
+                    thisSubjectId = self.getSubjectNumber(subject) # assuem the subject number is thelabel.
+                    if inNoStep: thisSubjectId = 0 # If we are in the no step time, label as 0
 
-                        #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
-                        #print(f"rms_allCh = {rms_allCh}")
-                        #print(f"rms_BaseLin = {rms_BaseLine}")
-                        #print(f"rms_ratio = {rms_ratio}")
+                    #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
+                    #print(f"rms_allCh = {rms_allCh}")
+                    #print(f"rms_BaseLin = {rms_BaseLine}")
+                    #print(f"rms_ratio = {rms_ratio}")
 
-                        #logger.info(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
-                        #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
-                        #if False:
-                        if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
-                                windowsWithData += 1
-                                #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
-                                thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
+                    #logger.info(f"this | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
+                    #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
+                    #if False:
+                    if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
+                        windowsWithData += 1
+                        #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
+                        thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
 
-                                # Append the data, labels, and all that junk
-                                try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-                                except NameError: windowedData = thisDataBlock
-                                try:              labels_speed = np.append(labels_speed, speed[run])
-                                except NameError: labels_speed = speed[run]
-                                try:              labels_subject = np.append(labels_subject, thisSubjectId)
-                                except NameError: labels_subject = thisSubjectId
-                                thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
-                                try:              subjects = np.append(subjects, thisSubjectNumber)
-                                except NameError: subjects = thisSubjectNumber
-                                try:              runs = np.append(runs, run)
-                                except NameError: runs = run
-                                try:              startTimes = np.append(startTimes, thisStartTime)
-                                except NameError: startTimes = thisStartTime
+                        # Append the data, labels, and all that junk
+                        try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
+                        except NameError: windowedData = thisDataBlock
+                        try:              labels_speed = np.append(labels_speed, speed[run])
+                        except NameError: labels_speed = speed[run]
+                        try:              labels_subject = np.append(labels_subject, thisSubjectId)
+                        except NameError: labels_subject = thisSubjectId
+                        thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
+                        try:              subjects = np.append(subjects, thisSubjectNumber)
+                        except NameError: subjects = thisSubjectNumber
+                        try:              runs = np.append(runs, run)
+                        except NameError: runs = run
+                        try:              startTimes = np.append(startTimes, thisStartTime)
+                        except NameError: startTimes = thisStartTime
 
                     # Do we want to log the 0 vel data for regresion too? Yes
                     if windowsWithData == 0:
-                        logger.error(f" No steps detected for subject: {subject}, run: {run}, stompThresh: {self.stompThresh}, nSkips: {nSkips}, check dataThresh")
+                        logger.error(f" No steps detected for subject: {subject}, run: {run}, dataRunPerams: {self.dataRunPerams}, nSkips: {nSkips}, check dataThresh")
                         exit()
 
-                    csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {dataPtsAfterStomp}, {thisSubjectId}")
-                    for i in range(len(rms_allCh)): # Each ch
-                        csvFile.write(f", {rms_allCh[i]}")
-                    csvFile.write("\n")
+                    csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}")
+                    #for i in range(len(rms_allCh)): # Each ch
+                    #    csvFile.write(f", {rms_allCh[i]}")
+                    csvFile.write("\n") # Write the endline for this run
     
-                    startPoint += self.stepSize
-                    del rms_allCh
+                    windowStartPoint += self.stepSize
+                    #del rms_allCh
 
                     ## End each window
                 #logger.info(f"Data Block: {windowedData.shape}, rms: {plot_run.shape}, labels: {labels.shape}")
@@ -739,12 +809,12 @@ class dataLoader:
                 for i in self.stompCh:
                     dataNum = self.dataConfigs.chList.index(i)
                     value = rms_ratio[dataNum]
-                    #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.stompThresh}")
-                    if value > self.stompThresh: 
+                    #logger.info(f"ch: {i}, {dataNum}, rmsRatio: {value}, thresh: {self.dataRunPerams}")
+                    if value > self.dataRunPerams: 
                         #thisSubjectID = -1
                         dataPtsAfterStomp = 0 
                         break
-        else: dataPtsAfterStomp += 1 # Would probably be nice to just increment startPoint, but that makes another can of worms
+        else: dataPtsAfterStomp += 1 # Would probably be nice to just increment windowStartPoint, but that makes another can of worms
 
         return thisSubjectID, dataPtsAfterStomp
 
@@ -881,6 +951,10 @@ class dataLoader:
 
     def getRunConfigs(self, csv_file_name):
         logger.info(f"Loading CSV file for stomp times: {csv_file_name}")
+        # no step start: The first point in the data where there is no step, this is used to get a baseline for the data
+        # no step end: The last point in the data where there is no step
+        # data start: The first point in the data where there is walking, just before the first step impulse
+        # data end: The last point in the data where there is walking, just after the last step decays
 
         with open(csv_file_name, mode='r') as runPeramsFile:
             runPeram_reader = csv.DictReader(runPeramsFile)
@@ -888,15 +962,27 @@ class dataLoader:
             for row in runPeram_reader:
                 subjects = row["Subject"] 
                 runs = int(row["Run"])
-                times = float(row["Start Time (s)"])
-                # Some CSVs don't have skipRun
-                if len(row) > 3 and row["Skip Run"] != "":
+                noStep_start = float(row["No Step Start (s)"])
+                noStep_end = float(row["No Step End (s)"])
+                data_start = float(row["Data Start (s)"])
+                if row["Data End (s)"] != "":
+                    data_end = float(row["Data End (s)"])
+                else:
+                    data_end = 0  # Default value if no end time is specified   
+
+                if row["Skip Run"] != "":
                     skipRun = int(row["Skip Run"])
                 else:
-                    skipRun = 0   # sensible default
-                data.append((subjects, runs, times, skipRun))       
+                    skipRun = 0   # se/Stomnsible default
+                data.append((subjects, runs, noStep_start, noStep_end, data_start, data_end, skipRun))       
 
-        runPerams_np = np.array(data, dtype=[("subject_num", "i4"), ("run_num", "i4"), ("startTime", "f4"), ("skipRun", "i4")])
+        runPerams_np = np.array(data, dtype=[("subject_num", "i4"), 
+                                             ("run_num", "i4"), 
+                                             ("noStep_start", "f4"), 
+                                             ("noStep_end", "f4"), 
+                                             ("data_start", "f4"), 
+                                             ("data_end", "f4"), 
+                                             ("skipRun", "i4")])
         return runPerams_np
 
     def getRunConfig(self, subject, run):
@@ -905,10 +991,13 @@ class dataLoader:
 
         #logger.info(f"Getting stomp time for subject: {subjectNumber}, run: {run}")
         mask = (self.runPerams_np["subject_num"] == subjectNumber) & (self.runPerams_np["run_num"] == run)
-        dataStart = self.runPerams_np["startTime"][mask][0]
+        noStepStart = self.runPerams_np["noStep_start"][mask][0]
+        noStepEnd = self.runPerams_np["noStep_end"][mask][0]
+        dataStart = self.runPerams_np["data_start"][mask][0]
+        dataEnd = self.runPerams_np["data_end"][mask][0]
         skipRun = self.runPerams_np["skipRun"][mask][0]
 
-        return dataStart, skipRun
+        return noStepStart, noStepEnd, dataStart, dataEnd, skipRun
 
 
     def getDataInfo(self, file):
