@@ -274,7 +274,18 @@ class Trainer:
                 #End  Batch
 
             ## Now in Epoch
+            if self.regression:
+                train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
+                accArr.append(train_acc_epoch)
+            else:
+                train_acc_epoch = 100 * correct_epoch / (batchNumber*self.batchSize )
+                accArr.append(train_acc_epoch*100)
+            train_loss_epoch = train_loss_epoch/batchNumber
+            lossArr.append(train_loss_epoch)
+
             print(f"Training Loss: {train_loss_epoch:.4f} | {self.accStr}: {train_acc_epoch:.4f} " )
+
+            #Validate
             valEveryNEpochs = self.configs['trainer']['validEveryNEpochs']
             if self.configs['trainer']['LR_sch'] == "ReduceLROnPlateau": valEveryNEpochs = 1
             if epoch%valEveryNEpochs == 0 and epoch >= self.configs['trainer']['epochValiStart']:
@@ -292,14 +303,6 @@ class Trainer:
             elif self.configs['trainer']['LR_sch'] != 'None': # or epoch < 10:
                 self.scheduler.step() 
 
-            if self.regression:
-                train_acc_epoch = np.sqrt(np.mean(epoch_squared_diff))
-                accArr.append(train_acc_epoch)
-            else:
-                train_acc_epoch = 100 * correct_epoch / (batchNumber*self.batchSize )
-                accArr.append(train_acc_epoch*100)
-            train_loss_epoch = train_loss_epoch/batchNumber
-            lossArr.append(train_loss_epoch)
         
             #Timing
             epoch_runTime = timer() - epoch_StartTime
@@ -490,7 +493,7 @@ class Trainer:
 
     def logClassification(self, y_preds, y_targs, epochNum=0):
         y_preds_targets = torch.cat((y_preds, y_targs), dim=1)
-        print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
+        #print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
         with open(f"{self.logDir}/{epochNum}_validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['Predictions', '', '','', 'Labels']) #TODO: fix for n classes

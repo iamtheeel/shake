@@ -133,14 +133,14 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
-    wavelet: ["None"] 
+    #wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
     # Shannon shanB-F : Freq precision, less time localization
     #wavelet: ["shan"] 
 
-    #wavelet: ["cmorl"] 
+    wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
     ##waveLet_bandwidth_freq:  [2, 10] # best for cmorl
     waveLet_bandwidth_freq:  [10] # cmorl mattching morl
