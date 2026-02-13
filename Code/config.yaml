@@ -8,9 +8,9 @@ debugs:
     trainModel: True
     validateModel: False
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
-    generateCWTPlots: True
+    generateTimeFreqPlots: False
+    generateTimeFreqWindowPlots: False
+    generateCWTPlots: False
 
 plts:
     pltDir: "plots"
@@ -55,8 +55,10 @@ data:
     APDMDataDir: "APDM_Data" # The input data
     sampleRate: None 
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
-    dataThresh: 2 # If 0, then no, non-walking detection: 2
     chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+
+    #Depricated
+    dataThresh: 2 # If 0, then no, non-walking detection: 2
 
     ## Must be in order 
     #classes: ['No Step', '001', '002', '003']
@@ -76,7 +78,7 @@ data:
     stompSens: [5, 6, 7]
     ## Use stomp from file
     # depricated name stompThresh: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
-    dataRunPeramiters: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
+    dataRunPeramiters: "runPeramiters.csv"
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -199,7 +201,7 @@ trainer:
     saveModel: True
 
 model: 
-    regression: False #Or Clasification
+    regression: True #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
