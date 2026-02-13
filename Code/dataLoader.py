@@ -750,6 +750,7 @@ class dataLoader:
                     thisSubjectId = self.getSubjectNumber(subject) # assuem the subject number is thelabel.
                     if inNoStep: thisSubjectId = 0 # If we are in the no step time, label as 0
 
+                    print(f"subject: {subject} run: {run} t: {thisStartTime}, label: {thisSubjectId}")
                     #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
                     #print(f"rms_allCh = {rms_allCh}")
                     #print(f"rms_BaseLin = {rms_BaseLine}")
@@ -779,20 +780,20 @@ class dataLoader:
                         except NameError: startTimes = thisStartTime
 
                     # Do we want to log the 0 vel data for regresion too? Yes
-                    if windowsWithData == 0:
-                        logger.error(f" No steps detected for subject: {subject}, run: {run}, dataRunPerams: {self.dataRunPerams}, nSkips: {nSkips}, check dataThresh")
-                        exit()
-
-                    csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}")
+                    csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}\n")
                     #for i in range(len(rms_allCh)): # Each ch
                     #    csvFile.write(f", {rms_allCh[i]}")
-                    csvFile.write("\n") # Write the endline for this run
-    
+                    #csvFile.write("\n") # Write the endline for this run
+
                     windowStartPoint += self.stepSize
                     #del rms_allCh
-
                     ## End each window
+
                 #logger.info(f"Data Block: {windowedData.shape}, rms: {plot_run.shape}, labels: {labels.shape}")
+                if windowsWithData == 0:
+                    logger.error(f" No steps detected for subject: {subject}, run: {run}, dataRunPerams: {self.dataRunPerams}, check dataThresh")
+                    exit()
+
 
                 #End window
             #end Run
