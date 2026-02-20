@@ -180,7 +180,6 @@ class fileStruct:
             dataFolder = f"{dataFolder}_DataRunPeramiters-File"
         else:
             dataFolder = f"{dataFolder}_DataRunPeramiters-{dataRunPeramiters}"
-        dataFolder = f"{dataFolder}_DataThresh-{self.configs['data']['dataThresh']}"
 
         limitRuns = self.configs['data']['limitRuns']
         limitWindows = self.configs['data']['limitWindowLen']
