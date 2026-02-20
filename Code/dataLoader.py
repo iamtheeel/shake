@@ -150,7 +150,7 @@ class dataLoader:
 
         #Data
         self.stompCh = config['data']['stompSens']
-        self.dataThresh = config['data']['dataThresh']
+        #self.dataThresh = config['data']['dataThresh']
         self.dataRunPerams = config['data']['dataRunPeramiters']
         self.stompFromFile = False
         if isinstance(self.dataRunPerams, str):
@@ -750,7 +750,7 @@ class dataLoader:
                     thisSubjectId = self.getSubjectNumber(subject) # assuem the subject number is thelabel.
                     if inNoStep: thisSubjectId = 0 # If we are in the no step time, label as 0
 
-                    print(f"subject: {subject} run: {run} t: {thisStartTime}, label: {thisSubjectId}")
+                    #print(f"subject: {subject} run: {run} t: {thisStartTime}, label: {thisSubjectId}")
                     #print(f"s: {subject} run: {run} t: {thisStartTime}, rmsRatio: {max(rms_ratio)}, label: {thisSubjectId}")
                     #print(f"rms_allCh = {rms_allCh}")
                     #print(f"rms_BaseLin = {rms_BaseLine}")
@@ -791,7 +791,7 @@ class dataLoader:
 
                 #logger.info(f"Data Block: {windowedData.shape}, rms: {plot_run.shape}, labels: {labels.shape}")
                 if windowsWithData == 0:
-                    logger.error(f" No steps detected for subject: {subject}, run: {run}, dataRunPerams: {self.dataRunPerams}, check dataThresh")
+                    logger.error(f" No steps detected for subject: {subject}, run: {run}, dataRunPerams: {self.dataRunPerams}")
                     exit()
 
 
@@ -905,6 +905,7 @@ class dataLoader:
         logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
         return downSampled_data, self.dataConfigs.sampleRate_hz / self.downSample
 
+    '''
     def getSubjectLabel(self, subjectNumber, vals):
         #Vals is currently the RMS ratio of the data to the baseline
         # TODO: get from config
@@ -917,6 +918,7 @@ class dataLoader:
                 label = self.getSubjectNumber(subjectNumber)
                 break
         return label
+    '''
 
     def getSubjectNumber(self, subjectName):
         return(self.classes.index(subjectName))
