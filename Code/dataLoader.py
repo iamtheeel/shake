@@ -262,6 +262,7 @@ class dataLoader:
         self.subjects = self.configs['data']['classes'][1:] # Skip No Step
 
         for subjectId in self.subjects:
+            logger.info(f"Loading data for subject: {subjectId}")
             data_file_hdf5 = f"{self.testDir}/{self.configs['data']['vibDataDir']}/*_{subjectId}.hdf5"
             label_file_csv = f"{self.testDir}/{self.configs['data']['APDMDataDir']}/*_{subjectId}_*/*.csv"
 
@@ -316,6 +317,7 @@ class dataLoader:
                                 'nSensors in data': subDataShape[1], 
                                 'nTrials in data': subDataShape[0]
                                 })
+        # End of subject loop
 
         ## Convert our lists to numpys
         data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
@@ -327,17 +329,9 @@ class dataLoader:
 
         #Reshape the speed labels for batch processing
         labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
-        #labelsSubject_np = labelsSubject_np.reshape(-1,1) #go from (num,) to (num,1)
 
-        data_min = np.min(data_np)
-        data_max = np.max(data_np)
-        data_mean = np.mean(data_np)
-        data_std = np.std(data_np)
-
-        lab_min = np.min(labelsSpeed_np)
-        lab_max = np.max(labelsSpeed_np)
-        lab_mean = np.mean(labelsSpeed_np)
-        lab_std = np.std(labelsSpeed_np)
+        data_min, data_max, data_mean, data_std = self.getStats(data_np)
+        lab_min, lab_max, lab_mean, lab_std = self.getStats(labelsSpeed_np)
 
         logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
@@ -347,6 +341,7 @@ class dataLoader:
                           min=data_min, max=data_max, mean=data_mean, std=data_std)
         self.setNormConst(isData=False, norm=self.labNormConst, dataSetFile="Original Time Domain Data", 
                           min=lab_min, max=lab_max, mean=lab_mean, std=lab_std)
+
         timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
         dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
         timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
@@ -354,6 +349,14 @@ class dataLoader:
         self.saveHDF5MetaData(timeDFileName)
 
         logger.info(f"====================================================")
+
+
+    def getStats(self, data)
+        data_min = np.min(data)
+        data_max = np.max(data)
+        data_mean = np.mean(data)
+        data_std = np.std(data)
+        return data_min, data_max, data_mean, data_std
 
     def saveHDF5TimeData(self, filename, data_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
         with h5py.File(filename, "w") as h5dataFile:
@@ -569,6 +572,9 @@ class dataLoader:
     def logDataLoaders(self, dataSet, setName):
         # We can change the batch size per experiment, but probably won't
         csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/DataLoader_Log_{setName}_bSize-{dataSet.batch_size}.csv"
+        if os.path.exists(csvFile):
+            logger.info(f"DataLoader log file already exists: {csvFile}, skipping log")
+            return
         logger.info(f"Logging DataLoader info to: {csvFile}")
         logger.info(f"DataLoader {setName}: {len(dataSet)}, batch size: {dataSet.batch_size}, batches per epoch: {len(dataSet)}")
         #logger.info(f"DataLoader Val: {len(self.dataLoader_v.dataset)}, batch size: {self.dataLoader_v.batch_size}, batches per epoch: {len(self.dataLoader_v)}")   
@@ -581,6 +587,7 @@ class dataLoader:
         for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
             #Validation is batch size 1, so we can log the subject, run, time, and speed for each batch
             #Data set, Subject, run, <time>, speed
+            #logger.info(f"This data batch has {data.shape[0]} samples, batch size: {dataSet.batch_size}")
             for i in range(data.shape[0]):
                 subject = self.classes[subjects[i].item()]
                 labelsSubject = labelsSubject[i].item()
@@ -921,7 +928,10 @@ class dataLoader:
     '''
 
     def getSubjectNumber(self, subjectName):
-        return(self.classes.index(subjectName))
+        if subjectName == 'No Step':
+            return 0  # No step is subject 0
+        return int(subjectName)
+        #return(self.classes.index(subjectName))
 
     def getSpeedLabels(self, csv_file_name ):
         csv_file_name = glob.glob(csv_file_name)
@@ -962,6 +972,7 @@ class dataLoader:
         with open(csv_file_name, mode='r') as runPeramsFile:
             runPeram_reader = csv.DictReader(runPeramsFile)
             data = []
+            logger.info(f"FileName: {csv_file_name}")
             for row in runPeram_reader:
                 subjects = row["Subject"] 
                 runs = int(row["Run"])
@@ -977,6 +988,8 @@ class dataLoader:
                     skipRun = int(row["Skip Run"])
                 else:
                     skipRun = 0   # se/Stomnsible default
+
+                logger.info(f"Subject: {subjects}, run: {runs}, noStep_start: {noStep_start}, noStep_end: {noStep_end}, data_start: {data_start}, data_end: {data_end}, skipRun: {skipRun}")    
                 data.append((subjects, runs, noStep_start, noStep_end, data_start, data_end, skipRun))       
 
         runPerams_np = np.array(data, dtype=[("subject_num", "i4"), 
@@ -986,13 +999,14 @@ class dataLoader:
                                              ("data_start", "f4"), 
                                              ("data_end", "f4"), 
                                              ("skipRun", "i4")])
+        logger.info(f"Run perams size: {runPerams_np.shape}, {runPerams_np.dtype}")
         return runPerams_np
 
     def getRunConfig(self, subject, run):
 
         subjectNumber = self.getSubjectNumber(subject)
 
-        #logger.info(f"Getting stomp time for subject: {subjectNumber}, run: {run}")
+        #logger.info(f"Getting Config for subject: {subjectNumber}, run: {run}")
         mask = (self.runPerams_np["subject_num"] == subjectNumber) & (self.runPerams_np["run_num"] == run)
         noStepStart = self.runPerams_np["noStep_start"][mask][0]
         noStepEnd = self.runPerams_np["noStep_end"][mask][0]
