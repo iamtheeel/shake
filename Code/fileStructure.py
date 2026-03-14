@@ -54,20 +54,12 @@ class expTrackFiles_class:
 ### Output Data 
 @dataclass
 class dataDirFiles_class:
-    #Root dir (From Config):
-    dataOutDir_name:str # The root dir
-
     #Time Domain Data Dir (<Regresion or Classification>_<list of channesl>_<Run Count limit>_<Stomp Thresh>_<Data thresh>):
     class saveDataDir_class:
-        #The dir name
-        #saveDataFolder_name:str = ""
-        saveDataDir_name:str = ""
-
         #Files: 
-        timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
-        timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
 
         #Wavelet Data dir (<wavelet name>_<Center frequency>_<Bandwidth>_<real/mag/complex>):
+        '''
         class waveletDir_class:
             #waveletFolder_name:str
             waveletDir_name:str
@@ -79,24 +71,24 @@ class dataDirFiles_class:
 
             #Data Scaling dir (<Scaling Type>_<normilize to>):
             #normPerams_<wavelet name>.pkl
-            class dataNormDir_class:
-                dataNormFolder_name:str
-                dataNormDir_name:str
+            #class dataNormDir_class:
+            #    dataNormFolder_name:str
+            #    dataNormDir_name:str
 
-                #Files:
-                normPeramsFile_name:str = "normPerams.pkl"
+            #    #Files:
+            #    normPeramsFile_name:str = "normPerams.pkl"
 
-            dataNormDir = dataNormDir_class()
+            #dataNormDir = dataNormDir_class()
 
         #Time, Frequency, CWT Transformed Data images:
         #    The images generated.png
         waveletDir = waveletDir_class()
+        '''
     saveDataDir = saveDataDir_class()
 
     class plotDirNames_class:
         #Image Dirs:
         #baseDir: str= "images"
-        time_fft_cwt:str = "time_fft_cwt_plots"
         time:str = "time"
         freq:str = "freq"
     plotDirNames = plotDirNames_class()
@@ -113,9 +105,13 @@ logger = logging.getLogger(__name__)
 
 class fileStruct:
     def __init__(self, configs:dict):
+        self.timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
+        self.timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
+        self.cwtDataSet_Name:str = "CWT_data.hdf5"
+        self.time_fft_cwt:str = "time_fft_cwt_plots"
+
         self.configs = configs
-        dataOutDir = f"{self.configs['data']['dataOutDir']}/{self.configs['data']['test']}"
-        self.dataDirFiles  = dataDirFiles_class(dataOutDir_name=dataOutDir)
+        self.dataDirFiles  = dataDirFiles_class()
         self.expTrackFiles = expTrackFiles_class(expTrackDir_name=self.configs['expTrackDir'])
 
     def makeDir(self, dir_str):
@@ -124,6 +120,8 @@ class fileStruct:
         '''
         dir_path = Path(dir_str)
         dir_path.mkdir(parents=True, exist_ok=True)
+
+    ##### Experiment Tracking #####
 
     def setExpTrack_dir(self, dateTime_str=None ):
         '''
@@ -146,11 +144,19 @@ class fileStruct:
         self.makeDir(self.expTrackFiles.expNumDir.expTrackDir_Name)
         logger.info(f"This Experiment Dir: {self.expTrackFiles.expNumDir.expTrackDir_Name}")
 
-    def setFullData_dir(self ):
+
+
+    ###### Data Directories ######
+
+    #  data_out/<dataSetName>/
+    def get_dataSetName_dir(self):
+        return f"{self.configs['data']['dataOutDir']}/{self.dataSetName}"
+
+    # data_out/<dataSetName>/chList-<chList>_downSample-<downSample>x
+    def get_dataConfig_dir(self):
         '''
+        Changes to the data: e.x. Ch list, downsamplerate.
         '''
-        #dataFolder =self.dataDirFiles.saveDataDir.saveDataFolder_name 
-        #Set up a string for saving the dataset so we can see if we have already loaded this set
 
         chList_str = "_".join(map(str, self.configs['data']['chList']))
         downSample_Str = ""
@@ -158,40 +164,41 @@ class fileStruct:
         if downSample > 1:
             downSample_Str = f"_DownSample-{downSample}x"
 
-        dataFolder = f"chList-{chList_str}{downSample_Str}"
+        dataConfig_dir = f"chList-{chList_str}{downSample_Str}"
+        return f"{self.get_dataSetName_dir()}/{dataConfig_dir}"
 
-        self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.dataOutDir_name}/{dataFolder}"
-        #self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
+    # Things that change with regression vs classification, window len and step size (and limits on the data for debugging)
+    # data_out/<dataSetName>/chList-<chList>_downSample-<downSample>x/<Regresion or Classification>_<list of channesl>_<Run Count limit>_<Stomp Thresh>_<Data thresh>
+    # The time domain data goes here.
+    def get_timeDData_dir(self, dataSetName=None):
+        if dataSetName != None: self.dataSetName = dataSetName
 
-    
-    def setWindowedData_dir(self):
         # We drop the 0 vel for regression
-        self.regression = self.configs['model']['regression']
-        if self.regression: regClas = "regression"
-        else:               regClas = "classification"
+        if self.configs['model']['regression']: regClas = "regression"
+        else:                                   regClas = "classification"
         dataFolder = f"{regClas}"
 
         #Window len and step size
         dataFolder = f"{dataFolder}_winLen-{self.configs['data']['windowLen']}"
         dataFolder = f"{dataFolder}_step-{self.configs['data']['stepSize']}"
 
-        dataRunPeramiters = self.configs['data']['dataRunPeramiters'] 
-        if isinstance(dataRunPeramiters, str):
-            dataFolder = f"{dataFolder}_DataRunPeramiters-File"
-        else:
-            dataFolder = f"{dataFolder}_DataRunPeramiters-{dataRunPeramiters}"
-
         limitRuns = self.configs['data']['limitRuns']
         limitWindows = self.configs['data']['limitWindowLen']
         if limitRuns !=0: dataFolder = f"{dataFolder}_runLim-{limitRuns}"
         if limitWindows !=0: dataFolder = f"{dataFolder}_windowLim-{limitWindows}"
 
-        self.dataDirFiles.saveDataDir.saveDataDir_name = f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{dataFolder}"
-        #self.dataDirFiles.saveDataDir.saveDataFolder_name = "dataFolder"
-        self.makeDir(self.dataDirFiles.saveDataDir.saveDataDir_name)
-        logger.info(f"Data save folder: {self.dataDirFiles.saveDataDir.saveDataDir_name}")
+        timeDData_dir = self.get_dataConfig_dir()
 
-    def setCWT_dir(self, cwtClass:cwt, isComplex:bool= False, asMagnitude:bool= False):
+        return f"{timeDData_dir}/{dataFolder}"
+    
+    def get_timeDData_file(self):
+        return f"{self.get_timeDData_dir(self.dataSetName)}/{self.timeDData_file}"
+    def get_timeDDataSum_file(self):
+        return f"{self.get_timeDData_dir(self.dataSetName)}/{self.timeDDataSumary}"
+
+    #### Wavelet Directories ####
+    # timeDData_dir/<wavelet name>_<Center frequency>_<Bandwidth>_<real/mag/complex>/
+    def getCWT_dir(self, cwtClass:cwt): #Don't need dataSetname because the cwt class has a pointer to it's dataset, which has the name. We just need the cwt class to get the wavelet parameters for the name.
         '''
         '''
         waveletFolder_name = f"{cwtClass.wavelet_name}"
@@ -200,6 +207,7 @@ class fileStruct:
             waveletFolder_name = f"{waveletFolder_name}_scales-{cwtClass.numScales}"
 
         '''
+        The wavelet name now has mag/complex/real in it, so we don't need to add it here.
         if isComplex:
             if asMagnitude: waveletFolder_name = f"{waveletFolder_name}_mag"
             else:           waveletFolder_name = f"{waveletFolder_name}_complex"
@@ -213,25 +221,10 @@ class fileStruct:
         #logger.info(f"Wavelet time from: {cwtClass.wavelet_Time[0]} to {cwtClass.wavelet_Time[-1]}")
 
         #self.dataDirFiles.saveDataDir.waveletDir.waveletFolder_name = waveletFolder_name
-        self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name = \
-            f"{self.dataDirFiles.saveDataDir.saveDataDir_name}/{waveletFolder_name}"
+        #self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name = \
+        waveletFolder_name = f"{self.get_timeDData_dir()}/{waveletFolder_name}"
+        self.makeDir(waveletFolder_name) #Create it if it doesn't exist
         
-        logger.info(f"Wavelet Dir: {self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}")
-        self.makeDir(self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name)
-
-
-    def setDataNorm_dir(self, norm:"normClass", logData=False):
-        '''
-        '''
-        dataNormFolder = f"dataScaler-{norm.type}"
-        if norm.scale != 1: 
-            dataNormFolder = f"{dataNormFolder}_dataScale-{norm.scale}"
-
-        dataNormDir = f"{self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{dataNormFolder}"
-
-        self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormFolder_name = dataNormFolder
-        self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name = dataNormDir
-        logger.info(f"Data Norm Dir: {dataNormDir}")
-        self.makeDir(dataNormDir)
-
-        return self.dataDirFiles.saveDataDir.waveletDir.dataNormDir.dataNormDir_name 
+        #logger.info(f"Wavelet Dir: {self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}")
+        #self.makeDir(self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name) #Create it if it doesn't exist
+        return waveletFolder_name

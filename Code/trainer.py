@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     def __init__(self,model, device, dataPrep:"dataLoader", fileStru:"fileStruct", configs, expNum, 
-                 cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
+                 wavelet_name, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
 
         logger.info(f"Initializing Trainer: device: {device}, model: {model.__class__.__name__}, loss: {lossFunction}, optimizer: {optimizer}, lr: {learning_rate}, weight_decay: {weight_decay}, gradiant_noise: {gradiant_noise}, epochs: {epochs}")
         
@@ -80,10 +80,9 @@ class Trainer:
         torch.backends.cudnn.benchmark = False
 
         self.set_training_config()
-        self.cwtClass = cwtClass
         waveletStr = ""
-        if cwtClass.wavelet_name != "None":
-            waveletStr = f"{cwtClass.wavelet_name}, "
+        if wavelet_name != "None":
+            waveletStr = f"{wavelet_name}, "
 
         #add if it is folded or no, for time domain
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}," \
@@ -182,6 +181,11 @@ class Trainer:
             train_loss_epoch, train_acc_epoch = 0, 0
             epoch_StartTime = timer()
             epoch_squared_diff = []
+
+            #from itertools import chain
+            #combined_dataLoader_t = chain.from_iterable(prep.dataLoader_t for prep in self.dataPrep.values())
+            ## This won't work. We need to loop through the data prep separately so we can log the subject and run info, and also because they might have different numbers of batches.
+            ## We have to look at the norms for each dataPrep
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
             batchStartTime = time.time()

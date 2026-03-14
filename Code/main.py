@@ -113,7 +113,7 @@ def saveSumary(model, dataShape, timeD= False, complex=False):
         sys.stdout = sys.__stdout__
 
 # Write a log
-def writeDataTrackSum_hdr(dataConfigs):
+def writeDataTrackSum_hdr():
     dataTrackSum_fileName = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
     # Write from config.yaml
     with open(dataTrackSum_fileName, 'w', newline='') as csvFile:
@@ -121,15 +121,13 @@ def writeDataTrackSum_hdr(dataConfigs):
         writer.writerow([f'--------- from config.yaml ----------'])
         writer.writerow([f'', '--------- data '])
 
-        writer.writerow(['Test', configs['data']['test']])
+        writer.writerow(['Data', configs['data']['testDirs']])
         writer.writerow(['Data Path', configs['data']['dataInDir']])
-        writer.writerow(['Ch List', dataConfigs.chList])
+        writer.writerow(['Ch List', configs['data']['chList']])
         writer.writerow(['Classes', configs['data']['classes']])
 
         writer.writerow(['windowLen', configs['data']['windowLen']])
         writer.writerow(['stepSize', configs['data']['stepSize']])
-
-        writer.writerow(['dataRunPeramiters', configs['data']['dataRunPeramiters'], "If a number, use:", configs['data']['stompSens']])
 
         writer.writerow(['dataScalers', configs['data']['dataScalers'], configs['data']['dataScale_values']])
         writer.writerow(['labelScalers', configs['data']['labelScalers'], configs['data']['labelScale_values']])
@@ -222,12 +220,50 @@ fileStructure.setExpTrack_dir(dateTime_str=dateTime_str)
 """
 Data Preparation
 """
+#fileStructure.setDataConfig_dir() #Has chlist, and downsample factor, but not windowing and friends, so we can use this for the time domain data, but we need to reset it for the windowed data
+
 from dataLoader import dataLoader
-data_preparation = dataLoader(configs, fileStructure, device) # Device is sent to determine num_workers (0 for mac)
 
-if not os.path.exists(f"{fileStructure.dataDirFiles.saveDataDir.saveDataDir_name}/{fileStructure.dataDirFiles.saveDataDir.timeDData_file}"):
-    data_preparation.get_data()
+test_dir = "-".join(configs['data']['testDirs'])
+timeDDataDir = fileStructure.get_timeDData_dir(dataSetName=test_dir) 
+if not os.path.exists(timeDDataDir):
+    logger.info(f"creating dataset folder {timeDDataDir}")
+    fileStructure.makeDir(timeDDataDir)
 
+data_preparation = dataLoader(
+        config=configs,
+        fileStruct=fileStructure,
+        device=device, 
+    )
+
+if not os.path.exists(fileStructure.get_timeDData_file()):
+    logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
+    data_preparation.get_data() # Load the data, window it, and save it to file.
+
+'''
+Set up for multiple datasets
+data_preparation = {}
+for test_dir in configs['data']['testDirs']:
+    timeDDataDir = fileStructure.get_timeDData_dir(test_dir) 
+    data_preparation[test_dir] = dataLoader(
+        config=configs,
+        fileStruct=fileStructure,
+        device=device, 
+        dataSetName=test_dir
+    )
+
+    if not os.path.exists(timeDDataDir):
+        # make the dir.
+        logger.info(f"creating dataset folder {timeDDataDir}")
+        fileStructure.makeDir(timeDDataDir)
+
+    if not os.path.exists(fileStructure.get_timeDData_file(test_dir)):
+        logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
+        # Load the data, window it, and save it to file.
+        data_preparation[test_dir].get_data()
+'''
+
+# Set up the experiment tracking log file
 if configs['model']['regression']: accStr = f"Acc (RMS Error)"
 else                             : accStr = f"Acc (%)"
 expTrackFile = f'{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_log_file}'
@@ -235,7 +271,8 @@ lastStats_n = configs['trainer']['nEpochsStats']
 
 
 ## Init the experiment tracking and data tracking log files
-writeDataTrackSum_hdr(data_preparation.dataConfigs)  
+writeDataTrackSum_hdr()  
+
 expFieldNames = ['Test', 'BatchSize', 'Epochs', 'wavelet', 'Data Scaler', 'Data Scale', 'Label Scaler', 'Label Scale', 'Loss', 'Optimizer', 'Learning Rate', 'Weight Decay', 'Gradiant Noise',
                  'Model', 'Dropout Layers',
                  'Train Loss', f'Train {accStr}', 'Last Epoch Val Loss', 
@@ -259,6 +296,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     fileStructure.setExpTrack_run(expNum=expNum)
     exp_StartTime = timer()
 
+    #cwt_class = list(cwt_class.values())[0] # Get the first CWT class to use for the summary, since they should all be the same in terms of wavelet and data shape, we just have one per dataset for organizational purposes. This is a bit of a hack, but it works for now. We can clean up later if we want to support different CWTs for different datasets, but for now we just want to loop through the same CWT for each dataset.
+    #writeExpSum(first_CWT_class, 
     writeExpSum(cwt_class, 
                 logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
                 model_name, dropOut_layers, batchSize, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise)
@@ -267,11 +306,13 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     # TODO: Set to save the transformed data
 
     #Log scale the lin data
+    #first_data_preparation = list(data_preparation.values())[0] # Get the first data preparation class to use for the summary, since they should all be the same in terms of data scaler and scale, we just have one per dataset for organizational purposes. This is a bit of a hack, but it works for now. We can clean up later if we want to support different scalers and scales for different datasets, but for now we just want to loop through the same scalers and scales for each dataset.
     scaleStr = f"d: {data_preparation.dataNormConst.type} {data_preparation.dataNormConst.scale}, l: {labelScaler} {labelScale}"
     if(logScaleData): scaleStr = f"{scaleStr}, Log"
 
 
     # Add the batch size to the dataloader shape, but don't include the number of items
+    #if first_CWT_class.wavelet_base != None:
     if cwt_class.wavelet_base != None:
         dataShape = (batchSize,) + data_preparation.CWTDataSet.shape[1:]
         timeD = False
@@ -292,7 +333,8 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
             device = "cpu" # Force CPU for complex on the MAC
             logger.info(f"if mps with complex data, force device to cpu")
         # Time Data can never be complex
-        data_preparation.CWTDataSet.setComplex(True)
+        for dataset_name, thisData_preperation in data_preparation.items():
+            thisData_preperation.CWTDataSet.setComplex(True)
 
     logger.info(f"Get Model")
     model = getModel(cwt_class.wavelet_name, model_name, dataShape, nClasses=data_preparation.nClasses,
@@ -305,7 +347,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     logger.info(f"Load Trainer")
     model = model.to(device)
     trainer = Trainer(model=model, device=device, dataPrep=data_preparation, fileStru=fileStructure, configs=configs, expNum=expNum, 
-                           cwtClass=cwt_class, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
+                      wavelet_name=cwt_class.wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
     if configs['debugs']['trainModel']:
         trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
@@ -365,12 +407,22 @@ expNum = 1
 wavelet_bases = configs['cwt']['wavelet']
 
 for batchSize in configs['trainer']['batchSize']:
-    data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
-    # we get data freq rate here, and need it for below
     # The hyperperamiters setup for expTracking
-    sRate = data_preparation.dataConfigs.sampleRate_hz
-    cwt_class = cwt(fileStructure=fileStructure, sampleRate=sRate, configs=configs)
+    data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
+    cwt_class = cwt(fileStructure=fileStructure, dataSet=data_preparation, configs=configs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
+    '''
+    cwt_class = {}
+    for dataset_name, thisData_preperation in data_preparation.items():
+        # Create a cwt class for each dataset, since the sample rate and other data specific peramiters are set in the cwt class
+        # we get data freq rate here, and need it for below
+        thisData_preperation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
+        #sRate = thisData_preperation.dataConfigs.sampleRate_hz
+        #cwt_class[dataset_name] = cwt(fileStructure=fileStructure, sampleRate=sRate, configs=configs)
+        cwt_class[dataset_name] = cwt(fileStructure=fileStructure, dataSet=thisData_preperation, configs=configs)
+        thisData_preperation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
+    '''
+
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")
         if wavelet_base == 'ricker':
@@ -399,8 +451,16 @@ for batchSize in configs['trainer']['batchSize']:
                 #if wavelet_base == 'spectroGram':
                 #    data_preparation.generateSpectraDataByWindow()
                 if wavelet_base != 'None':
-                    cwt_class.setupWavelet(wavelet_base=wavelet_base, sampleRate_hz=data_preparation.dataConfigs.sampleRate_hz, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-                    data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
+                    cwt_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+                    cwt_class.dataSet.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False) 
+                    '''
+                    for dataset_name, thisCWT_class in cwt_class.items():
+                        thisCWT_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
+
+                        #THis is some circuler pointing that should be cleaned up. The cwt class has a pointer to it's dataset, which has the name, so we can just send the cwt class and get the name from there. We don't need to send the dataset name separately.
+                        thisCWT_class.dataSet.generateCWTDataByWindow(cwt_class=thisCWT_class, logScaleData=False) 
+                        #data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
+                    '''
     
                 for logScaleData in [False]: #Probably not interesting
     
@@ -409,9 +469,17 @@ for batchSize in configs['trainer']['batchSize']:
                         else:                          dataScale_values = [1]
     
                         for dataScale_value in dataScale_values:
+                            # Each dataset.
                             data_preparation.dataNormConst.type = dataScaler
+                            #for dataset_name, thisData_preperation in data_preparation.items():
+                            #    thisData_preperation.dataNormConst.type = dataScaler
+
                             for labelScaler in configs['data']['labelScalers']:
+                                # Each dataset.
                                 data_preparation.labNormConst.type = labelScaler
+                                #for dataset_name, thisData_preperation in data_preparation.items():
+                                #    thisData_preperation.labNormConst.type = labelScaler
+
                                 if labelScaler == "std": 
                                     labelScale_values = [1]
                                 else:                   labelScale_values = configs['data']['labelScale_values']
