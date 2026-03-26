@@ -8,9 +8,9 @@ debugs:
     trainModel: True
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateTimeFreqPlots: True
+    generateTimeFreqWindowPlots: True
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -41,24 +41,10 @@ data:
 
     testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
-    #test: "Test_2" #One person fixed pace, straight path, has labels
-    #vibDataDir: "data" # The input data
-    #APDMDataDir: "APDM_data_fixed_step" # The input data
-    #sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
-
-    #test: "Test_3" #One person, down hall, into and around lab, has labels, 
-    #test: "Test_4" #Multiple people variyed pace, no labels
-
-    #test: "20251124_Testing" #One person fixed pace, straight path, has labels
-    #vibDataDir: "vib/Data" # The input data
-    #APDMDataDir: "APDM_Data" # The input data
-    #sampleRate: None 
-
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
     #classes: ['No Step', '001', '002', '003']
 
-    downSample: 4 # Downsample by n-times: 4
     dsDataRate_hz: 400 # Desired sample rate after downsampleing 
 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 

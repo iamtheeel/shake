@@ -189,7 +189,7 @@ class Trainer:
 
             #for data, labels, subjects  in self.train_data_loader: # Batch
             batchStartTime = time.time()
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False, file=sys.stdout):
+            for data, datasetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False, file=sys.stdout):
                 dataLoadTime = time.time() - batchStartTime
                 #logger.info(f"Data Load time: {dataLoadTime}")
                 #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
@@ -396,7 +396,7 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             #print(f"Test Data len: {nData}")
 
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window", file=sys.stdout ):
+            for data, dataSetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window", file=sys.stdout ):
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:

@@ -160,9 +160,9 @@ class fileStruct:
 
         chList_str = "_".join(map(str, self.configs['data']['chList']))
         downSample_Str = ""
-        downSample = self.configs['data']['downSample']
+        downSample = self.configs['data']['dsDataRate_hz']
         if downSample > 1:
-            downSample_Str = f"_DownSample-{downSample}x"
+            downSample_Str = f"_DataRate-{downSample}hz"
 
         dataConfig_dir = f"chList-{chList_str}{downSample_Str}"
         return f"{self.get_dataSetName_dir()}/{dataConfig_dir}"

@@ -113,6 +113,16 @@ class HDF5Dataset(Dataset):
             data = torch.tensor(f["data"][idx], dtype=torch.complex64)
         else:
             data = torch.tensor(f["data"][idx], dtype=torch.float32)
+
+        #print("idx:", idx)
+        #print("type(idx):", type(idx))
+        #print("raw:", f["dataSetName"][idx])
+        #print("raw type:", type(f["dataSetName"][idx]))
+        #print("raw shape:", np.shape(f["dataSetName"][idx]))
+        #dataSet_name = f["dataSetName"][idx]
+        #dataSet_name = dataSet_name.item()
+
+        dataSet_name = f["dataSetName"].asstr()[idx]
         label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
         label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
         subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
@@ -120,7 +130,7 @@ class HDF5Dataset(Dataset):
         sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
 
         #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
-        return data, label_speed, label_subject, subject, run, sTime
+        return data, dataSet_name, label_speed, label_subject, subject, run, sTime
     
     def getConfig(self):
         """Retrieve and return general configurations stored in HDF5 attributes."""
@@ -132,19 +142,16 @@ class HDF5Dataset(Dataset):
 
 class dataLoader:
     def __init__(self, config, fileStruct:"fileStruct", device):
-    #def __init__(self, config, fileStruct:"fileStruct", device, dataSetName):
         self.logfile = f"{fileStruct.expTrackFiles.expTrackDir_name}/{fileStruct.expTrackFiles.expTrack_sumary_file}"
 
         print(f"\n")
         logger.info(f"--------------------  Init Dataloader   ----------------------")
-        #self.dataSetName = dataSetName
         self.device = device
         self.regression = config['model']['regression']
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
 
         self.batchSize = config['trainer']['batchSize']
-        self.downSample = config['data']['downSample']
 
         self.classes = config['data']['classes']
         if self.regression: self.nClasses = 1
@@ -165,12 +172,12 @@ class dataLoader:
         self.dataPoints = 0 #99120
         #self.nTrials = 0
 
-        # These all go away
-        self.data_raw = None
-        self.labels_raw = None
-        self.subjectList_raw = None
-        self.runList_raw = None
-        self.startTimes_raw = None
+        # These all go away... uh, how?
+        #self.data_raw = None
+        #self.labels_raw = None
+        #self.subjectList_raw = None
+        #self.runList_raw = None
+        #self.startTimes_raw = None
 
         self.data = None
         self.labels = None
@@ -240,7 +247,9 @@ class dataLoader:
 
         self.subjects = self.configs['data']['classes'][1:] # Skip No Step
 
+        dataSet_list = []
         data_list = []
+        dataSet_list = []
         speed_label_list = []
         subject_label_list = []
         subject_list = []
@@ -294,7 +303,7 @@ class dataLoader:
     
                 if self.configs['debugs']['generateTimeFreqPlots']:
                     yLim = configs['plts']['yLim_freqD']
-                    self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/Subject-{subjectId}", fromRaw=True)
+                    self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/{dataSetName}/Subject-{subjectId}", fromRaw=True)
     
                 # Window the data and get the labels
                 windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectId, speed=speed)
@@ -304,11 +313,14 @@ class dataLoader:
 
                 # Append the data to the set
                 data_list.append(windowedBlock)
+                dataSetName_list = [dataSetName] * len(subjectBlock)
+                dataSet_list.append(dataSetName_list)
                 speed_label_list.append(labelBlock_speed)
                 subject_label_list.append(labelBlock_subject)
                 subject_list.append(subjectBlock)
                 run_list.append(runBlock)
                 sTime_list.append(startTimes)
+
 
                 #logger.info(f"Labels: {thisSubLabels}")
                 #logger.info(f"Up to: {subjectId}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
@@ -334,11 +346,19 @@ class dataLoader:
 
         ## Convert our lists to numpys
         data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
+        dataSetName_np = np.concatenate(dataSet_list, axis=0)
         labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
         labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
         subjects_np = np.concatenate(subject_list, axis=0)
         runs_np = np.concatenate(run_list, axis=0)
         sTimes_np = np.concatenate(sTime_list, axis=0)
+
+        print("len data:", len(data_np))
+        print("len labelsSpeed:", len(labelsSpeed_np))
+        print("len labelsSubject:", len(labelsSubject_np))
+        print("len subjects:", len(subjects_np))
+        print("len runs:", len(runs_np))
+        print("len dataSetName:", len(dataSetName_np))
 
         #Reshape the speed labels for batch processing
         labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
@@ -359,7 +379,9 @@ class dataLoader:
         #dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
         #timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
         timeDFileName = self.fileStruct.get_timeDData_file()
-        self.saveHDF5TimeData(timeDFileName, data_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np)
+        self.saveHDF5TimeData(filename=timeDFileName, data_np=data_np, dataSetName_np=dataSetName_np, 
+                              labelsSpeed_np=labelsSpeed_np, labelsSubject_np=labelsSubject_np, 
+                              subjects_np=subjects_np, runs_np=runs_np, sTimes_np=sTimes_np)
         self.saveHDF5MetaData(timeDFileName)
 
         logger.info(f"====================================================")
@@ -372,10 +394,13 @@ class dataLoader:
         data_std = np.std(data)
         return data_min, data_max, data_mean, data_std
 
-    def saveHDF5TimeData(self, filename, data_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
+    def saveHDF5TimeData(self, filename, data_np, dataSetName_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
         with h5py.File(filename, "w") as h5dataFile:
             #TODO: add sameple rate, etc
+            dt = h5py.string_dtype(encoding='utf-8')
             h5dataFile.create_dataset("data", data=data_np)
+            #h5dataFile.create_dataset("dataSetName", data=dataSetName_np, dtype=dt)
+            h5dataFile.create_dataset( "dataSetName", data=dataSetName_np.astype(object), dtype=dt)
             h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
             h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
             h5dataFile.create_dataset("subjects", data=subjects_np)
@@ -457,14 +482,15 @@ class dataLoader:
         h5dataFile.attrs["chList"] = self.dataConfigs.chList
     '''
 
-    def plotTime_FreqData(self, data, folder, freqYLim, subject=None, speed=None, fromRaw=False):
+    def plotTime_FreqData(self, folder, freqYLim, subject=None, speed=None):
         if subject == None:
             echoStr = f"Time Windowed Data"
         else:
             echoStr = f"Full run, subject: {subject}"
         logger.info(f" -----  Saving Plots of {echoStr} ---------")
         plotDirNames = self.fileStruct.dataDirFiles.plotDirNames 
-        subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
+        #subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
+        subFolder = self.fileStruct.get_timeDData_dir()
         #subFolder = f"{subFolder}/{plotDirNames.baseDir}"
         timeDImageDir = f"{subFolder}/{folder}/{plotDirNames.time}"
         freqDImageDir = f"{subFolder}/{folder}/{plotDirNames.freq}"
@@ -482,24 +508,20 @@ class dataLoader:
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
         self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        #for row in range(data.shape[0]):
-        if fromRaw:
-            self.plotFromRaw(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
-        else: 
-            self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
+        self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
 
 
     def plotFromDataSet(self, freqDImageDir, dataSet, freqYLim):
         desc_str = f"Creating image set for {freqDImageDir}" 
         logger.info(desc_str)
-        for row, (data_tensor, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
+        for row, (data_tensor, dataSet_name, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
             speed = label_speed.item()
             thisSubject = self.classes[subject]
             data_np = data_tensor.numpy()
             #thisRun = self.runList_raw[row]
             #startTime = self.startTimes_raw[row]
-            fileN = f"subject-{thisSubject}_run{run}_time-{startTime}"
-            title = f"subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
+            fileN = f"{dataSet_name}_subject-{thisSubject}_run{run}_time-{startTime}"
+            title = f"{dataSet_name}, subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
             #logger.info(f"**** Window {speed}, {label_subject}, {subject}, {run}, {startTime}")
             self.gen_TimeFreq_plots(fileN=fileN, title=title, dataRow=data_np, freqDImageDir=freqDImageDir, freqYLim=freqYLim)
 
@@ -599,7 +621,7 @@ class dataLoader:
         csvWriter.writerow([f"batches per epoch: {len(dataSet)}"])
 
         csvWriter.writerow(['Dataset', 'Batch', 'Subject (string)', 'label subject (int)', 'run', 'window start time (seconds)', 'speed (m/s)'])
-        for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
+        for data, dataSetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
             #Validation is batch size 1, so we can log the subject, run, time, and speed for each batch
             #Data set, Subject, run, <time>, speed
             #logger.info(f"This data batch has {data.shape[0]} samples, batch size: {dataSet.batch_size}")
@@ -610,7 +632,7 @@ class dataLoader:
                 sTime = sTimes[i].item()
                 labelSpeed = labelsSpeed[i].item()
                 #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
-                csvWriter.writerow([f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
+                csvWriter.writerow([f"{dataSetName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
 
     def windowData(self, data:np.ndarray, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
@@ -1276,7 +1298,8 @@ class dataLoader:
             writer.writerow(['min', 'max', 'mean', 'std', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.std, scaler.scale])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, std: {scaler.std}, scale: {scaler.scale}")
-    
+
+    ''' this is not how it works anymore
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
 
@@ -1294,6 +1317,7 @@ class dataLoader:
         #logger.info(f"thisData:{type(thisData)} {thisData.shape}, subjectLabel: {subjectLabel}, run: {run}, timeWindow: {timeWindow}, channel: {ch}")
 
         return thisData, run, timeWindow, subjectLabel
+    ''' 
     
     def getFFTData(self, data):
         fftClass = jFFT_cl()
@@ -1314,9 +1338,9 @@ class dataLoader:
         # Plot the windowed data
         if self.configs['debugs']['generateTimeFreqWindowPlots']:
             yLim = configs['plts']['yLim_freqD']
-            self.plotTime_FreqData(data=self.data_raw, freqYLim=yLim, folder="plots_byWindow")
+            self.plotTime_FreqData(freqYLim=yLim, folder="plots_byWindow")
 
-    def writeToCWTDataFile(self, filename, data, label_speed, label_subject, subject, run, startTime):
+    def writeToCWTDataFile(self, filename, data, dataSet_name, label_speed, label_subject, subject, run, startTime):
         # Create HDF5 file with expandable datasets
         label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
         #logger.info(f"Data type: {type(data)}, shape {data.shape} ")
@@ -1337,6 +1361,8 @@ class dataLoader:
                                            dtype=dtype,
                                            chunks=True)
 
+                dt = h5py.string_dtype(encoding='utf-8')
+                cwtDataFile.create_dataset("dataSetName", shape=(0,), maxshape=(None,), dtype=dt, chunks=True)
                 cwtDataFile.create_dataset("labelsSpeed", shape=(0,1), maxshape=(None,1), dtype="float32", chunks=True)
                 cwtDataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
                 cwtDataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
@@ -1345,6 +1371,7 @@ class dataLoader:
 
             # Get datasets
             data_ds = cwtDataFile["data"]
+            dataSetName_ds = cwtDataFile["dataSetName"]
             label_speed_ds = cwtDataFile["labelsSpeed"]
             label_subject_ds = cwtDataFile["labelsSubject"]
             subjectes_ds = cwtDataFile["subjects"]
@@ -1355,6 +1382,7 @@ class dataLoader:
             #new_index = data_ds.shape[0]  # current number of trials
             #data_ds.resize(new_index + 1, axis=0)
             data_ds.resize(data_ds.shape[0] + 1, axis=0)
+            dataSetName_ds.resize(dataSetName_ds.shape[0] + 1, axis=0)
             label_speed_ds.resize(label_speed_ds.shape[0] + 1, axis=0)
             label_subject_ds.resize(label_subject_ds.shape[0] + 1, axis=0)
             subjectes_ds.resize(subjectes_ds.shape[0] + 1, axis=0)
@@ -1367,6 +1395,7 @@ class dataLoader:
             #data_ds[new_index:new_index+1, ...] = data[None, ...]
 
             data_ds[-1] = data
+            dataSetName_ds[-1] = dataSet_name
             label_speed_ds[-1] = label_speed
             label_subject_ds[-1] = label_subject
             subjectes_ds[-1] = subject
@@ -1456,7 +1485,7 @@ class dataLoader:
         M2_image = 0
         nElements = 0
 
-        for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
+        for i, (data_tensor, dataSet_name, label_speed, label_subject, subject, run, startTime) in  \
                   tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc=f"Generating {cwt_class.wavelet_name} Data", unit="Window", file=sys.stdout):
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
@@ -1467,7 +1496,7 @@ class dataLoader:
                 thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
             #logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
             #logger.info(f"CWT max: {np.max(thisCwtData_raw)}")
-            self.writeToCWTDataFile(saveFile, thisCwtData_raw, label_speed, label_subject, subject, run, startTime)
+            self.writeToCWTDataFile(saveFile, thisCwtData_raw, dataSet_name, label_speed, label_subject, subject, run, startTime)
 
             nElements += thisCwtData_raw.size
             min = np.min(thisCwtData_raw)

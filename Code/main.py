@@ -135,7 +135,7 @@ def writeDataTrackSum_hdr():
         writer.writerow(['limitRuns', configs['data']['limitRuns']])
         writer.writerow(['limitWindowLen', configs['data']['limitWindowLen']])
 
-        writer.writerow(['Down Sample Factor', configs['data']['downSample']])
+        writer.writerow(['Target Sample Rate', configs['data']['dsDataRate_hz']])
     
 
         writer.writerow([f'', '--------- CWT '])
