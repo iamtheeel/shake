@@ -7,6 +7,8 @@
 # Data Loader
 ###
 
+from collections import defaultdict
+
 import h5py, csv
 import numpy as np
 import os, sys, glob
@@ -236,7 +238,7 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
-        dataLoadFieldNames = ['subject', 'data file', 'label file', 'Original Data Rate (Hz)', 'Original dataPoints', 'DS Data Rate (Hz)', 'DS dataPoints', 'nSensors in data', 'nTrials in data']
+        dataLoadFieldNames = ['dataset', 'subject', 'data file', 'label file', 'Original Data Rate (Hz)', 'Original dataPoints', 'DS Data Rate (Hz)', 'DS dataPoints', 'nSensors in data', 'nTrials in data']
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['--------- Data Loader -----------'])
@@ -247,6 +249,7 @@ class dataLoader:
 
         self.subjects = self.configs['data']['classes'][1:] # Skip No Step
 
+        # Each window has:
         dataSet_list = []
         data_list = []
         dataSet_list = []
@@ -257,22 +260,28 @@ class dataLoader:
         sTime_list = []
 
         #Get configs for this dataset
-        testDirs ={}
-        self.runPerams_np = {}
+        self.dataSetInfo = {} #Has trialCounts, testDirs, and will have runPerams.
+
+        #self.runPerams_np = {} #This is risky, we overwrite the run peramiters for each dataset, but we need to be able to access them when we load the data, and we need to be able to handle multiple datasets, so we will store them in a dictionary with the dataset name as the key. We also need to be able to access them in the data loader, so we will store them in the dataloader class. We will also need to be able to access them in the data plotter, so we will store them in the dataloader class and pass them to the
+
         self.dataSetConfigs = self.get_dataSetConfigs()
-
         for dataSetName in configs['data']['testDirs']:
-            testDirs[dataSetName] = f"{self.configs['data']['dataInDir']}/{dataSetName}"
-            self.runPerams_np = self.getRunConfigs(f"{testDirs[dataSetName]}/runPeramiters.csv")
+            self.dataSetInfo[dataSetName] = {} # Make the dicet for this dataset
+            self.dataSetInfo[dataSetName]['testDir'] = f"{self.configs['data']['dataInDir']}/{dataSetName}"
+            self.dataSetInfo[dataSetName]['runPerams'] = self.getRunConfigs(f"{self.dataSetInfo[dataSetName]['testDir']}/runPeramiters.csv")
+            #self.runPerams_np = self.getRunConfigs(f"{self.dataSetInfo[dataSetName]['testDir']}/runPeramiters.csv")
 
-            '''
-            ## Stubbed untill we get config file###
-            self.sampleRate_hz = "None" # dataConfigs.sampleRate_hz must be 0 in init
-            '''
+            # Should we do this, or just pass the run perams when we need it.
+            self.dataSetInfo[dataSetName]['subjects'] = {} # Make the dicet for this dataset
+
+            #print(f"self.dataSetInfo: {self.dataSetInfo}")
+            #exit()
 
             for subjectId in self.subjects:
-                data_file_hdf5 = f"{testDirs[dataSetName]}/{self.dataSetConfigs[dataSetName].vibData}/*_{subjectId}.hdf5"
-                label_file_csv = f"{testDirs[dataSetName]}/{self.dataSetConfigs[dataSetName].apdmData}/*_{subjectId}_*/*.csv"
+                self.dataSetInfo[dataSetName]['subjects'][subjectId] = {} # Make the dicet for this dataset
+                self.dataSetInfo[dataSetName]['subjects'][subjectId]['trialCounts'] = 0 # Will corret for subjects we have
+                data_file_hdf5 = f"{self.dataSetInfo[dataSetName]['testDir']}/{self.dataSetConfigs[dataSetName].vibData}/*_{subjectId}.hdf5"
+                label_file_csv = f"{self.dataSetInfo[dataSetName]['testDir']}/{self.dataSetConfigs[dataSetName].apdmData}/*_{subjectId}_*/*.csv"
 
                 logger.info(f"Loading datafile: {data_file_hdf5}")
 
@@ -297,6 +306,9 @@ class dataLoader:
 
                 subDataShape = np.shape(subjectData) 
                 logger.info(f"Subject: {subjectId}, subject shape: {np.shape(subjectData)}")
+
+                #Lets get this from the runPerams instead. Then we have the correct numbers anyway.
+                #self.dataSetInfo[dataSetName]['subjects'][subjectId]['trialCounts'] = subDataShape[0]
     
                 speed =  self.getSpeedLabels(label_file_csv)
                 print(f"speeds: {speed}")
@@ -306,7 +318,9 @@ class dataLoader:
                     self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/{dataSetName}/Subject-{subjectId}", fromRaw=True)
     
                 # Window the data and get the labels
-                windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectId, speed=speed)
+                windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(dataSetName=dataSetName, data=subjectData, subject=subjectId, speed=speed)
+                nRuns = len(np.unique(runBlock))
+                logger.info(f"Number of runs for subject {subjectId}: {nRuns}")
                 logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
                 logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
                 logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
@@ -324,24 +338,34 @@ class dataLoader:
 
                 #logger.info(f"Labels: {thisSubLabels}")
                 #logger.info(f"Up to: {subjectId}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
+                logger.info(f"Writting to self.logfile : {os.path.abspath(self.logfile)}") # In exp track
 
-                with open(self.logfile, 'a', newline='') as csvFile:
-                    writer = csv.writer(csvFile, dialect='unix')
-                    writer.writerow([f'', '--------- Load Data From Files '])
-                with open(self.logfile, 'a', newline='') as csvFile:
-                    writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
-                    writer.writerow({'subject': subjectId,
-                                    'data file': data_file_hdf5, 
-                                    'label file': label_file_csv, 
-                                    'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
-                                    #'Original dataPoints': self.dataConfigs.origDataLen_pts,
-                                    'DS Data Rate (Hz)': self.dataConfigs.sampleRate_hz, 
-                                    'DS dataPoints': subDataShape[2],
-                                    'nSensors in data': subDataShape[1], 
-                                    'nTrials in data': subDataShape[0]
-                                    })
+                try:
+                    with open(self.logfile, 'a', newline='') as csvFile:
+                        writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
+                        writer.writerow({
+                                        'dataset': dataSetName,
+                                        'subject': subjectId,
+                                        'data file': data_file_hdf5, 
+                                        'label file': label_file_csv, 
+                                        'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
+                                        #'Original dataPoints': self.dataConfigs.origDataLen_pts,
+                                        'DS Data Rate (Hz)': self.dataConfigs.sampleRate_hz, 
+                                        'DS dataPoints': subDataShape[2],
+                                        'nSensors in data': subDataShape[1], 
+                                        'nTrials in data': subDataShape[0]
+                                        })
+                        
+                        #with open(self.logfile, 'r', newline='') as csvFile:
+                        #    logger.info("FILE RIGHT AFTER APPEND:\n" + csvFile.read())
+                except Exception as e:
+                    logger.exception(f"Failed while appending summary CSV: {e}")
+                
+                logger.info(f" --------- Finished writing to log file: {self.logfile}")
             # End of subject loop
         # End of dataset loop
+        #print(f"self.dataSetInfo: {self.dataSetInfo}")
+        #exit()
     
 
         ## Convert our lists to numpys
@@ -350,6 +374,8 @@ class dataLoader:
         labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
         labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
         subjects_np = np.concatenate(subject_list, axis=0)
+        #print(f"Run list: {run_list}")
+        #print(f"Subject list: {subject_list}")
         runs_np = np.concatenate(run_list, axis=0)
         sTimes_np = np.concatenate(sTime_list, axis=0)
 
@@ -399,7 +425,6 @@ class dataLoader:
             #TODO: add sameple rate, etc
             dt = h5py.string_dtype(encoding='utf-8')
             h5dataFile.create_dataset("data", data=data_np)
-            #h5dataFile.create_dataset("dataSetName", data=dataSetName_np, dtype=dt)
             h5dataFile.create_dataset( "dataSetName", data=dataSetName_np.astype(object), dtype=dt)
             h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
             h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
@@ -532,7 +557,7 @@ class dataLoader:
 
         self.createDataloaders(dataSet=dataSet, writeLog=writeLog)
 
-    def createDataloaders(self, dataSet, writeLog=True):
+    def createDataloaders_byWindow(self, dataSet, writeLog=True):
         # Split sizes
         trainRatio = self.configs['data']['trainRatio']
         train_size = int(trainRatio * len(dataSet))  # 80% for training
@@ -562,8 +587,176 @@ class dataLoader:
         self.logDataLoaders(self.dataLoader_v, "Validation")
 
         if writeLog: self.logDataShape()
-    
 
+    #import torch
+
+    def createDataloaders(self, dataSet, writeLog=True):
+        from collections import defaultdict
+        import random
+        from torch.utils.data import DataLoader, Subset
+
+        trainRatio = self.configs['data']['trainRatio']
+        valRatio = 1.0 - trainRatio
+    
+        logger.info( f"dataset: {len(dataSet)}, trainRatio: {trainRatio}, valRatio: {valRatio}")
+    
+        # ------------------------------------------------------------
+        # Group sample indices by full run: (dataset, subject, run)
+        # ------------------------------------------------------------
+        group_to_indices = defaultdict(list)
+    
+        for idx in range(len(dataSet)):
+            _, dataSet_name, _, _, subject, run, _ = dataSet[idx]
+    
+            if torch.is_tensor(subject):
+                subject = int(subject.item())
+            else:
+                subject = int(subject)
+    
+            if torch.is_tensor(run):
+                run = int(run.item())
+            else:
+                run = int(run)
+    
+            group_key = (dataSet_name, subject, run)
+            group_to_indices[group_key].append(idx)
+    
+        # ------------------------------------------------------------
+        # Build subject -> runs mapping: (dataset, subject) -> [group_keys]
+        # ------------------------------------------------------------
+        subject_to_groups = defaultdict(list)
+    
+        for group_key in group_to_indices.keys():
+            dataSet_name, subject, run = group_key
+            subject_key = (dataSet_name, subject)
+            subject_to_groups[subject_key].append(group_key)
+    
+        rng = random.Random(self.seed)
+        val_groups = set()
+    
+        # ------------------------------------------------------------
+        # Split runs per subject using the same approximate ratio
+        # ------------------------------------------------------------
+        for subject_key, groups in sorted(subject_to_groups.items()):
+            groups = sorted(groups)
+            shuffled_groups = groups.copy()
+            rng.shuffle(shuffled_groups)
+
+            logger.info( f"Subject: {subject_key}: unique runs={[g[2] for g in groups]}")
+    
+            nRuns = len(shuffled_groups)
+    
+            if nRuns == 0:
+                nValRuns = 0
+            elif nRuns == 1:
+                # you said fewer than 2 runs breaks, but so be it
+                nValRuns = 1
+            else:
+                nValRuns = round(nRuns * valRatio)
+                nValRuns = max(1, nValRuns)
+                nValRuns = min(nValRuns, nRuns - 1)  # leave at least one train run
+    
+            subject_val_groups = shuffled_groups[:nValRuns]
+            val_groups.update(subject_val_groups)
+    
+            trainRuns = nRuns - nValRuns
+
+            if nValRuns < 1 or trainRuns < 1:
+                raise ValueError(
+                    f"Invalid split for subject {subject_key}: "
+                    f"total runs={nRuns}, val runs={nValRuns}, train runs={trainRuns}. "
+                    f"Need at least 1 run in both train and validation."
+                )
+            
+            logger.info(
+                f"Subject: {subject_key}: total runs={nRuns}, val runs={nValRuns}, "
+                f"train runs={trainRuns}"
+            )
+    
+        # ------------------------------------------------------------
+        # Expand run groups back to sample indices
+        # ------------------------------------------------------------
+        train_indices = []
+        val_indices = []
+
+        for group_key, idx_list in group_to_indices.items():
+            if group_key in val_groups:
+                val_indices.extend(idx_list)
+            else:
+                train_indices.extend(idx_list)
+    
+        # Keep val ordered for downstream use
+        train_indices.sort()
+        val_indices.sort()
+
+        ### Test for overlap, should be none
+        def get_groups(indices):
+            groups = set()
+            for idx in indices:
+                _, dataSet_name, _, _, subject, run, _ = dataSet[idx]
+        
+                subject = int(subject.item()) if torch.is_tensor(subject) else int(subject)
+                run = int(run.item()) if torch.is_tensor(run) else int(run)
+        
+                groups.add((dataSet_name, subject, run))
+            return groups
+        
+        train_groups = get_groups(train_indices)
+        val_groups = get_groups(val_indices)
+        
+        overlap = train_groups & val_groups
+        
+        if overlap: raise ValueError(f"Train/val run overlap detected: {overlap}")
+        logger.info(
+            f"Grouped-by-run split complete: "
+            f"train samples={len(train_indices)}, val samples={len(val_indices)}"
+        )
+    
+        dataSet_t = Subset(dataSet, train_indices)
+        dataSet_v = Subset(dataSet, val_indices)
+
+        # ------------------------------------------------------------
+        # Create dataloaders
+        # ------------------------------------------------------------
+        if self.device == "mps":
+            self.dataLoader_t = DataLoader(
+                dataSet_t,
+                batch_size=self.batchSize,
+                num_workers=0,
+                shuffle=True
+            )
+            self.dataLoader_v = DataLoader(
+                dataSet_v,
+                batch_size=1,
+                num_workers=0,
+                shuffle=False
+            )
+        else:
+            nWorkers = 8
+            self.dataLoader_t = DataLoader(
+                dataSet_t,
+                batch_size=self.batchSize,
+                num_workers=nWorkers,
+                persistent_workers=True,
+                pin_memory=True,
+                shuffle=True
+            )
+            self.dataLoader_v = DataLoader(
+                dataSet_v,
+                batch_size=1,
+                num_workers=nWorkers,
+                persistent_workers=True,
+                pin_memory=True,
+                shuffle=False
+            )
+    
+        # Log the data
+        self.logDataLoaders(self.dataLoader_t, "Train")
+        self.logDataLoaders(self.dataLoader_v, "Validation")
+    
+        if writeLog:
+            self.logDataShape()
+    
     def logDataLoaders(self, dataSet, setName):
         # We can change the batch size per experiment, but probably won't
         csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/DataLoader_Log_{setName}_bSize-{dataSet.batch_size}.csv"
@@ -592,9 +785,9 @@ class dataLoader:
                 #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
                 csvWriter.writerow([f"{dataSetName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
 
-    def windowData(self, data:np.ndarray, subject, speed):
+    def windowData(self, data:np.ndarray, dataSetName, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
-        # Strip the head/tails
+        #runs = np.array([], dtype=np.int32)
 
         with open(self.fileStruct.get_timeDDataSum_file() , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
@@ -613,10 +806,11 @@ class dataLoader:
             windowsWithData = 0
 
             for run in range(runsEnd): # Have the ability to limit the number of runs we use for debugging
+                windowsWithData_perRun = 0 # How many windows of data we have for this run that are in the walking time, used for debugging and logging
                 nWindows = 0 #How many windows of data we have for this run: used for debugging and logging
 
                 # Sort out where the no-step data and walking data are
-                noStepStart_sec, noStepEnd_sec, data_start_sec, data_end_sec, skipRun = self.getRunConfig(subject, run)
+                noStepStart_sec, noStepEnd_sec, data_start_sec, data_end_sec, skipRun = self.getRunConfig(dataSetName=dataSetName, subject=subject, run=run)
                 if skipRun: 
                     logger.info(f"%%% Skipping subject: {subject}, run: {run} due to data marked bad in run peramiters file")
                     continue
@@ -671,8 +865,8 @@ class dataLoader:
                         break # No point in going past the data end time
 
                     # If we are limiting the number of windows, check that
-                    if self.configs['data']['limitWindowLen'] > 0:
-                        if windowsWithData >= self.configs['data']['limitWindowLen']: 
+                    if self.configs['data']['limitWindowsPerRun'] > 0:
+                        if windowsWithData_perRun >= self.configs['data']['limitWindowsPerRun']: 
                             #logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
                             #csvFile.write("\n")
                             break
@@ -739,7 +933,8 @@ class dataLoader:
                     #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
                     #if False:
                     if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
-                        windowsWithData += 1
+                        windowsWithData += 1 #Keep this for the error condition of a subject with no data
+                        windowsWithData_perRun += 1
                         #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                         thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
 
@@ -1030,17 +1225,17 @@ class dataLoader:
 
         return dataSetConfigs
 
-    def getRunConfig(self, subject, run):
+    def getRunConfig(self, dataSetName, subject, run):
 
         subjectNumber = self.getSubjectNumber(subject)
 
         #logger.info(f"Getting Config for subject: {subjectNumber}, run: {run}")
-        mask = (self.runPerams_np["subject_num"] == subjectNumber) & (self.runPerams_np["run_num"] == run)
-        noStepStart = self.runPerams_np["noStep_start"][mask][0]
-        noStepEnd = self.runPerams_np["noStep_end"][mask][0]
-        dataStart = self.runPerams_np["data_start"][mask][0]
-        dataEnd = self.runPerams_np["data_end"][mask][0]
-        skipRun = self.runPerams_np["skipRun"][mask][0]
+        mask = (self.dataSetInfo[dataSetName]["runPerams"]["subject_num"] == subjectNumber) & (self.dataSetInfo[dataSetName]["runPerams"]["run_num"] == run)
+        noStepStart = self.dataSetInfo[dataSetName]["runPerams"]["noStep_start"][mask][0]
+        noStepEnd = self.dataSetInfo[dataSetName]["runPerams"]["noStep_end"][mask][0]
+        dataStart = self.dataSetInfo[dataSetName]["runPerams"]["data_start"][mask][0]
+        dataEnd = self.dataSetInfo[dataSetName]["runPerams"]["data_end"][mask][0]
+        skipRun = self.dataSetInfo[dataSetName]["runPerams"]["skipRun"][mask][0]
 
         return noStepStart, noStepEnd, dataStart, dataEnd, skipRun
 

@@ -116,7 +116,7 @@ def saveSumary(model, dataShape, timeD= False, complex=False):
 def writeDataTrackSum_hdr():
     dataTrackSum_fileName = f"{fileStructure.expTrackFiles.expTrackDir_name}/{fileStructure.expTrackFiles.expTrack_sumary_file}"
     # Write from config.yaml
-    with open(dataTrackSum_fileName, 'w', newline='') as csvFile:
+    with open(dataTrackSum_fileName, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile, dialect='unix')
         writer.writerow([f'--------- from config.yaml ----------'])
         writer.writerow([f'', '--------- data '])
@@ -133,7 +133,7 @@ def writeDataTrackSum_hdr():
         writer.writerow(['labelScalers', configs['data']['labelScalers'], configs['data']['labelScale_values']])
 
         writer.writerow(['limitRuns', configs['data']['limitRuns']])
-        writer.writerow(['limitWindowLen', configs['data']['limitWindowLen']])
+        writer.writerow(['limitWindowsPerRun', configs['data']['limitWindowsPerRun']])
 
         writer.writerow(['Target Sample Rate', configs['data']['dsDataRate_hz']])
     
@@ -236,10 +236,6 @@ data_preparation = dataLoader(
         device=device, 
     )
 
-if not os.path.exists(fileStructure.get_timeDData_file()):
-    logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
-    data_preparation.get_data() # Load the data, window it, and save it to file.
-
 '''
 Set up for multiple datasets
 data_preparation = {}
@@ -284,6 +280,10 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
     writer.writeheader()
 
+# Last up, get the data from raw if we have not already
+if not os.path.exists(fileStructure.get_timeDData_file()):
+    logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
+    data_preparation.get_data() # Load the data, window it, and save it to file.
 
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 

@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
-    trainModel: True
-    validateModel: False #Run on a saved model.
+    runModel: False
+    trainModel: False
+    validateModel: True #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
-    generateCWTPlots: True
+    generateTimeFreqPlots: False
+    generateTimeFreqWindowPlots: False
+    generateCWTPlots: False
 
 plts:
     pltDir: "plots"
@@ -39,6 +39,8 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
+    #testDirs: ["Test_2"] #datasets to load
+    #testDirs: ["20251124_Testing"] #datasets to load
     testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
@@ -52,9 +54,9 @@ data:
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns:  2  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
+    limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
-    limitWindowLen: 4 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitWindowsPerRun: 0 #5 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -186,7 +188,9 @@ model:
     #modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
     #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
     #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-154744_class_ch8_origData/exp-1/model_exp1.pt"
-    modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-193800_class_ch8_2ndDayData/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-193800_class_ch8_2ndDayData/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-090044_400Hz_class_Test2/exp-1/model_exp1.pt" #Orig data.
+    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-193453_400Hz_class_20251124_Testing/exp-1/model_exp1.pt" #new data.
     
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 

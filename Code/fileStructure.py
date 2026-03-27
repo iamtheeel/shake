@@ -183,9 +183,9 @@ class fileStruct:
         dataFolder = f"{dataFolder}_step-{self.configs['data']['stepSize']}"
 
         limitRuns = self.configs['data']['limitRuns']
-        limitWindows = self.configs['data']['limitWindowLen']
+        limitWindows = self.configs['data']['limitWindowsPerRun']
         if limitRuns !=0: dataFolder = f"{dataFolder}_runLim-{limitRuns}"
-        if limitWindows !=0: dataFolder = f"{dataFolder}_windowLim-{limitWindows}"
+        if limitWindows !=0: dataFolder = f"{dataFolder}_limitWinPerRun-{limitWindows}"
 
         timeDData_dir = self.get_dataConfig_dir()
 
