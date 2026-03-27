@@ -437,52 +437,7 @@ class dataLoader:
 
     import h5py
 
-    '''
-    Load the data by batch
-    with h5py.File(f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}", "w") as h5dataFile:
-        # Create resizable datasets
-        data_ds = h5dataFile.create_dataset("data", shape=(0, *data_np.shape[1:]), maxshape=(None, *data_np.shape[1:]), dtype="float32", chunks=True)
-        label_speed_ds = h5dataFile.create_dataset("labelsSpeed", shape=(0,), maxshape=(None,), dtype="float32", chunks=True)
-        label_subject_ds = h5dataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        subjects_ds = h5dataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        runs_ds = h5dataFile.create_dataset("runs", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        sTimes_ds = h5dataFile.create_dataset("sTimes", shape=(0,), maxshape=(None,), dtype="float16", chunks=True)
-    
-        # Write data in batches
-        for i in range(0, len(data_np), batch_size):
-            batch_data = data_np[i : i + batch_size]
-            batch_labels_speed = labelsSpeed_np[i : i + batch_size]
-            batch_labels_subject = labelsSubject_np[i : i + batch_size]
-            batch_subjects = subjects_np[i : i + batch_size]
-            batch_runs = runs_np[i : i + batch_size]
-            batch_sTimes = sTimes_np[i : i + batch_size]
-    
-            # Resize datasets before appending new batch
-            data_ds.resize(data_ds.shape[0] + batch_data.shape[0], axis=0)
-            label_speed_ds.resize(label_speed_ds.shape[0] + batch_labels_speed.shape[0], axis=0)
-            label_subject_ds.resize(label_subject_ds.shape[0] + batch_labels_subject.shape[0], axis=0)
-            subjects_ds.resize(subjects_ds.shape[0] + batch_subjects.shape[0], axis=0)
-            runs_ds.resize(runs_ds.shape[0] + batch_runs.shape[0], axis=0)
-            sTimes_ds.resize(sTimes_ds.shape[0] + batch_sTimes.shape[0], axis=0)
-    
-            # Append batch
-            data_ds[-batch_data.shape[0] :] = batch_data
-            label_speed_ds[-batch_labels_speed.shape[0] :] = batch_labels_speed
-            label_subject_ds[-batch_labels_subject.shape[0] :] = batch_labels_subject
-            subjects_ds[-batch_subjects.shape[0] :] = batch_subjects
-            runs_ds[-batch_runs.shape[0] :] = batch_runs
-            sTimes_ds[-batch_sTimes.shape[0] :] = batch_sTimes
-
-        # Store metadata as attributes
-        h5dataFile.attrs["sample_rate"] = self.dataConfigs.sampleRate_hz
-        h5dataFile.attrs["units"] = self.dataConfigs.units
-        h5dataFile.attrs["dataLen_pts"] = self.dataConfigs.dataLen_pts
-        h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
-        h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
-        h5dataFile.attrs["chList"] = self.dataConfigs.chList
-    '''
-
-    def plotTime_FreqData(self, folder, freqYLim, subject=None, speed=None):
+    def plotTime_FreqData(self, data, folder, freqYLim, subject=None, speed=None, fromRaw=False):
         if subject == None:
             echoStr = f"Time Windowed Data"
         else:
@@ -508,7 +463,10 @@ class dataLoader:
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
         self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
+        if fromRaw:
+            self.plotFromRaw(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
+        else: 
+            self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
 
 
     def plotFromDataSet(self, freqDImageDir, dataSet, freqYLim):
@@ -1042,7 +1000,7 @@ class dataLoader:
                 else:
                     skipRun = 0   # se/Stomnsible default
 
-                logger.info(f"Subject: {subjects}, run: {runs}, noStep_start: {noStep_start}, noStep_end: {noStep_end}, data_start: {data_start}, data_end: {data_end}, skipRun: {skipRun}")    
+                #logger.info(f"Subject: {subjects}, run: {runs}, noStep_start: {noStep_start}, noStep_end: {noStep_end}, data_start: {data_start}, data_end: {data_end}, skipRun: {skipRun}")    
                 data.append((subjects, runs, noStep_start, noStep_end, data_start, data_end, skipRun))       
 
         runPerams_np = np.array(data, dtype=[("subject_num", "i4"), 
@@ -1338,7 +1296,7 @@ class dataLoader:
         # Plot the windowed data
         if self.configs['debugs']['generateTimeFreqWindowPlots']:
             yLim = configs['plts']['yLim_freqD']
-            self.plotTime_FreqData(freqYLim=yLim, folder="plots_byWindow")
+            self.plotTime_FreqData(data=None, freqYLim=yLim, folder="plots_byWindow")
 
     def writeToCWTDataFile(self, filename, data, dataSet_name, label_speed, label_subject, subject, run, startTime):
         # Create HDF5 file with expandable datasets
