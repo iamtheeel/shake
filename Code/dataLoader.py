@@ -327,8 +327,10 @@ class dataLoader:
 
                 # Append the data to the set
                 data_list.append(windowedBlock)
-                dataSetName_list = [dataSetName] * len(subjectBlock)
-                dataSet_list.append(dataSetName_list)
+                dataSetName_block = np.full(len(subjectBlock), dataSetName, dtype=object)
+                dataSet_list.append(dataSetName_block)
+                #dataSetName_list = [dataSetName] * len(subjectBlock)
+                #dataSet_list.append(dataSetName_list)
                 speed_label_list.append(labelBlock_speed)
                 subject_label_list.append(labelBlock_subject)
                 subject_list.append(subjectBlock)
@@ -370,7 +372,8 @@ class dataLoader:
 
         ## Convert our lists to numpys
         data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
-        dataSetName_np = np.concatenate(dataSet_list, axis=0)
+        #dataSetName_np = np.concatenate(dataSet_list, axis=0)
+        dataSetName_np = np.concatenate(dataSet_list, axis=0).reshape(-1)
         labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
         labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
         subjects_np = np.concatenate(subject_list, axis=0)
@@ -772,18 +775,19 @@ class dataLoader:
         csvWriter.writerow([f"batches per epoch: {len(dataSet)}"])
 
         csvWriter.writerow(['Dataset', 'Batch', 'Subject (string)', 'label subject (int)', 'run', 'window start time (seconds)', 'speed (m/s)'])
-        for data, dataSetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
+        for data, dataSetNames, labelsSpeeds, labelsSubjects, subjects, runs, sTimes in dataSet:
             #Validation is batch size 1, so we can log the subject, run, time, and speed for each batch
             #Data set, Subject, run, <time>, speed
             #logger.info(f"This data batch has {data.shape[0]} samples, batch size: {dataSet.batch_size}")
-            for i in range(data.shape[0]):
-                subject = self.classes[subjects[i].item()]
-                labelsSubject = labelsSubject[i].item()
+            for i in range(data.shape[0]): # Loop through the batchs, and log each sample
+                dataSetName = str(dataSetNames[i])
+                subject = subjects[i].item()
+                #subject = self.classes[subjects[i].item()]
+                labelsSubject = labelsSubjects[i].item()
                 run = runs[i].item()
                 sTime = sTimes[i].item()
-                labelSpeed = labelsSpeed[i].item()
-                #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
-                csvWriter.writerow([f"{dataSetName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
+                labelSpeed = labelsSpeeds[i].item()
+                csvWriter.writerow([dataSetName, i+1, subject, labelsSubject, run, sTime, labelSpeed])
 
     def windowData(self, data:np.ndarray, dataSetName, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
