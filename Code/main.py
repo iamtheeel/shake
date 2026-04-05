@@ -364,41 +364,42 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
         valAccStats.mean = 0
         valAccStats.std = 0
 
-    valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
+    if configs['debugs']['validateModel']:
+        valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
     
 
-    exp_runTime = timer() - exp_StartTime
-    # Log the results
-    with open(expTrackFile, 'a', newline='') as csvFile:
-        print(f"Writing data: {expTrackFile}", flush=True)
-        writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
-        writer.writerow({'Test': expNum,
-                         'BatchSize': batchSize,
-                         'Epochs': epochs,
-                         'wavelet': cwt_class.wavelet_name,
-                         'Data Scaler': data_preparation.dataNormConst.type, 
-                         'Data Scale': data_preparation.dataNormConst.scale, 
-                         'Label Scaler': labelScaler, 
-                         'Label Scale': labelScale, 
-                         'Loss': lossFunction,
-                         'Optimizer': optimizer,
-                         'Learning Rate': learning_rate,
-                         'Weight Decay': weight_decay,
-                         'Gradiant Noise': gradiant_noise,
-                         'Model': model.__class__.__name__,
-                         'Dropout Layers': dropOut_layers,
-                         'Train Loss': trainLoss, 
-                         f'Train {accStr}': trainAcc, 
-                         'Last Epoch Val Loss': valLoss, 
-                         f'Last Epoch Val {accStr}': valAcc,
-                         f'Last {lastStats_n} epochs min': valAccStats.min,
-                         f'Last {lastStats_n} epochs max': valAccStats.max,
-                         f'Last {lastStats_n} epochs mean': valAccStats.mean,
-                         f'Last {lastStats_n} epochs std': valAccStats.std,
-                         f'Class Acc {accStr}': classAcc,
-                         'Time(s)': exp_runTime
-        })
+        # Log the results
+        with open(expTrackFile, 'a', newline='') as csvFile:
+            print(f"Writing data: {expTrackFile}", flush=True)
+            writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
+            writer.writerow({'Test': expNum,
+                             'BatchSize': batchSize,
+                             'Epochs': epochs,
+                             'wavelet': cwt_class.wavelet_name,
+                             'Data Scaler': data_preparation.dataNormConst.type, 
+                             'Data Scale': data_preparation.dataNormConst.scale, 
+                             'Label Scaler': labelScaler, 
+                             'Label Scale': labelScale, 
+                             'Loss': lossFunction,
+                             'Optimizer': optimizer,
+                             'Learning Rate': learning_rate,
+                             'Weight Decay': weight_decay,
+                             'Gradiant Noise': gradiant_noise,
+                             'Model': model.__class__.__name__,
+                             'Dropout Layers': dropOut_layers,
+                             'Train Loss': trainLoss, 
+                             f'Train {accStr}': trainAcc, 
+                             'Last Epoch Val Loss': valLoss, 
+                             f'Last Epoch Val {accStr}': valAcc,
+                             f'Last {lastStats_n} epochs min': valAccStats.min,
+                             f'Last {lastStats_n} epochs max': valAccStats.max,
+                             f'Last {lastStats_n} epochs mean': valAccStats.mean,
+                             f'Last {lastStats_n} epochs std': valAccStats.std,
+                             f'Class Acc {accStr}': classAcc,
+                             'Time(s)': exp_runTime
+                            })
 
+    exp_runTime = timer() - exp_StartTime
     del model
     del trainer
 

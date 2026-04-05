@@ -4,11 +4,11 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
-    trainModel: False
-    validateModel: True #Run on a saved model.
+    runModel: True
+    trainModel: False   #Otherwize, load the saved weights
+    validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
+    generateTimeFreqPlots: True
     generateTimeFreqWindowPlots: False
     generateCWTPlots: False
 
@@ -19,7 +19,7 @@ plts:
 
     #For CWT plottited data
     #rgbPlotChList: [6, 5, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
-    rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
     #saveOverlay: False
@@ -40,8 +40,8 @@ data:
     dataInDir: "../TestData" # The input data
 
     #testDirs: ["Test_2"] #datasets to load
-    #testDirs: ["20251124_Testing"] #datasets to load
-    testDirs: ["Test_2", "20251124_Testing"] #datasets to load
+    testDirs: ["20251124_Testing"] #datasets to load
+    #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
@@ -170,7 +170,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 10 #Set to upper limit and validate every... (see below)
+    epochs: 25 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
@@ -190,7 +190,10 @@ model:
     #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-154744_class_ch8_origData/exp-1/model_exp1.pt"
     #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-193800_class_ch8_2ndDayData/exp-1/model_exp1.pt"
     #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-090044_400Hz_class_Test2/exp-1/model_exp1.pt" #Orig data.
-    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-193453_400Hz_class_20251124_Testing/exp-1/model_exp1.pt" #new data.
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-193453_400Hz_class_20251124_Testing/exp-1/model_exp1.pt" #new data.
+    ## train/val split by run, not window.
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260327-182029_trainVal-run_Test2/exp-1/model_exp1.pt" #Orig data.
+    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260328-082716_trainVal_2ndDay/exp-1/model_exp1.pt" #new data.
     
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 
