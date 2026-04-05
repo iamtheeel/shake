@@ -7,17 +7,18 @@
 # Data Loader
 ###
 
+from collections import defaultdict
+
 import h5py, csv
 import numpy as np
-import copy
 import os, sys, glob
+from torch.utils import data
 from tqdm import tqdm  #progress bar
 from scipy.signal import spectrogram    # For spectrogram
 
 import torch
 #import torch.nn.functional as tFun
 from torch.utils.data import DataLoader, Dataset, random_split
-import pickle
 import time
 
 from utils import checkFor_CreateDir
@@ -57,14 +58,20 @@ class normClass:
             value = _f32(value)
         super().__setattr__(name, value)
 
-class dataConfigs:
-    sampleRate_hz: Optional[int] = None
+@dataclass
+class DatasetInfo:
+    vibData: str
+    apdmData: str
+    sRate: str
+
+class initDataConfigStruct:
+    sampleRate_hz: Optional[int] = 0
     origSRate_hz: Optional[int] = None
     units: Optional[str] = None
     dataLen_pts: Optional[int] = None
-    origDataLen_pts: Optional[int] = None
-    nSensors: Optional[int] = None
-    nTrials: Optional[int] = None
+    #origDataLen_pts: Optional[int] = 0
+    #nSensors: Optional[int] = None
+    #nTrials: Optional[int] = None
     chList: Optional[list] = None
 
 class HDF5Dataset(Dataset):
@@ -108,6 +115,16 @@ class HDF5Dataset(Dataset):
             data = torch.tensor(f["data"][idx], dtype=torch.complex64)
         else:
             data = torch.tensor(f["data"][idx], dtype=torch.float32)
+
+        #print("idx:", idx)
+        #print("type(idx):", type(idx))
+        #print("raw:", f["dataSetName"][idx])
+        #print("raw type:", type(f["dataSetName"][idx]))
+        #print("raw shape:", np.shape(f["dataSetName"][idx]))
+        #dataSet_name = f["dataSetName"][idx]
+        #dataSet_name = dataSet_name.item()
+
+        dataSet_name = f["dataSetName"].asstr()[idx]
         label_speed = torch.tensor(f["labelsSpeed"][idx], dtype=torch.float32)
         label_subject = torch.tensor(f["labelsSubject"][idx], dtype=torch.long)
         subject = torch.tensor(f["subjects"][idx], dtype=torch.long)
@@ -115,7 +132,7 @@ class HDF5Dataset(Dataset):
         sTime = torch.tensor(f["sTimes"][idx], dtype=torch.float16)
 
         #print(f"Label Shape after Squeeze: {label.shape}")  # Debugging step
-        return data, label_speed, label_subject, subject, run, sTime
+        return data, dataSet_name, label_speed, label_subject, subject, run, sTime
     
     def getConfig(self):
         """Retrieve and return general configurations stored in HDF5 attributes."""
@@ -127,44 +144,27 @@ class HDF5Dataset(Dataset):
 
 class dataLoader:
     def __init__(self, config, fileStruct:"fileStruct", device):
+        self.logfile = f"{fileStruct.expTrackFiles.expTrackDir_name}/{fileStruct.expTrackFiles.expTrack_sumary_file}"
+
         print(f"\n")
         logger.info(f"--------------------  Init Dataloader   ----------------------")
-        logger.info(f"device: {device}")
         self.device = device
         self.regression = config['model']['regression']
         self.seed = config['trainer']['seed'] 
         torch.manual_seed(self.seed)
-        # Load up the dataset info
-        self.dataSetName = config['data']['test'] # e.x. "Test_2"
-        self.testDir = f"{config['data']['dataInDir']}/{self.dataSetName}" # The test data directory
-        self.downSample = config['data']['downSample']# Where the data is
-        #self.test = config['data']['test']         # e.x. "Test_2"
-        self.batchSize = config['trainer']['batchSize']
 
-        #TODO: Get from file
-        self.logfile = f"{fileStruct.expTrackFiles.expTrackDir_name}/{fileStruct.expTrackFiles.expTrack_sumary_file}"
+        self.batchSize = config['trainer']['batchSize']
 
         self.classes = config['data']['classes']
         if self.regression: self.nClasses = 1
         else:               self.nClasses = len(self.classes)
 
         #Data
-        self.stompCh = config['data']['stompSens']
-        #self.dataThresh = config['data']['dataThresh']
-        self.dataRunPerams = config['data']['dataRunPeramiters']
-        self.stompFromFile = False
-        if isinstance(self.dataRunPerams, str):
-            self.stompFromFile = True
-            #runPerams_np is a structured numpy array with columns: subject_num, run_num, skipRun
-            #           noStep_start, noStep_end, data_start, data_end
-            self.runPerams_np = self.getRunConfigs(f"{self.testDir}/{self.dataRunPerams}") 
-
-        self.dataConfigs = dataConfigs()
-        self.dataConfigs.sampleRate_hz = 0
-        self.dataConfigs.units = None
-        self.dataConfigs.dataLen_pts = 0
+        self.dataConfigs = initDataConfigStruct()
+        self.dataConfigs.sampleRate_hz = config['data']['dsDataRate_hz'] # Desired sample rate after downsampleing, we need to set this before we load the data so we can set the window and step size in points based on the sample rate. We will get the original sample rate from the file when we load it, and if the original sample rate is 0, we will set it to the sample rate from the file. We need to do this because some of our datasets have the sample rate in the file, and some do not, so we need to be able to handle both cases.
+        # Ch list must be the same for each dataset
         self.dataConfigs.chList = config['data']['chList']
-        self.dataConfigs.nSensors = len(self.dataConfigs.chList)
+        #self.dataConfigs.nSensors = len(self.dataConfigs.chList)
 
         self.windowLen_s = config['data']['windowLen']
         self.stepSize_s = config['data']['stepSize']
@@ -172,14 +172,14 @@ class dataLoader:
         self.stepSize = 0
 
         self.dataPoints = 0 #99120
-        self.nTrials = 0
+        #self.nTrials = 0
 
-        # These all go away
-        self.data_raw = None
-        self.labels_raw = None
-        self.subjectList_raw = None
-        self.runList_raw = None
-        self.startTimes_raw = None
+        # These all go away... uh, how?
+        #self.data_raw = None
+        #self.labels_raw = None
+        #self.subjectList_raw = None
+        #self.runList_raw = None
+        #self.startTimes_raw = None
 
         self.data = None
         self.labels = None
@@ -196,10 +196,6 @@ class dataLoader:
 
         #Set up a string for saving the dataset so we can see if we have already loaded this set
         self.fileStruct = fileStruct
-        self.fileStruct.setFullData_dir()
-        self.fileStruct.setWindowedData_dir()
-
-        self.CSVdataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
 
         # Setup the dataplotter
         self.dataPlotter = dataPlotter_class()
@@ -212,13 +208,12 @@ class dataLoader:
         self.dataLoader_v.dataset.setComplex(complex)
         
 
-    def get_peram(self, perams, peramName:str, asStr=False):
+    def get_peram(self, perams, peramName:str):
         mask = perams['parameter'] == peramName.encode()
         matches = perams[mask]
 
         if len(matches) > 0:
             print(f"Found peram: {peramName}, value: {matches['value']}, units: {matches['units']}")
-            #if asStr:
             if isinstance(matches['value'][0], bytes):
                 peram_value = matches['value'][0].decode('utf8')
                 #peram_value = perams[perams['parameter'] == peramName.encode()]['value'][0].decode('utf8')
@@ -243,7 +238,7 @@ class dataLoader:
 
         # The labels are an array:
         # labels = subject/run
-        dataLoadFieldNames = ['subject', 'data file', 'label file', 'Original Data Rate (Hz)', 'Original dataPoints', 'DS Data Rate (Hz)', 'DS dataPoints', 'nSensors in data', 'nTrials in data']
+        dataLoadFieldNames = ['dataset', 'subject', 'data file', 'label file', 'Original Data Rate (Hz)', 'Original dataPoints', 'DS Data Rate (Hz)', 'DS dataPoints', 'nSensors in data', 'nTrials in data']
         with open(self.logfile, 'a', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
             writer.writerow(['--------- Data Loader -----------'])
@@ -252,92 +247,153 @@ class dataLoader:
             writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
             writer.writeheader()
 
+        self.subjects = self.configs['data']['classes'][1:] # Skip No Step
+
+        # Each window has:
+        dataSet_list = []
         data_list = []
+        dataSet_list = []
         speed_label_list = []
         subject_label_list = []
         subject_list = []
         run_list = []
         sTime_list = []
 
-        self.subjects = self.configs['data']['classes'][1:] # Skip No Step
+        #Get configs for this dataset
+        self.dataSetInfo = {} #Has trialCounts, testDirs, and will have runPerams.
 
-        for subjectId in self.subjects:
-            data_file_hdf5 = f"{self.testDir}/{self.configs['data']['vibDataDir']}/*_{subjectId}.hdf5"
-            label_file_csv = f"{self.testDir}/{self.configs['data']['APDMDataDir']}/*_{subjectId}_*/*.csv"
+        #self.runPerams_np = {} #This is risky, we overwrite the run peramiters for each dataset, but we need to be able to access them when we load the data, and we need to be able to handle multiple datasets, so we will store them in a dictionary with the dataset name as the key. We also need to be able to access them in the data loader, so we will store them in the dataloader class. We will also need to be able to access them in the data plotter, so we will store them in the dataloader class and pass them to the
 
-            logger.info(f"Dataloader, datafile: {data_file_hdf5}")
+        self.dataSetConfigs = self.get_dataSetConfigs()
+        for dataSetName in configs['data']['testDirs']:
+            self.dataSetInfo[dataSetName] = {} # Make the dicet for this dataset
+            self.dataSetInfo[dataSetName]['testDir'] = f"{self.configs['data']['dataInDir']}/{dataSetName}"
+            self.dataSetInfo[dataSetName]['runPerams'] = self.getRunConfigs(f"{self.dataSetInfo[dataSetName]['testDir']}/runPeramiters.csv")
+            #self.runPerams_np = self.getRunConfigs(f"{self.dataSetInfo[dataSetName]['testDir']}/runPeramiters.csv")
 
-            # Load data file
-            subjectData = self.getSubjectData(data_file_hdf5) # Only the chans we are interested, in the order we want. Sets the sample rate and friends
-            if subjectData is None:
-                logger.error(f"No data loaded for subject: {subjectId}, skipping to next subject")
-                continue
-            subDataShape = np.shape(subjectData) 
-            logger.info(f"Subject: {subjectId}, subject shape: {np.shape(subjectData)}")
+            # Should we do this, or just pass the run perams when we need it.
+            self.dataSetInfo[dataSetName]['subjects'] = {} # Make the dicet for this dataset
+
+            #print(f"self.dataSetInfo: {self.dataSetInfo}")
+            #exit()
+
+            for subjectId in self.subjects:
+                self.dataSetInfo[dataSetName]['subjects'][subjectId] = {} # Make the dicet for this dataset
+                self.dataSetInfo[dataSetName]['subjects'][subjectId]['trialCounts'] = 0 # Will corret for subjects we have
+                data_file_hdf5 = f"{self.dataSetInfo[dataSetName]['testDir']}/{self.dataSetConfigs[dataSetName].vibData}/*_{subjectId}.hdf5"
+                label_file_csv = f"{self.dataSetInfo[dataSetName]['testDir']}/{self.dataSetConfigs[dataSetName].apdmData}/*_{subjectId}_*/*.csv"
+
+                logger.info(f"Loading datafile: {data_file_hdf5}")
+
+                # Load data file
+                subjectData, sRate_fromFile = self.getSubjectData(data_file_hdf5, dataSetName) # Only the chans we are interested, in the order we want. Sets the sample rate and friends
+                if subjectData is None:
+                    logger.error(f"No data loaded for subject: {subjectId}, skipping to next subject")
+                    continue
+
+                print(f"sampe rate from file: {sRate_fromFile}, type: {type(sRate_fromFile)}")
+
+                print(f"Dataset sample rate: {self.dataSetConfigs[dataSetName].sRate}, type: {type(self.dataSetConfigs[dataSetName].sRate)} ")
+                if self.dataSetConfigs[dataSetName].sRate == 0:
+                    print("Setting sample rate from file: ", sRate_fromFile)
+                    self.dataSetConfigs[dataSetName].sRate = sRate_fromFile
+
+                #Downsample the data to match sample rates for all the datasets.
+                subjectData = self.downSampleData(subjectData, self.dataSetConfigs[dataSetName].sRate, self.configs['data']['dsDataRate_hz'])
+
+                # Set data shaapes
+                self.setDataShape(subjectData) # Sets the data shape related perameters in the dataloader, like window len and step size, based on the sample rate and window and step size in seconds. We need to do this after we downsample so we have the correct sample rate.
+
+                subDataShape = np.shape(subjectData) 
+                logger.info(f"Subject: {subjectId}, subject shape: {np.shape(subjectData)}")
+
+                #Lets get this from the runPerams instead. Then we have the correct numbers anyway.
+                #self.dataSetInfo[dataSetName]['subjects'][subjectId]['trialCounts'] = subDataShape[0]
+    
+                speed =  self.getSpeedLabels(label_file_csv)
+                print(f"speeds: {speed}")
+    
+                if self.configs['debugs']['generateTimeFreqPlots']:
+                    yLim = configs['plts']['yLim_freqD']
+                    self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/{dataSetName}/Subject-{subjectId}", fromRaw=True)
+    
+                # Window the data and get the labels
+                windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(dataSetName=dataSetName, data=subjectData, subject=subjectId, speed=speed)
+                nRuns = len(np.unique(runBlock))
+                logger.info(f"Number of runs for subject {subjectId}: {nRuns}")
+                logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
+                logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
+                logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
+
+                # Append the data to the set
+                data_list.append(windowedBlock)
+                dataSetName_block = np.full(len(subjectBlock), dataSetName, dtype=object)
+                dataSet_list.append(dataSetName_block)
+                #dataSetName_list = [dataSetName] * len(subjectBlock)
+                #dataSet_list.append(dataSetName_list)
+                speed_label_list.append(labelBlock_speed)
+                subject_label_list.append(labelBlock_subject)
+                subject_list.append(subjectBlock)
+                run_list.append(runBlock)
+                sTime_list.append(startTimes)
 
 
-            speed =  self.getSpeedLabels(label_file_csv)
-            print(f"speeds: {speed}")
+                #logger.info(f"Labels: {thisSubLabels}")
+                #logger.info(f"Up to: {subjectId}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
+                logger.info(f"Writting to self.logfile : {os.path.abspath(self.logfile)}") # In exp track
 
-            if self.configs['debugs']['generateTimeFreqPlots']:
-                yLim = configs['plts']['yLim_freqD']
-                self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/Subject-{subjectId}", fromRaw=True)
-
-            # Window the data and get the labels
-            windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(data=subjectData, subject=subjectId, speed=speed)
-            logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
-            logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
-            logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
-
-
-            # Append the data to the set
-            data_list.append(windowedBlock)
-            speed_label_list.append(labelBlock_speed)
-            subject_label_list.append(labelBlock_subject)
-            subject_list.append(subjectBlock)
-            run_list.append(runBlock)
-            sTime_list.append(startTimes)
-
-            #logger.info(f"Labels: {thisSubLabels}")
-            #logger.info(f"Up to: {subjectId}")#, Labels, data shapes: {speed_label_list.shape}, {subject_label_list.shape} ")
-
-            with open(self.logfile, 'a', newline='') as csvFile:
-                writer = csv.writer(csvFile, dialect='unix')
-                writer.writerow([f'', '--------- Load Data From Files '])
-            with open(self.logfile, 'a', newline='') as csvFile:
-                writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
-                writer.writerow({'subject': subjectId,
-                                'data file': data_file_hdf5, 
-                                'label file': label_file_csv, 
-                                'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
-                                'Original dataPoints': self.dataConfigs.origDataLen_pts,
-                                'DS Data Rate (Hz)': self.dataConfigs.sampleRate_hz, 
-                                'DS dataPoints': subDataShape[2],
-                                'nSensors in data': subDataShape[1], 
-                                'nTrials in data': subDataShape[0]
-                                })
+                try:
+                    with open(self.logfile, 'a', newline='') as csvFile:
+                        writer = csv.DictWriter(csvFile, fieldnames=dataLoadFieldNames, dialect='unix')
+                        writer.writerow({
+                                        'dataset': dataSetName,
+                                        'subject': subjectId,
+                                        'data file': data_file_hdf5, 
+                                        'label file': label_file_csv, 
+                                        'Original Data Rate (Hz)': self.dataConfigs.origSRate_hz, 
+                                        #'Original dataPoints': self.dataConfigs.origDataLen_pts,
+                                        'DS Data Rate (Hz)': self.dataConfigs.sampleRate_hz, 
+                                        'DS dataPoints': subDataShape[2],
+                                        'nSensors in data': subDataShape[1], 
+                                        'nTrials in data': subDataShape[0]
+                                        })
+                        
+                        #with open(self.logfile, 'r', newline='') as csvFile:
+                        #    logger.info("FILE RIGHT AFTER APPEND:\n" + csvFile.read())
+                except Exception as e:
+                    logger.exception(f"Failed while appending summary CSV: {e}")
+                
+                logger.info(f" --------- Finished writing to log file: {self.logfile}")
+            # End of subject loop
+        # End of dataset loop
+        #print(f"self.dataSetInfo: {self.dataSetInfo}")
+        #exit()
+    
 
         ## Convert our lists to numpys
         data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
+        #dataSetName_np = np.concatenate(dataSet_list, axis=0)
+        dataSetName_np = np.concatenate(dataSet_list, axis=0).reshape(-1)
         labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
         labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
         subjects_np = np.concatenate(subject_list, axis=0)
+        #print(f"Run list: {run_list}")
+        #print(f"Subject list: {subject_list}")
         runs_np = np.concatenate(run_list, axis=0)
         sTimes_np = np.concatenate(sTime_list, axis=0)
 
+        print("len data:", len(data_np))
+        print("len labelsSpeed:", len(labelsSpeed_np))
+        print("len labelsSubject:", len(labelsSubject_np))
+        print("len subjects:", len(subjects_np))
+        print("len runs:", len(runs_np))
+        print("len dataSetName:", len(dataSetName_np))
+
         #Reshape the speed labels for batch processing
         labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
-        #labelsSubject_np = labelsSubject_np.reshape(-1,1) #go from (num,) to (num,1)
 
-        data_min = np.min(data_np)
-        data_max = np.max(data_np)
-        data_mean = np.mean(data_np)
-        data_std = np.std(data_np)
-
-        lab_min = np.min(labelsSpeed_np)
-        lab_max = np.max(labelsSpeed_np)
-        lab_mean = np.mean(labelsSpeed_np)
-        lab_std = np.std(labelsSpeed_np)
+        data_min, data_max, data_mean, data_std = self.getStats(data_np)
+        lab_min, lab_max, lab_mean, lab_std = self.getStats(labelsSpeed_np)
 
         logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
@@ -347,18 +403,32 @@ class dataLoader:
                           min=data_min, max=data_max, mean=data_mean, std=data_std)
         self.setNormConst(isData=False, norm=self.labNormConst, dataSetFile="Original Time Domain Data", 
                           min=lab_min, max=lab_max, mean=lab_mean, std=lab_std)
-        timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
-        dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-        timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
-        self.saveHDF5TimeData(timeDFileName, data_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np)
+
+        #timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
+        #dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+        #timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
+        timeDFileName = self.fileStruct.get_timeDData_file()
+        self.saveHDF5TimeData(filename=timeDFileName, data_np=data_np, dataSetName_np=dataSetName_np, 
+                              labelsSpeed_np=labelsSpeed_np, labelsSubject_np=labelsSubject_np, 
+                              subjects_np=subjects_np, runs_np=runs_np, sTimes_np=sTimes_np)
         self.saveHDF5MetaData(timeDFileName)
 
         logger.info(f"====================================================")
 
-    def saveHDF5TimeData(self, filename, data_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
+
+    def getStats(self, data):
+        data_min = np.min(data)
+        data_max = np.max(data)
+        data_mean = np.mean(data)
+        data_std = np.std(data)
+        return data_min, data_max, data_mean, data_std
+
+    def saveHDF5TimeData(self, filename, data_np, dataSetName_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
         with h5py.File(filename, "w") as h5dataFile:
             #TODO: add sameple rate, etc
+            dt = h5py.string_dtype(encoding='utf-8')
             h5dataFile.create_dataset("data", data=data_np)
+            h5dataFile.create_dataset( "dataSetName", data=dataSetName_np.astype(object), dtype=dt)
             h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
             h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
             h5dataFile.create_dataset("subjects", data=subjects_np)
@@ -384,61 +454,16 @@ class dataLoader:
             label_ds.attrs["mean"] = self.labNormConst.mean
             label_ds.attrs["std"] = self.labNormConst.std
 
-            h5dataFile.attrs["orig_sample_rate"] = self.dataConfigs.origSRate_hz
+            #h5dataFile.attrs["orig_sample_rate"] = self.dataConfigs.origSRate_hz
             h5dataFile.attrs["sample_rate"] = self.dataConfigs.sampleRate_hz
-            h5dataFile.attrs["units"] = self.dataConfigs.units
-            h5dataFile.attrs["orig_dataLen_pts"] = self.dataConfigs.origDataLen_pts
+            #h5dataFile.attrs["units"] = self.dataConfigs.units
+            #h5dataFile.attrs["orig_dataLen_pts"] = self.dataConfigs.origDataLen_pts
             h5dataFile.attrs["dataLen_pts"] = self.dataConfigs.dataLen_pts
-            h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
-            h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
+            #h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
+            #h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
             h5dataFile.attrs["chList"] = self.dataConfigs.chList
 
     import h5py
-
-    '''
-    Load the data by batch
-    with h5py.File(f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}", "w") as h5dataFile:
-        # Create resizable datasets
-        data_ds = h5dataFile.create_dataset("data", shape=(0, *data_np.shape[1:]), maxshape=(None, *data_np.shape[1:]), dtype="float32", chunks=True)
-        label_speed_ds = h5dataFile.create_dataset("labelsSpeed", shape=(0,), maxshape=(None,), dtype="float32", chunks=True)
-        label_subject_ds = h5dataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        subjects_ds = h5dataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        runs_ds = h5dataFile.create_dataset("runs", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
-        sTimes_ds = h5dataFile.create_dataset("sTimes", shape=(0,), maxshape=(None,), dtype="float16", chunks=True)
-    
-        # Write data in batches
-        for i in range(0, len(data_np), batch_size):
-            batch_data = data_np[i : i + batch_size]
-            batch_labels_speed = labelsSpeed_np[i : i + batch_size]
-            batch_labels_subject = labelsSubject_np[i : i + batch_size]
-            batch_subjects = subjects_np[i : i + batch_size]
-            batch_runs = runs_np[i : i + batch_size]
-            batch_sTimes = sTimes_np[i : i + batch_size]
-    
-            # Resize datasets before appending new batch
-            data_ds.resize(data_ds.shape[0] + batch_data.shape[0], axis=0)
-            label_speed_ds.resize(label_speed_ds.shape[0] + batch_labels_speed.shape[0], axis=0)
-            label_subject_ds.resize(label_subject_ds.shape[0] + batch_labels_subject.shape[0], axis=0)
-            subjects_ds.resize(subjects_ds.shape[0] + batch_subjects.shape[0], axis=0)
-            runs_ds.resize(runs_ds.shape[0] + batch_runs.shape[0], axis=0)
-            sTimes_ds.resize(sTimes_ds.shape[0] + batch_sTimes.shape[0], axis=0)
-    
-            # Append batch
-            data_ds[-batch_data.shape[0] :] = batch_data
-            label_speed_ds[-batch_labels_speed.shape[0] :] = batch_labels_speed
-            label_subject_ds[-batch_labels_subject.shape[0] :] = batch_labels_subject
-            subjects_ds[-batch_subjects.shape[0] :] = batch_subjects
-            runs_ds[-batch_runs.shape[0] :] = batch_runs
-            sTimes_ds[-batch_sTimes.shape[0] :] = batch_sTimes
-
-        # Store metadata as attributes
-        h5dataFile.attrs["sample_rate"] = self.dataConfigs.sampleRate_hz
-        h5dataFile.attrs["units"] = self.dataConfigs.units
-        h5dataFile.attrs["dataLen_pts"] = self.dataConfigs.dataLen_pts
-        h5dataFile.attrs["nSensors"] = self.dataConfigs.nSensors
-        h5dataFile.attrs["nTrials"] = self.dataConfigs.nTrials
-        h5dataFile.attrs["chList"] = self.dataConfigs.chList
-    '''
 
     def plotTime_FreqData(self, data, folder, freqYLim, subject=None, speed=None, fromRaw=False):
         if subject == None:
@@ -447,7 +472,8 @@ class dataLoader:
             echoStr = f"Full run, subject: {subject}"
         logger.info(f" -----  Saving Plots of {echoStr} ---------")
         plotDirNames = self.fileStruct.dataDirFiles.plotDirNames 
-        subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
+        #subFolder = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name 
+        subFolder = self.fileStruct.get_timeDData_dir()
         #subFolder = f"{subFolder}/{plotDirNames.baseDir}"
         timeDImageDir = f"{subFolder}/{folder}/{plotDirNames.time}"
         freqDImageDir = f"{subFolder}/{folder}/{plotDirNames.freq}"
@@ -465,7 +491,6 @@ class dataLoader:
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
         self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        #for row in range(data.shape[0]):
         if fromRaw:
             self.plotFromRaw(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
         else: 
@@ -475,14 +500,14 @@ class dataLoader:
     def plotFromDataSet(self, freqDImageDir, dataSet, freqYLim):
         desc_str = f"Creating image set for {freqDImageDir}" 
         logger.info(desc_str)
-        for row, (data_tensor, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
+        for row, (data_tensor, dataSet_name, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
             speed = label_speed.item()
             thisSubject = self.classes[subject]
             data_np = data_tensor.numpy()
             #thisRun = self.runList_raw[row]
             #startTime = self.startTimes_raw[row]
-            fileN = f"subject-{thisSubject}_run{run}_time-{startTime}"
-            title = f"subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
+            fileN = f"{dataSet_name}_subject-{thisSubject}_run{run}_time-{startTime}"
+            title = f"{dataSet_name}, subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
             #logger.info(f"**** Window {speed}, {label_subject}, {subject}, {run}, {startTime}")
             self.gen_TimeFreq_plots(fileN=fileN, title=title, dataRow=data_np, freqDImageDir=freqDImageDir, freqYLim=freqYLim)
 
@@ -519,9 +544,10 @@ class dataLoader:
         timeD = False
         if dataSetFile == None:
             timeD = True
-            fileName_str = self.fileStruct.dataDirFiles.saveDataDir
-            dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-            dataSetFile = f"{dataSaveDir_str}/{fileName_str.timeDData_file}"
+            #fileName_str = self.fileStruct.dataDirFiles.saveDataDir
+            #dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
+            #dataSetFile = f"{dataSaveDir_str}/{fileName_str.timeDData_file}"
+            dataSetFile = self.fileStruct.get_timeDData_file()
 
         logger.info(f"Loading dataset file: {dataSetFile}")
         dataSet = HDF5Dataset(dataSetFile) # Keep the full dataset in order so we can transform off of it
@@ -534,7 +560,7 @@ class dataLoader:
 
         self.createDataloaders(dataSet=dataSet, writeLog=writeLog)
 
-    def createDataloaders(self, dataSet, writeLog=True):
+    def createDataloaders_byWindow(self, dataSet, writeLog=True):
         # Split sizes
         trainRatio = self.configs['data']['trainRatio']
         train_size = int(trainRatio * len(dataSet))  # 80% for training
@@ -564,11 +590,182 @@ class dataLoader:
         self.logDataLoaders(self.dataLoader_v, "Validation")
 
         if writeLog: self.logDataShape()
-    
 
+    #import torch
+
+    def createDataloaders(self, dataSet, writeLog=True):
+        from collections import defaultdict
+        import random
+        from torch.utils.data import DataLoader, Subset
+
+        trainRatio = self.configs['data']['trainRatio']
+        valRatio = 1.0 - trainRatio
+    
+        logger.info( f"dataset: {len(dataSet)}, trainRatio: {trainRatio}, valRatio: {valRatio}")
+    
+        # ------------------------------------------------------------
+        # Group sample indices by full run: (dataset, subject, run)
+        # ------------------------------------------------------------
+        group_to_indices = defaultdict(list)
+    
+        for idx in range(len(dataSet)):
+            _, dataSet_name, _, _, subject, run, _ = dataSet[idx]
+    
+            if torch.is_tensor(subject):
+                subject = int(subject.item())
+            else:
+                subject = int(subject)
+    
+            if torch.is_tensor(run):
+                run = int(run.item())
+            else:
+                run = int(run)
+    
+            group_key = (dataSet_name, subject, run)
+            group_to_indices[group_key].append(idx)
+    
+        # ------------------------------------------------------------
+        # Build subject -> runs mapping: (dataset, subject) -> [group_keys]
+        # ------------------------------------------------------------
+        subject_to_groups = defaultdict(list)
+    
+        for group_key in group_to_indices.keys():
+            dataSet_name, subject, run = group_key
+            subject_key = (dataSet_name, subject)
+            subject_to_groups[subject_key].append(group_key)
+    
+        rng = random.Random(self.seed)
+        val_groups = set()
+    
+        # ------------------------------------------------------------
+        # Split runs per subject using the same approximate ratio
+        # ------------------------------------------------------------
+        for subject_key, groups in sorted(subject_to_groups.items()):
+            groups = sorted(groups)
+            shuffled_groups = groups.copy()
+            rng.shuffle(shuffled_groups)
+
+            logger.info( f"Subject: {subject_key}: unique runs={[g[2] for g in groups]}")
+    
+            nRuns = len(shuffled_groups)
+    
+            if nRuns == 0:
+                nValRuns = 0
+            elif nRuns == 1:
+                # you said fewer than 2 runs breaks, but so be it
+                nValRuns = 1
+            else:
+                nValRuns = round(nRuns * valRatio)
+                nValRuns = max(1, nValRuns)
+                nValRuns = min(nValRuns, nRuns - 1)  # leave at least one train run
+    
+            subject_val_groups = shuffled_groups[:nValRuns]
+            val_groups.update(subject_val_groups)
+    
+            trainRuns = nRuns - nValRuns
+
+            if nValRuns < 1 or trainRuns < 1:
+                raise ValueError(
+                    f"Invalid split for subject {subject_key}: "
+                    f"total runs={nRuns}, val runs={nValRuns}, train runs={trainRuns}. "
+                    f"Need at least 1 run in both train and validation."
+                )
+            
+            logger.info(
+                f"Subject: {subject_key}: total runs={nRuns}, val runs={nValRuns}, "
+                f"train runs={trainRuns}"
+            )
+    
+        # ------------------------------------------------------------
+        # Expand run groups back to sample indices
+        # ------------------------------------------------------------
+        train_indices = []
+        val_indices = []
+
+        for group_key, idx_list in group_to_indices.items():
+            if group_key in val_groups:
+                val_indices.extend(idx_list)
+            else:
+                train_indices.extend(idx_list)
+    
+        # Keep val ordered for downstream use
+        train_indices.sort()
+        val_indices.sort()
+
+        ### Test for overlap, should be none
+        def get_groups(indices):
+            groups = set()
+            for idx in indices:
+                _, dataSet_name, _, _, subject, run, _ = dataSet[idx]
+        
+                subject = int(subject.item()) if torch.is_tensor(subject) else int(subject)
+                run = int(run.item()) if torch.is_tensor(run) else int(run)
+        
+                groups.add((dataSet_name, subject, run))
+            return groups
+        
+        train_groups = get_groups(train_indices)
+        val_groups = get_groups(val_indices)
+        
+        overlap = train_groups & val_groups
+        
+        if overlap: raise ValueError(f"Train/val run overlap detected: {overlap}")
+        logger.info(
+            f"Grouped-by-run split complete: "
+            f"train samples={len(train_indices)}, val samples={len(val_indices)}"
+        )
+    
+        dataSet_t = Subset(dataSet, train_indices)
+        dataSet_v = Subset(dataSet, val_indices)
+
+        # ------------------------------------------------------------
+        # Create dataloaders
+        # ------------------------------------------------------------
+        if self.device == "mps":
+            self.dataLoader_t = DataLoader(
+                dataSet_t,
+                batch_size=self.batchSize,
+                num_workers=0,
+                shuffle=True
+            )
+            self.dataLoader_v = DataLoader(
+                dataSet_v,
+                batch_size=1,
+                num_workers=0,
+                shuffle=False
+            )
+        else:
+            nWorkers = 8
+            self.dataLoader_t = DataLoader(
+                dataSet_t,
+                batch_size=self.batchSize,
+                num_workers=nWorkers,
+                persistent_workers=True,
+                pin_memory=True,
+                shuffle=True
+            )
+            self.dataLoader_v = DataLoader(
+                dataSet_v,
+                batch_size=1,
+                num_workers=nWorkers,
+                persistent_workers=True,
+                pin_memory=True,
+                shuffle=False
+            )
+    
+        # Log the data
+        self.logDataLoaders(self.dataLoader_t, "Train")
+        self.logDataLoaders(self.dataLoader_v, "Validation")
+    
+        if writeLog:
+            self.logDataShape()
+    
     def logDataLoaders(self, dataSet, setName):
         # We can change the batch size per experiment, but probably won't
         csvFile = f"{self.fileStruct.expTrackFiles.expTrackDir_name}/DataLoader_Log_{setName}_bSize-{dataSet.batch_size}.csv"
+        if os.path.exists(csvFile):
+            logger.info(f"DataLoader log file already exists: {csvFile}, skipping log")
+            return
         logger.info(f"Logging DataLoader info to: {csvFile}")
         logger.info(f"DataLoader {setName}: {len(dataSet)}, batch size: {dataSet.batch_size}, batches per epoch: {len(dataSet)}")
         #logger.info(f"DataLoader Val: {len(self.dataLoader_v.dataset)}, batch size: {self.dataLoader_v.batch_size}, batches per epoch: {len(self.dataLoader_v)}")   
@@ -578,24 +775,25 @@ class dataLoader:
         csvWriter.writerow([f"batches per epoch: {len(dataSet)}"])
 
         csvWriter.writerow(['Dataset', 'Batch', 'Subject (string)', 'label subject (int)', 'run', 'window start time (seconds)', 'speed (m/s)'])
-        for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in dataSet:
+        for data, dataSetNames, labelsSpeeds, labelsSubjects, subjects, runs, sTimes in dataSet:
             #Validation is batch size 1, so we can log the subject, run, time, and speed for each batch
             #Data set, Subject, run, <time>, speed
-            for i in range(data.shape[0]):
-                subject = self.classes[subjects[i].item()]
-                labelsSubject = labelsSubject[i].item()
+            #logger.info(f"This data batch has {data.shape[0]} samples, batch size: {dataSet.batch_size}")
+            for i in range(data.shape[0]): # Loop through the batchs, and log each sample
+                dataSetName = str(dataSetNames[i])
+                subject = subjects[i].item()
+                #subject = self.classes[subjects[i].item()]
+                labelsSubject = labelsSubjects[i].item()
                 run = runs[i].item()
                 sTime = sTimes[i].item()
-                labelSpeed = labelsSpeed[i].item()
-                #logger.info(f"Dataset: Validation, Subject: {subject}, label subject: {labelsSubject}, run: {run}, window start time: {sTime}, speed: {labelSpeed}")
-                csvWriter.writerow([f"{self.dataSetName}", f"{i+1}", f"{subject}", f"{labelsSubject}", f"{run}", f"{sTime}", f"{labelSpeed}"])
+                labelSpeed = labelsSpeeds[i].item()
+                csvWriter.writerow([dataSetName, i+1, subject, labelsSubject, run, sTime, labelSpeed])
 
-    def windowData(self, data:np.ndarray, subject, speed):
+    def windowData(self, data:np.ndarray, dataSetName, subject, speed):
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
-        # Strip the head/tails
+        #runs = np.array([], dtype=np.int32)
 
-        #CSVdataFile= f"{self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name}/{self.fileStruct.dataDirFiles.saveDataDir.timeDDataSumary}"
-        with open(self.CSVdataFile , 'a', newline='') as csvFile:
+        with open(self.fileStruct.get_timeDDataSum_file() , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
             #for i in range(data.shape[1]):
             #    thisCh = self.dataConfigs.chList[i]
@@ -612,10 +810,11 @@ class dataLoader:
             windowsWithData = 0
 
             for run in range(runsEnd): # Have the ability to limit the number of runs we use for debugging
+                windowsWithData_perRun = 0 # How many windows of data we have for this run that are in the walking time, used for debugging and logging
                 nWindows = 0 #How many windows of data we have for this run: used for debugging and logging
 
                 # Sort out where the no-step data and walking data are
-                noStepStart_sec, noStepEnd_sec, data_start_sec, data_end_sec, skipRun = self.getRunConfig(subject, run)
+                noStepStart_sec, noStepEnd_sec, data_start_sec, data_end_sec, skipRun = self.getRunConfig(dataSetName=dataSetName, subject=subject, run=run)
                 if skipRun: 
                     logger.info(f"%%% Skipping subject: {subject}, run: {run} due to data marked bad in run peramiters file")
                     continue
@@ -642,18 +841,6 @@ class dataLoader:
                     blockEndPoint = noStepEnd_pts
 
                 logger.info(f"Subject: {subject}, run: {run}, noStepStart_sec: {noStepStart_sec}, noStepEnd_sec: {noStepEnd_sec}, data_start_sec: {data_start_sec}, data_end_sec: {data_end_sec}, windowStartPoint: {windowStartPoint}, blockEndPoint: {blockEndPoint}")
-
-                ''' Depricated 
-                #dataPtsAfterStomp = -1 # -1: no stomp yet, then = #since stomp
-                if self.stompFromFile:
-                    #print(f"Subject: {subject}, run: {run}")
-                    sTime_sec, skipRun = self.getRunConfig(subject, run)
-                    #print("---------------------")
-                    logger.info(f"Subject: {subject}, run: {run}, sTime: {sTime_sec}, skipRun: {skipRun}")
-                    windowStartPoint = sTime_sec * self.dataConfigs.sampleRate_hz
-                else:
-                    windowStartPoint = 0 #points
-                '''
 
 
                 # Get a baseline RMS for this run the frist window
@@ -682,8 +869,8 @@ class dataLoader:
                         break # No point in going past the data end time
 
                     # If we are limiting the number of windows, check that
-                    if self.configs['data']['limitWindowLen'] > 0:
-                        if windowsWithData >= self.configs['data']['limitWindowLen']: 
+                    if self.configs['data']['limitWindowsPerRun'] > 0:
+                        if windowsWithData_perRun >= self.configs['data']['limitWindowsPerRun']: 
                             #logger.info(f"Ending sub: {subject}, run: {run}, window: {nWindows}")
                             #csvFile.write("\n")
                             break
@@ -720,16 +907,6 @@ class dataLoader:
 
                     rms_ratio = rms_allCh/rms_BaseLine  # The ratio of the RMS of the data to the baseline for step/no step
 
-                    # Look for stomp, and keeps track of how many windows since the stomp
-                    # The detection of no step is done in getSubjectLabel
-                    if self.stompFromFile == False:
-                        if self.stompThresh == 0: nSkips = 0
-                        else                    : nSkips = 3
-                        thisSubjectId, dataPtsAfterStomp = self.findDataStart(dataPtsAfterStomp, rms_ratio, nSkips)
-                    else: 
-                        dataPtsAfterStomp = 1
-                        nSkips = 0
-                    #print(f"dataRunPerams: {self.dataRunPerams}, nSkips: {nSkips}")
                     '''
 
                     '''
@@ -760,7 +937,8 @@ class dataLoader:
                     #logger.info(f"thisDataBlock: {thisDataBlock.shape}")
                     #if False:
                     if (not self.regression) or (thisSubjectId > 0): # If classification, keep all data, if regression, only keep data with a step
-                        windowsWithData += 1
+                        windowsWithData += 1 #Keep this for the error condition of a subject with no data
+                        windowsWithData_perRun += 1
                         #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                         thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
 
@@ -819,11 +997,11 @@ class dataLoader:
 
         return thisSubjectID, dataPtsAfterStomp
 
-    def getSubjectData(self, data_file_name):
+    def getSubjectData(self, data_file_name, dataSetName):
         data_file_name = glob.glob(data_file_name)
         if not data_file_name:
             logger.error(f"Data file not found for pattern: {data_file_name}")
-            return
+            return None, 0
             #raise FileNotFoundError(f"Data file not found for pattern: {data_file_name}")
         data_file_name = data_file_name[0]  # Take the first matching file
         logger.info(f"Loading data file: {data_file_name}")
@@ -841,16 +1019,27 @@ class dataLoader:
             preTrigger_s, _ = self.get_peram(filePerams, 'pre_trigger')
             print(f"   *******")
             print(f"Record Len: {recordLen_s} sec, pre trigger: {preTrigger_s}")
-            subID, _ = self.get_peram(filePerams, 'Subject_ID', asStr=True)
-            subHeight, hUnits = self.get_peram(filePerams, 'Height', asStr=True) 
-            subAge, aUnits = self.get_peram(filePerams, 'Age', asStr=True) 
-            subWeight, wUnits = self.get_peram(filePerams, 'Weight', asStr=True) 
-            subShoe, _ = self.get_peram(filePerams, 'shoe-type', asStr=True) 
+            subID, _ = self.get_peram(filePerams, 'Subject_ID' )
+            subHeight, hUnits = self.get_peram(filePerams, 'Height') 
+            subAge, aUnits = self.get_peram(filePerams, 'Age') 
+            subWeight, wUnits = self.get_peram(filePerams, 'Weight') 
+            subShoe, _ = self.get_peram(filePerams, 'shoe-type') 
             print(f"id: {subID}, height: {subHeight} {hUnits}, age: {subAge} {aUnits}, weight: {subWeight} {wUnits}, shoe: {subShoe}")
             print(f"   *******")
-            print(self.CSVdataFile)
-            with open(self.CSVdataFile , 'a', newline='') as csvFile:
-                csvFile.write(f"id: {subID}, height: {subHeight} {hUnits}, age: {subAge} {aUnits}, weight: {subWeight} {wUnits}, shoe: {subShoe}\n")
+            timeDDataSum_file = self.fileStruct.get_timeDDataSum_file()
+            print(timeDDataSum_file)
+
+            #dataBlockSize = file['experiment/data'].shape 
+            #self.dataConfigs.origDataLen_pts = dataBlockSize[2] # do after downsample
+            #self.dataConfigs.nSensors = dataBlockSize[1]
+            #nTrials = dataBlockSize[0]
+
+            general_parameters = file['experiment/general_parameters'][:]
+            sRate, units = self.get_peram(general_parameters, 'fs')
+            sRate = float(sRate)
+
+            with open(timeDDataSum_file , 'a', newline='') as csvFile:
+                csvFile.write(f"Data set: {dataSetName}, dataSample rate: {sRate} {units}, id: {subID}, height: {subHeight} {hUnits}, age: {subAge} {aUnits}, weight: {subWeight} {wUnits}, shoe: {subShoe}\n")
 
             # Get the data from the datafile
             #for ch in self.sensorChList[sensor]-1: 
@@ -865,26 +1054,68 @@ class dataLoader:
 
             logger.info(f"get subject data shape: {np.shape(accelerometer_data)} ")
 
-            if self.downSample > 1:
-                # must be prior to calculating the info
-                accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
-            if self.dataConfigs.sampleRate_hz == 0: #only do this once, it's 0, we have not done it yet
-                # get the peramiters if needed
-                # ex: Sample Freq
-                self.getDataInfo(file) # gets the sample rate from the file
-                if self.downSample > 1: # keep all the downsample calcs in one place
-                    self.dataConfigs.sampleRate_hz /= self.downSample
-                    logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
+            #if self.downSample > 1:
+            #    # must be prior to calculating the info
+            #    accelerometer_data, _ = self.downSampleData(accelerometer_data)
 
-                logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
-                self.dataConfigs.dataLen_pts = accelerometer_data.shape[2]
-                self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
-                self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
-                logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
+            #if self.dataConfigs.sampleRate_hz == 0: #only do this once, it's 0, we have not done it yet
+            #    # get the peramiters if needed
+            #    # ex: Sample Freq
+            #    self.getDataInfo(file) # gets the sample rate from the file
+            #    if self.downSample > 1: # keep all the downsample calcs in one place
+            #        self.dataConfigs.sampleRate_hz /= self.downSample
+            #        logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
 
-        return accelerometer_data 
+            #    logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
+            #    self.dataConfigs.dataLen_pts = accelerometer_data.shape[2]
+            #    self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
+            #    self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
+            #    logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
 
+        return accelerometer_data, sRate
+    
+    def setDataShape(self, data):
+        logger.info(f"window len: {self.windowLen_s}, step size: {self.stepSize_s}, sample Rate: {self.dataConfigs.sampleRate_hz}")
+
+        self.dataConfigs.dataLen_pts = data.shape[2]
+        self.windowLen = int(self.windowLen_s * self.dataConfigs.sampleRate_hz)
+        self.stepSize  = int(self.stepSize_s  * self.dataConfigs.sampleRate_hz)
+        logger.info(f"window len: {self.windowLen}, step size: {self.stepSize}")
+
+    def downSampleData(self, data, oldRate, newRate):
+        from scipy.signal import resample_poly
+        from fractions import Fraction
+        logger.info(f"Before downsample shape: {np.shape(data)}")
+    
+        if newRate <= 0 or oldRate <= 0:
+            raise ValueError(f"Sample rates must be positive. Got oldRate={oldRate}, newRate={newRate}")
+    
+        nTrials, nCh, timePoints = data.shape
+    
+        # Represent newRate / oldRate as a rational up/down factor
+        ratio = Fraction(str(newRate / oldRate)).limit_denominator(10000)
+        up = ratio.numerator
+        down = ratio.denominator
+    
+        logger.info(f"Resampling from {oldRate} Hz to {newRate} Hz using up={up}, down={down}")
+    
+        resampled_trials = []
+        for trial in range(nTrials):
+            resampled_channels = []
+            for ch in range(nCh):
+                y = resample_poly(data[trial, ch], up, down)
+                resampled_channels.append(y)
+            resampled_trials.append(np.stack(resampled_channels, axis=0))
+    
+        downSampled_data = np.stack(resampled_trials, axis=0)
+    
+        logger.info(f"After downsample shape: {np.shape(downSampled_data)}")
+        logger.info(f"Downsampled rate: {newRate} Hz")
+    
+        return downSampled_data 
+
+    '''
     def downSampleData(self, data):
         from scipy.signal import decimate
 
@@ -904,24 +1135,13 @@ class dataLoader:
         logger.info(f"After downsample shape: {np.shape(downSampled_data)} ")
         logger.info(f"Downsampled rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
         return downSampled_data, self.dataConfigs.sampleRate_hz / self.downSample
-
-    '''
-    def getSubjectLabel(self, subjectNumber, vals):
-        #Vals is currently the RMS ratio of the data to the baseline
-        # TODO: get from config
-        label = 0
-
-        #print(f"vals: {vals}")
-        #If any ch is above the thresh, we call it a step
-        for chVal in vals:
-            if chVal > self.dataThresh:
-                label = self.getSubjectNumber(subjectNumber)
-                break
-        return label
     '''
 
     def getSubjectNumber(self, subjectName):
-        return(self.classes.index(subjectName))
+        if subjectName == 'No Step':
+            return 0  # No step is subject 0
+        return int(subjectName)
+        #return(self.classes.index(subjectName))
 
     def getSpeedLabels(self, csv_file_name ):
         csv_file_name = glob.glob(csv_file_name)
@@ -962,6 +1182,7 @@ class dataLoader:
         with open(csv_file_name, mode='r') as runPeramsFile:
             runPeram_reader = csv.DictReader(runPeramsFile)
             data = []
+            logger.info(f"FileName: {csv_file_name}")
             for row in runPeram_reader:
                 subjects = row["Subject"] 
                 runs = int(row["Run"])
@@ -977,6 +1198,8 @@ class dataLoader:
                     skipRun = int(row["Skip Run"])
                 else:
                     skipRun = 0   # se/Stomnsible default
+
+                #logger.info(f"Subject: {subjects}, run: {runs}, noStep_start: {noStep_start}, noStep_end: {noStep_end}, data_start: {data_start}, data_end: {data_end}, skipRun: {skipRun}")    
                 data.append((subjects, runs, noStep_start, noStep_end, data_start, data_end, skipRun))       
 
         runPerams_np = np.array(data, dtype=[("subject_num", "i4"), 
@@ -986,44 +1209,49 @@ class dataLoader:
                                              ("data_start", "f4"), 
                                              ("data_end", "f4"), 
                                              ("skipRun", "i4")])
+        logger.info(f"Run perams size: {runPerams_np.shape}, {runPerams_np.dtype}")
         return runPerams_np
 
-    def getRunConfig(self, subject, run):
+    def get_dataSetConfigs(self):
+        dataConfigFile = f"{self.configs['data']['dataInDir']}/trialConfigs.csv"
+
+        dataSetConfigs = {}
+
+        with open(dataConfigFile, newline='') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                dataSetConfigs[row["Directory"]] = DatasetInfo(
+                    vibData=row["Vibration Data"],
+                    apdmData=row["APDM Data"],
+                    sRate=float(row["Sample Rate"])
+                )
+
+        return dataSetConfigs
+
+    def getRunConfig(self, dataSetName, subject, run):
 
         subjectNumber = self.getSubjectNumber(subject)
 
-        #logger.info(f"Getting stomp time for subject: {subjectNumber}, run: {run}")
-        mask = (self.runPerams_np["subject_num"] == subjectNumber) & (self.runPerams_np["run_num"] == run)
-        noStepStart = self.runPerams_np["noStep_start"][mask][0]
-        noStepEnd = self.runPerams_np["noStep_end"][mask][0]
-        dataStart = self.runPerams_np["data_start"][mask][0]
-        dataEnd = self.runPerams_np["data_end"][mask][0]
-        skipRun = self.runPerams_np["skipRun"][mask][0]
+        #logger.info(f"Getting Config for subject: {subjectNumber}, run: {run}")
+        mask = (self.dataSetInfo[dataSetName]["runPerams"]["subject_num"] == subjectNumber) & (self.dataSetInfo[dataSetName]["runPerams"]["run_num"] == run)
+        noStepStart = self.dataSetInfo[dataSetName]["runPerams"]["noStep_start"][mask][0]
+        noStepEnd = self.dataSetInfo[dataSetName]["runPerams"]["noStep_end"][mask][0]
+        dataStart = self.dataSetInfo[dataSetName]["runPerams"]["data_start"][mask][0]
+        dataEnd = self.dataSetInfo[dataSetName]["runPerams"]["data_end"][mask][0]
+        skipRun = self.dataSetInfo[dataSetName]["runPerams"]["skipRun"][mask][0]
 
         return noStepStart, noStepEnd, dataStart, dataEnd, skipRun
 
-
-    def getDataInfo(self, file):
-        general_parameters = file['experiment/general_parameters'][:]
-
-        #logger.info(f"Data File parameters: {general_parameters}")
-        self.dataConfigs.sampleRate_hz = self.configs['data']['sampleRate']
-        if self.dataConfigs.sampleRate_hz == "None" or self.dataConfigs.sampleRate_hz == 0:
-            self.dataConfigs.sampleRate_hz, self.dataConfigs.units = self.get_peram(general_parameters, 'fs')
-        else:
-            self.dataConfigs.units = "Hz"
-
-        #logger.info(f"Data cap rate: {self.dataConfigs.sampleRate_hz} {self.dataConfigs.units}")
-
-        # Keep the original sample rate
-        self.dataConfigs.origSRate_hz = self.dataConfigs.sampleRate_hz
-
+    '''
+    def getDataInfo(self ):
         dataBlockSize = file['experiment/data'].shape 
         #logger.info(f"File Size: {dataBlockSize}")
-        self.dataConfigs.origDataLen_pts = dataBlockSize[2] # do in getSubjecteData after downsample
-        self.dataConfigs.nSensors = dataBlockSize[1]
-        self.dataConfigs.nTrials = dataBlockSize[0]
+        self.dataConfigs.origDataLen_pts = dataBlockSize[2] # do after downsample
+        #self.dataConfigs.nSensors = dataBlockSize[1]
+        #self.dataConfigs.nTrials = dataBlockSize[0]
         #logger.info(f"nsensor: {self.nSensors}, nTrials: {self.nTrials}")
+    '''
 
 
     # If you don't send the normClass, it will calculate based on the data
@@ -1227,7 +1455,8 @@ class dataLoader:
             writer.writerow(['min', 'max', 'mean', 'std', 'scale'])
             writer.writerow([scaler.min, scaler.max, scaler.mean, scaler.std, scaler.scale])
         logger.info(f"Data: min: {scaler.min}, max: {scaler.max}, mean: {np.abs(scaler.mean)}, std: {scaler.std}, scale: {scaler.scale}")
-    
+
+    ''' this is not how it works anymore
     def getThisWindowData(self, dataumNumber, ch=0 ):
         # If ch is 0, then we want all the channels
 
@@ -1245,6 +1474,7 @@ class dataLoader:
         #logger.info(f"thisData:{type(thisData)} {thisData.shape}, subjectLabel: {subjectLabel}, run: {run}, timeWindow: {timeWindow}, channel: {ch}")
 
         return thisData, run, timeWindow, subjectLabel
+    ''' 
     
     def getFFTData(self, data):
         fftClass = jFFT_cl()
@@ -1258,7 +1488,6 @@ class dataLoader:
             freqData = fftClass.calcFFT(windowedData) #Mag, phase
             fftData[ch] = freqData[0] # nomed to parseval in jFFT
             #fftData[ch] = freqData[0] / np.sqrt(len(freqData[0])) # Parsevals's theorem
-            #fftData[ch] = freqData[0] * self.downSample # Correct for downsampleing
 
         return freqList, fftData
 
@@ -1266,9 +1495,9 @@ class dataLoader:
         # Plot the windowed data
         if self.configs['debugs']['generateTimeFreqWindowPlots']:
             yLim = configs['plts']['yLim_freqD']
-            self.plotTime_FreqData(data=self.data_raw, freqYLim=yLim, folder="plots_byWindow")
+            self.plotTime_FreqData(data=None, freqYLim=yLim, folder="plots_byWindow")
 
-    def writeToCWTDataFile(self, filename, data, label_speed, label_subject, subject, run, startTime):
+    def writeToCWTDataFile(self, filename, data, dataSet_name, label_speed, label_subject, subject, run, startTime):
         # Create HDF5 file with expandable datasets
         label_speed = label_speed.reshape(-1,1) #go from (num,) to (num,1)
         #logger.info(f"Data type: {type(data)}, shape {data.shape} ")
@@ -1289,6 +1518,8 @@ class dataLoader:
                                            dtype=dtype,
                                            chunks=True)
 
+                dt = h5py.string_dtype(encoding='utf-8')
+                cwtDataFile.create_dataset("dataSetName", shape=(0,), maxshape=(None,), dtype=dt, chunks=True)
                 cwtDataFile.create_dataset("labelsSpeed", shape=(0,1), maxshape=(None,1), dtype="float32", chunks=True)
                 cwtDataFile.create_dataset("labelsSubject", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
                 cwtDataFile.create_dataset("subjects", shape=(0,), maxshape=(None,), dtype="int32", chunks=True)
@@ -1297,6 +1528,7 @@ class dataLoader:
 
             # Get datasets
             data_ds = cwtDataFile["data"]
+            dataSetName_ds = cwtDataFile["dataSetName"]
             label_speed_ds = cwtDataFile["labelsSpeed"]
             label_subject_ds = cwtDataFile["labelsSubject"]
             subjectes_ds = cwtDataFile["subjects"]
@@ -1307,6 +1539,7 @@ class dataLoader:
             #new_index = data_ds.shape[0]  # current number of trials
             #data_ds.resize(new_index + 1, axis=0)
             data_ds.resize(data_ds.shape[0] + 1, axis=0)
+            dataSetName_ds.resize(dataSetName_ds.shape[0] + 1, axis=0)
             label_speed_ds.resize(label_speed_ds.shape[0] + 1, axis=0)
             label_subject_ds.resize(label_subject_ds.shape[0] + 1, axis=0)
             subjectes_ds.resize(subjectes_ds.shape[0] + 1, axis=0)
@@ -1319,6 +1552,7 @@ class dataLoader:
             #data_ds[new_index:new_index+1, ...] = data[None, ...]
 
             data_ds[-1] = data
+            dataSetName_ds[-1] = dataSet_name
             label_speed_ds[-1] = label_speed
             label_subject_ds[-1] = label_subject
             subjectes_ds[-1] = subject
@@ -1326,14 +1560,16 @@ class dataLoader:
             sTimes_ds[-1] = startTime
 
 
+    #TODO: CWT now has a pointer to the dataset, so this should be moved there.
     def generateCWTDataByWindow(self, cwt_class:"cwt", logScaleData:bool=False):
             logger.info(f"  -----------------------   Generate CWT/Spectrogram Data  -------------------------")
             # plot the cwt data
-            waveletDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir
-            subFolder =waveletDir.waveletDir_name # We set up this dir when we inited the CWT
+            #waveletDir = self.fileStruct.dataDirFiles.saveDataDir.waveletDir
+            #subFolder =waveletDir.waveletDir_name # We set up this dir when we inited the CWT
+            cwtFolder = self.fileStruct.getCWT_dir(cwt_class)
 
             # Generate the CWT data
-            cwtFile = f"{waveletDir.waveletDir_name}/{waveletDir.cwtDataSet_Name}"
+            cwtFile = f"{cwtFolder}/{self.fileStruct.cwtDataSet_Name}"
             logger.info(f"Checking for: {cwtFile}")
             filePath = Path(cwtFile)
             if filePath.exists() == False:
@@ -1344,7 +1580,7 @@ class dataLoader:
 
             # Plot the saved images
             if self.configs['debugs']['generateCWTPlots']:
-                timeFFTCWT_dir= f"{subFolder}/{self.fileStruct.dataDirFiles.plotDirNames.time_fft_cwt}"
+                timeFFTCWT_dir= f"{cwtFolder}/{self.fileStruct.time_fft_cwt}"
                 if checkFor_CreateDir(timeFFTCWT_dir, echo=True) == False:
                     dataPlotter = saveCWT_Time_FFT_images(configs, data_preparation=self, cwt_class=cwt_class, expDir=timeFFTCWT_dir)
                     dataPlotter.generateAndSaveImages(logScaleData)
@@ -1406,7 +1642,7 @@ class dataLoader:
         M2_image = 0
         nElements = 0
 
-        for i, (data_tensor, label_speed, label_subject, subject, run, startTime) in  \
+        for i, (data_tensor, dataSet_name, label_speed, label_subject, subject, run, startTime) in  \
                   tqdm(enumerate(self.timeDDataSet), total= len(self.timeDDataSet), desc=f"Generating {cwt_class.wavelet_name} Data", unit="Window", file=sys.stdout):
             data = data_tensor.numpy()
             #logger.info(f"Transforming data: {i}, {data.shape}")
@@ -1417,7 +1653,7 @@ class dataLoader:
                 thisCwtData_raw, cwtFrequencies = cwt_class.cwtTransform(data, debug=False)
             #logger.info(f"CWT data type: {type(thisCwtData_raw)}, shape: {thisCwtData_raw.shape}")
             #logger.info(f"CWT max: {np.max(thisCwtData_raw)}")
-            self.writeToCWTDataFile(saveFile, thisCwtData_raw, label_speed, label_subject, subject, run, startTime)
+            self.writeToCWTDataFile(saveFile, thisCwtData_raw, dataSet_name, label_speed, label_subject, subject, run, startTime)
 
             nElements += thisCwtData_raw.size
             min = np.min(thisCwtData_raw)
@@ -1488,13 +1724,13 @@ class dataLoader:
 
     def getPeramsFromHDF5Dataset(self, dataSet:HDF5Dataset, dataSetFile=False, debug=False):
         HDF5Configs = dataSet.getConfig()
-        self.dataConfigs.origSRate_hz = HDF5Configs["orig_sample_rate"]
+        #self.dataConfigs.origSRate_hz = HDF5Configs["orig_sample_rate"]
         self.dataConfigs.sampleRate_hz = HDF5Configs["sample_rate"]
-        self.dataConfigs.units = HDF5Configs["units"]
-        self.dataConfigs.origDataLen_pts = HDF5Configs["orig_dataLen_pts"]
+        #self.dataConfigs.units = HDF5Configs["units"]
+        #self.dataConfigs.origDataLen_pts = HDF5Configs["orig_dataLen_pts"]
         self.dataConfigs.dataLen_pts = HDF5Configs["dataLen_pts"]
-        self.dataConfigs.nSensors = HDF5Configs["nSensors"]
-        self.dataConfigs.nTrials = HDF5Configs["nTrials"]
+        #self.dataConfigs.nSensors = HDF5Configs["nSensors"]
+        #self.dataConfigs.nTrials = HDF5Configs["nTrials"]
         self.dataConfigs.chList = HDF5Configs["chList"]
         logger.info(f"Loaded Peraimiters from HDF5: srate: {self.dataConfigs.sampleRate_hz}")
 

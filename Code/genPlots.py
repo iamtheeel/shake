@@ -248,7 +248,7 @@ class dataPlotter_class():
         self.plotOrShow(plt, fig, fileName, show)
         #logger.info(f"thisMax: {thisMax}")
     
-    
+    '''
     def plotFFT(self,    data,    saveStr, plotTitle_str, show=False):
         xlim = [0, 10]
         #ch, datapoint
@@ -284,7 +284,9 @@ class dataPlotter_class():
         else:
             plt.savefig(fileName)
         plt.close()
+    '''
 
+'''
 def plotCombined(time, acclData, runStr, plotTitle_str):
     # Plotting the data with time on the x-axis
     fig, axs = plt.subplots(4, 4, figsize=(12,12)) #figsize in inches?
@@ -354,39 +356,6 @@ def plotCombined(time, acclData, runStr, plotTitle_str):
     axs[row, 2].set_title(f'Ch {sensor+1}, x,y,z')
     axs[row, 2].set_ylim(yLim)
             
-    '''
-    sensor += 1
-    axs[row, 1].plot(time, acclData[sensor])
-    axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(yLim)
-    sensor += 1
-    axs[row, 2].plot(time, acclData[sensor])
-    axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(yLim)
-    sensor += 1
-    axs[row, 3].plot(time, acclData[sensor])
-    axs[row, 3].set_title(f'Sensor {sensor+1}')
-    axs[row, 3].set_ylim(yLim)
-
-    row +=1
-    sensor += 1
-    axs[row, 0].plot(time, acclData[sensor])
-    axs[row, 0].set_title(f'Sensor {sensor+1}')
-    axs[row, 0].set_ylim(yLim)
-    sensor += 1
-    axs[row, 1].plot(time, acclData[sensor])
-    axs[row, 1].set_title(f'Sensor {sensor+1}')
-    axs[row, 1].set_ylim(yLim)
-    sensor += 1
-    axs[row, 2].plot(time, acclData[sensor])
-    axs[row, 2].set_title(f'Sensor {sensor+1}')
-    axs[row, 2].set_ylim(yLim)
-    sensor += 1
-    axs[row, 3].plot(time, acclData[sensor])
-    axs[row, 3].set_title(f'Sensor {sensor+1}')
-    axs[row, 3].set_ylim(yLim)
-    '''
-            
     # Save the plots
     pltSaveDir = Path(f"{plotDir}/combined")
     pltSaveDir.mkdir(parents=True, exist_ok=True)
@@ -398,6 +367,7 @@ def plotRunFFT(data, samRate, subject, timeStart, name):
     #run, ch, datapoint
     for runNum, runData in enumerate(data):
         plotFFT(runData, samRate, subject, runNum, timeStart, name)
+'''
 
 
 class saveCWT_Time_FFT_images():
@@ -491,7 +461,7 @@ class saveCWT_Time_FFT_images():
 
         return fig, axs
     
-    def setUpInfoBox(self, axs, run, timeWindow, subjectLabel):
+    def setUpInfoBox(self, axs, run, timeWindow, label_subject, dataSetName, labelSpeed):
         # Add text box with run info
 
         normStr = f'norm: {self.data_preparation.dataNormConst.type}'
@@ -503,7 +473,9 @@ class saveCWT_Time_FFT_images():
 
         textstr = f'Run: {run}\n' \
                   f'Time Window: {timeWindow:.3f}\n' \
-                  f'Subject: {subjectLabel}\n' \
+                  f'Data Set: {dataSetName}\n' \
+                  f'Subject: {label_subject}\n' \
+                  f'Speed: {labelSpeed}\n' \
                   f'cwt: {self.cwt_class.wavelet_name}\n' \
                   f'{normStr}\n' \
                   f'Solution: {self.regClasStr}'
@@ -653,19 +625,18 @@ class saveCWT_Time_FFT_images():
 
     def generateAndSaveImages(self, logScaleData):
         #dataEnd = self.data_preparation.data_raw.shape[0]
-        for thisWindowNum, (data_torch, label_speed, subjectLabel, subject, run, timeWindow) in  \
+        for thisWindowNum, (data_torch, dataSetName, label_speed, label_subject, subject, run, timeWindow) in  \
                   tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Plotting CWT/Spectragram Data", unit="Window", file=sys.stdout):
 
             data = data_torch.numpy()
-            #data, run, timeWindow, subjectLabel = self.data_preparation.getThisWindowData(dataumNumber, ch=0) #If 0, get all channels
             # Get the fft data and labels
             time = getTime(data.shape[1], self.data_preparation.dataConfigs.sampleRate_hz)
             freqList, fftData = self.data_preparation.getFFTData(data)
 
             fig, axs = self.setupFigure()
-            self.setUpInfoBox(axs, run, timeWindow, subjectLabel)
+            self.setUpInfoBox(axs, run, timeWindow, label_subject, dataSetName, label_speed)
 
-            #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, subjectLabel: {subjectLabel}")
+            #print(f"data: {data.shape}, time: {time.shape}, run: {run}, timeWindow: {timeWindow}, label_subject: {label_subject}")
             #print(f"fftData: {fftData.shape}, freqList: {freqList.shape}")
             for thisChNum, chData in enumerate(data):
                 thisCh = sensorChList[thisChNum]
@@ -710,7 +681,7 @@ class saveCWT_Time_FFT_images():
 
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
-            fileName = f"{thisWindowNum:04d}_ch-{pltCh_Str}_subject-{subjectLabel}_run-{run}_timeStart-{timeWindow}.png"
+            fileName = f"{thisWindowNum:04d}__{dataSetName}_ch-{pltCh_Str}_subject-{label_subject}_run-{run}_timeStart-{timeWindow}.png"
             #filePath = os.path.join(self.animDir, fileName)
             filePath = f"{self.animDir}/{fileName}"
             if self.showImageNoSave:

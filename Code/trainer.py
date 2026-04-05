@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 class Trainer:
     def __init__(self,model, device, dataPrep:"dataLoader", fileStru:"fileStruct", configs, expNum, 
-                 cwtClass:cwt, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
+                 wavelet_name, scaleStr, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise, epochs):
 
         logger.info(f"Initializing Trainer: device: {device}, model: {model.__class__.__name__}, loss: {lossFunction}, optimizer: {optimizer}, lr: {learning_rate}, weight_decay: {weight_decay}, gradiant_noise: {gradiant_noise}, epochs: {epochs}")
         
@@ -80,10 +80,9 @@ class Trainer:
         torch.backends.cudnn.benchmark = False
 
         self.set_training_config()
-        self.cwtClass = cwtClass
         waveletStr = ""
-        if cwtClass.wavelet_name != "None":
-            waveletStr = f"{cwtClass.wavelet_name}, "
+        if wavelet_name != "None":
+            waveletStr = f"{wavelet_name}, "
 
         #add if it is folded or no, for time domain
         self.hyperPeramStr = f"exp:{self.expNum}, {waveletStr}scale: {scaleStr}," \
@@ -183,9 +182,14 @@ class Trainer:
             epoch_StartTime = timer()
             epoch_squared_diff = []
 
+            #from itertools import chain
+            #combined_dataLoader_t = chain.from_iterable(prep.dataLoader_t for prep in self.dataPrep.values())
+            ## This won't work. We need to loop through the data prep separately so we can log the subject and run info, and also because they might have different numbers of batches.
+            ## We have to look at the norms for each dataPrep
+
             #for data, labels, subjects  in self.train_data_loader: # Batch
             batchStartTime = time.time()
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False, file=sys.stdout):
+            for data, datasetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_t, desc="Epoch Progress", unit="batch", leave=False, file=sys.stdout):
                 dataLoadTime = time.time() - batchStartTime
                 #logger.info(f"Data Load time: {dataLoadTime}")
                 #logger.info(f" data, shape: {data.shape}, type:{type(data)}, {type(data[0][0][0][0].item())}")
@@ -392,7 +396,7 @@ class Trainer:
             nData = len(self.dataPrep.dataLoader_v)
             #print(f"Test Data len: {nData}")
 
-            for data, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window", file=sys.stdout ):
+            for data, dataSetName, labelsSpeed, labelsSubject, subjects, runs, sTimes in tqdm(self.dataPrep.dataLoader_v, desc=f"Validation Progress epoch: {epochNum}", unit="Time Window", file=sys.stdout ):
                 # Not seting the datanormConst is somehow overwriting it?? Makes no sense
                 data, self.dataPrep.dataNormConst = self.dataPrep.scale_data(data=data, writeToLog=False, norm=self.dataPrep.dataNormConst, debug=False)
                 if self.regression:
@@ -496,7 +500,7 @@ class Trainer:
         #print(f"pred: {y_preds.shape}, targ: {y_targs.shape}, combined: {y_preds_targets.shape}")
         with open(f"{self.logDir}/{epochNum}_validationResults_{self.expNum}.csv", 'w', newline='') as csvFile:
             writer = csv.writer(csvFile, dialect='unix')
-            writer.writerow(['Predictions', '', '','', 'Labels']) #TODO: fix for n classes
+            writer.writerow(['Predictions', '', '','', '', '','', '', '','Labels']) #TODO: fix for n classes
             writer.writerow(self.classes + self.classes)
             for row in y_preds_targets:
                 writer.writerow(row.tolist())

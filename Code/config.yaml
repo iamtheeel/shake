@@ -5,8 +5,8 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: True
-    trainModel: True
-    validateModel: False
+    trainModel: False   #Otherwize, load the saved weights
+    validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -19,7 +19,7 @@ plts:
 
     #For CWT plottited data
     #rgbPlotChList: [6, 5, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
-    rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     #saveCombined: True
     #saveOverlay: False
@@ -39,40 +39,24 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    test: "Test_2" #One person fixed pace, straight path, has labels
-    vibDataDir: "data" # The input data
-    APDMDataDir: "APDM_data_fixed_step" # The input data
-    sampleRate: 1706.666667 # if NIDaq can not run at 1652, it will autoset to: 1706.666667 # early data has the wrong sample rate
-    #classes: ['No Step', '001', '002', '003']
+    #testDirs: ["Test_2"] #datasets to load
+    testDirs: ["20251124_Testing"] #datasets to load
+    #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
-    #test: "Test_3" #One person, down hall, into and around lab, has labels, 
-    #test: "Test_4" #Multiple people variyed pace, no labels
-
-    #test: "20251124_Testing" #One person fixed pace, straight path, has labels
-    #vibDataDir: "vib/Data" # The input data
-    #APDMDataDir: "APDM_Data" # The input data
-    #sampleRate: None 
-
-
-    ## Must be in order 
-    #classes: ['No Step', '001', '002', '003']
+    ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
+    #classes: ['No Step', '001', '002', '003']
 
-    downSample: 4 # Downsample by n-times: 4
+    dsDataRate_hz: 400 # Desired sample rate after downsampleing 
 
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    ##chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [1, 8, 7, 6, 5, 4] # for testing 
+    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns: 0 # 2  Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
+    limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
-    limitWindowLen: 0 #10 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
-
-    ## Depricated
-    stompSens: [5, 6, 7]
-    ## Use stomp from file
-    # depricated name stompThresh: "runPeramiters.csv" #1.5 #If 0, then no stomp detection
-    dataRunPeramiters: "runPeramiters.csv"
+    limitWindowsPerRun: 0 #5 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -202,7 +186,14 @@ model:
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
     #modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
-    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-154744_class_ch8_origData/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-193800_class_ch8_2ndDayData/exp-1/model_exp1.pt"
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-090044_400Hz_class_Test2/exp-1/model_exp1.pt" #Orig data.
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-193453_400Hz_class_20251124_Testing/exp-1/model_exp1.pt" #new data.
+    ## train/val split by run, not window.
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260327-182029_trainVal-run_Test2/exp-1/model_exp1.pt" #Orig data.
+    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260328-082716_trainVal_2ndDay/exp-1/model_exp1.pt" #new data.
     
     batchNorm2GroupNorm: True #Switch BatchNorm2d to GroupNorm for small batch sizes
 

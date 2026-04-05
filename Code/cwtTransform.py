@@ -19,6 +19,7 @@ from foot_step_wavelet import FootStepWavelet, foot_step_cwt
 import typing
 if typing.TYPE_CHECKING: #Fix circular import
     from fileStructure import fileStruct
+    import dataLoader
 
 from jFFT import jFFT_cl
 
@@ -29,13 +30,15 @@ logger = logging.getLogger(__name__)
 
 
 class cwt:
-    def __init__(self, fileStructure:"fileStruct", sampleRate, configs):
+    #def __init__(self, fileStructure:"fileStruct", sampleRate, configs):
+    def __init__(self, fileStructure:"fileStruct", dataSet:"dataLoader", configs):
         print(f"\n")
         logger.info(f"----------------------      Get cwt peramiters   ----------------------")
         self.fileStructure = fileStructure
+        self.dataSet = dataSet
         #Data information
-        self.samplePeriod = 1/sampleRate
-        self.sampleRate_hz = sampleRate
+        self.sampleRate_hz = dataSet.dataConfigs.sampleRate_hz
+        self.samplePeriod = 1/self.sampleRate_hz
         self.configs = configs
 
         #self.saveDir = f"{configs['plts']['pltDir']}/cwt"
@@ -52,7 +55,7 @@ class cwt:
         self.f0 = None
         self.bw = None
 
-    def setupWavelet(self, wavelet_base, sampleRate_hz, f0=1.0, bw=1.0, length = 512, useLogForFreq=False, savePlots = True, showPlots=False):
+    def setupWavelet(self, wavelet_base, f0=1.0, bw=1.0, length = 512, useLogForFreq=False, savePlots = True, showPlots=False):
         self.useLogScaleFreq  = useLogForFreq
 
         self.min_freq = self.configs['cwt']['fMin'] #5 #Hz
@@ -82,9 +85,6 @@ class cwt:
 
         if self.wavelet_name == 'None' or self.wavelet_name == 'spectroGram':
             logger.info(f"wavelet_name: {self.wavelet_name}")
-            self.fileStructure.setCWT_dir(self) 
-            #  None wavelet is never complex
-            #  Burn the spectrogram problem later
             return #Now that we have the name, we can skip the rest on None
 
         if self.wavelet_base == 'fstep' :
@@ -114,15 +114,13 @@ class cwt:
 
         logger.info(f"{self.wavelet_name}, Complex:{isComplex}, len: {len(self.wavelet_fun)}, dt: {self.wavelet_Time[1]-self.wavelet_Time[0] }")
 
-        if savePlots: self.fileStructure.setCWT_dir(self, isComplex=isComplex, asMagnitude=asMagnitude) 
-
         #f0, bw
         f0, bw = self.getF0_BW()
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
         self.setFreqScale(freqLogScale=self.useLogScaleFreq)
         f0, bw = self.plotWavelet(sRate=0, save=savePlots, show=showPlots ) #Use 0 to use the wavelet default
-        f0, bw = self.plotWavelet(sRate=sampleRate_hz, save=savePlots, show=showPlots )
+        f0, bw = self.plotWavelet(sRate=self.sampleRate_hz, save=savePlots, show=showPlots )
         logger.info(f"Calculated f0: {f0}, bw: {bw}")
 
     def setFreqScale(self, freqLogScale=True):
@@ -291,7 +289,7 @@ class cwt:
         bw = freqList[indices[-1]] - freqList[indices[0]]
         if save:
             freqDFilename = f"{atRateOrDefault}_{self.wavelet_name}"
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{freqDFilename}.txt"
+            freqDFilePathName = f"{self.fileStructure.getCWT_dir(self)}/{freqDFilename}.txt"
             with open(freqDFilePathName, "w") as file:
                 file.write(f"Wavelet: {self.wavelet_name}\n")
                 file.write(f"Sample Frequency: {sRate:.4f} Hz\n")
@@ -375,7 +373,8 @@ class cwt:
 
     def savePlot(self, plot, fileName, save, show):
         if save:
-            freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{fileName}"
+            #freqDFilePathName = f"{self.fileStructure.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}/{fileName}"
+            freqDFilePathName = f"{self.fileStructure.getCWT_dir(self)}/{fileName}"
             logger.info(f"Saving Wavelet Plots: {freqDFilePathName}")
             plt.savefig(freqDFilePathName)
 
