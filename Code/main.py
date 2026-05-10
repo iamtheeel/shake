@@ -171,7 +171,7 @@ def writeDataTrackSum_hdr():
 def writeExpSum(cwt_class:cwt, 
                 logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
                 modelName, dropoutLayers, batchSize, lossFunction, optimizer, learning_rate, weight_decay, gradiant_noise):
-    expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expNumDir.expTrackSum_fileName}'
+    expTrackSum_fileName = f'{fileStructure.expTrackFiles.expNumDir.expTrackDir_Name}/{fileStructure.expTrackFiles.expTrack_sumary_file}'
 
     dataType = "real"
     isComplex = False
@@ -294,7 +294,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     global device
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
-    exp_StartTime = timer()
 
     #cwt_class = list(cwt_class.values())[0] # Get the first CWT class to use for the summary, since they should all be the same in terms of wavelet and data shape, we just have one per dataset for organizational purposes. This is a bit of a hack, but it works for now. We can clean up later if we want to support different CWTs for different datasets, but for now we just want to loop through the same CWT for each dataset.
     #writeExpSum(first_CWT_class, 
@@ -350,25 +349,11 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                       wavelet_name=cwt_class.wavelet_name, scaleStr=scaleStr, lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay, gradiant_noise=gradiant_noise, epochs=epochs)
 
     if configs['debugs']['trainModel']:
-        trainLoss, trainAcc, valAccStats = trainer.train(batchSize)
-    else:
-        ## load the model weights
-        modelWeights_file = configs['model']['modelWeights']
-        logger.info(f"Loading model weights from: {modelWeights_file}")
-        model.load_state_dict(torch.load(modelWeights_file, map_location=device))
-        ## We are not training, so set dummy values
-        trainLoss, trainAcc = 0, 0
-        valAccStats = runStats()
-        valAccStats.min = 0
-        valAccStats.max = 0
-        valAccStats.mean = 0
-        valAccStats.std = 0
+        exp_StartTime = timer()
+        trainLoss, trainAcc, valLoss, valAcc, classAcc, valAccStats = trainer.train(batchSize) # 
+        exp_runTime = timer() - exp_StartTime
 
-    if configs['debugs']['validateModel']:
-        valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
-    
-
-        # Log the results
+        # Log the results of the last epoch validation
         with open(expTrackFile, 'a', newline='') as csvFile:
             print(f"Writing data: {expTrackFile}", flush=True)
             writer = csv.DictWriter(csvFile, fieldnames=expFieldNames, dialect='unix')
@@ -398,8 +383,18 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
                              f'Class Acc {accStr}': classAcc,
                              'Time(s)': exp_runTime
                             })
+    else:
+        ## load the model weights
+        modelWeights_file = configs['model']['modelWeights']
+        logger.info(f"Loading model weights from: {modelWeights_file}")
+        model.load_state_dict(torch.load(modelWeights_file, map_location=device))
 
-    exp_runTime = timer() - exp_StartTime
+    if configs['debugs']['validateModel']:
+        valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
+    
+
+        
+
     del model
     del trainer
 

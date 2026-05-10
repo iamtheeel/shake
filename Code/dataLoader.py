@@ -591,7 +591,6 @@ class dataLoader:
 
         if writeLog: self.logDataShape()
 
-    #import torch
 
     def createDataloaders(self, dataSet, writeLog=True):
         from collections import defaultdict

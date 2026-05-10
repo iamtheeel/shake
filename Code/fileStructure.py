@@ -42,13 +42,8 @@ class expTrackFiles_class:
 
     class expNum_class:
         expTrackDir_Name:str =""
+        #expTrackSum_fileName:str ="" #run-<num>_summary.csv
 
-        #Files
-        #modelInfo_file:str = ""  # <modelName>_modelInfo.txt
-        expTrackSum_fileName:str ="" #run-<num>_summary.csv
-        # trining loss figure
-        # Validation results figure
-        # Validateion results sumary
     expNumDir = expNum_class()
 
 ### Output Data 
@@ -133,8 +128,7 @@ class fileStruct:
         self.expTrackFiles.expTrack_sumary_file = f"{dateTime_str}_DataTrack_Sumary.csv"
 
         # The individual experiments
-        self.expTrackFiles.expNumDir.expTrackLog_fileName = f"{dateTime_str}_DataTrack_Log.csv"
-        self.expTrackFiles.expNumDir.expTrackSum_fileName = f"{dateTime_str}_DataTrack_Sumary.csv"
+        #self.expTrackFiles.expNumDir.expTrackSum_fileName = f"{dateTime_str}_DataTrack_Sumary.csv"
 
         self.makeDir(self.expTrackFiles.expTrackDir_name)
         logger.info(f"Experiment Track Dir: {self.expTrackFiles.expTrackDir_name}")

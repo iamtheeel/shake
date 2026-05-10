@@ -71,7 +71,7 @@ class Trainer:
             self.accStr = f"accuracy (%)"
 
         self.logDir = fileStru.expTrackFiles.expNumDir.expTrackDir_Name
-        self.sumaryFile = f"{self.logDir}/{fileStru.expTrackFiles.expNumDir.expTrackSum_fileName}"
+        self.sumaryFile = f"{self.logDir}/{fileStru.expTrackFiles.expTrack_sumary_file}"
         self.trainLog = f"{self.logDir}/trainResults_byBatch.csv"
         self.validLog = f"{self.logDir}/valiResults_byEpoch.csv"
 
@@ -339,7 +339,7 @@ class Trainer:
             torch.save(self.model.state_dict(), modelPath)
             print(f"Model saved to: {modelPath}", flush=True)
 
-        return train_loss_epoch, train_acc_epoch, valAccStats
+        return train_loss_epoch, train_acc_epoch, valLoss, valAcc, classAcc, valAccStats
 
     def plotLossAcc(self, lossArr, accArr, validation=False):
         #print(f"Loss shape: {len(lossArr)}")
