@@ -5,3 +5,10 @@ __pycache__
 TestData/
 data_out/
 exp_Track/
+
+Code/..data/
+Code/..data_out/
+Code/FullRunPlots/
+*.pdf
+*.png
+*.gz
