@@ -586,10 +586,10 @@ class dataLoader:
         if fromRaw: #The full run plots
             self.plotFullRun(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
         else: 
-            self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
+            self.plotByWindow(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
 
 
-    def plotFromDataSet(self, freqDImageDir, dataSet, freqYLim):
+    def plotByWindow(self, freqDImageDir, dataSet, freqYLim):
         desc_str = f"Creating image set for {freqDImageDir}" 
         logger.info(desc_str)
         for row, (data_tensor, dataSet_name, label_speed, label_subject, subject, run, startTime) in tqdm(enumerate(dataSet), total= len(dataSet), desc=desc_str, unit="Image Set", file=sys.stdout , leave=False):
@@ -599,7 +599,7 @@ class dataLoader:
             #thisRun = self.runList_raw[row]
             #startTime = self.startTimes_raw[row]
             fileN = f"{dataSet_name}_subject-{thisSubject}_run-{run}_time-{startTime}_label-{label_subject}"
-            title = f"{dataSet_name}, subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
+            title = f"{dataSet_name}, subject-label:{thisSubject}-{label_subject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
             #logger.info(f"**** Window {speed}, {label_subject}, {subject}, {run}, {startTime}")
             self.gen_TimeFreq_plots(fileN=fileN, title=title, dataRow=data_np, freqDImageDir=freqDImageDir, freqYLim=freqYLim)
 
