@@ -623,7 +623,7 @@ class saveCWT_Time_FFT_images():
         #plt.tight_layout()                   # Helps ensure labels aren’t clipped
 
 
-    def generateAndSaveImages(self, logScaleData):
+    def generateAndSaveImages(self, logScaleData, trainOrVal:str):
         #dataEnd = self.data_preparation.data_raw.shape[0]
         for thisWindowNum, (data_torch, dataSetName, label_speed, label_subject, subject, run, timeWindow) in  \
                   tqdm(enumerate(self.data_preparation.timeDDataSet), total= len(self.data_preparation.timeDDataSet), desc="Plotting CWT/Spectragram Data", unit="Window", file=sys.stdout):
@@ -681,14 +681,14 @@ class saveCWT_Time_FFT_images():
 
 
             pltCh_Str = "_".join(map(str, self.chPlotList))
-            fileName = f"{thisWindowNum:04d}__{dataSetName}_ch-{pltCh_Str}_subject-{label_subject}_run-{run}_timeStart-{timeWindow}.png"
+            fileName = f"{thisWindowNum:04d}__{dataSetName}_ch-{pltCh_Str}_subject-{label_subject}_run-{run}_timeStart-{timeWindow}_{trainOrVal}.png"
             #filePath = os.path.join(self.animDir, fileName)
-            filePath = f"{self.animDir}/{fileName}"
+            filePath_name = f"{self.animDir}/{fileName}"
             if self.showImageNoSave:
-                logger.info(f"Image File: {filePath}")
+                logger.info(f"Image File: {filePath_name}")
                 plt.show()
             else:
-                plt.savefig(filePath, dpi=250, bbox_inches=None)
+                plt.savefig(filePath_name, dpi=250, bbox_inches=None)
             #plt.close(fig)
             plt.close
 

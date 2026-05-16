@@ -1,0 +1,61 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+%% Main Code base Flow
+flowchart LR
+    classDef leftAlign text-align:left;
+    subgraph init["Initialization"]
+        parseArg{{"Parse Args:
+                   -c config file (default: config.yaml)
+                   --local_rank rank (For multi GPU)"}}:::leftAlign
+        config{{"Load Config"}}
+        setLog@{shape: hex, label: "Set Up Terminal Log"}
+        findPlatform@{shape: hex, label: "Determine Compute Platform
+                                          (Cuda/GPU/MPS)"}
+        parseArg --> config --> setLog --> findPlatform  
+    end
+
+    subgraph data["Data Loading & Preprocessing"]
+        initFileStruct@{shape: subproc, label: "Initialize File Structure", href: "fileStruct.mmd"}
+        initDataLoader@{shape: hex, label: "Init DataLoader"}
+        dataExist@{shape: diamond, label: "Check if data exists"}
+        loadData@{shape: subproc, label: "Create Time Domain Data file from experiment", href: "loadTimeDData.mmd"}
+        initLogs@{shape: doc, label: "Initialize log files"}
+
+        initFileStruct --> initDataLoader --> dataExist
+        dataExist -- No --> loadData --> initLogs
+        dataExist -- Yes --> initLogs
+    end
+
+    subgraph setUpExperiment["Set up and run the Experiment list"]
+        exList["""
+                **Data Matrix (From Config File):**
+                1. Batch Size
+                2. Wavelet Base
+                3. Wavelet Center Frequency
+                4. Wavelet Bandwidth
+                5. Datascaler e.x.[std, norm, none]
+                6. Loss Function
+                7. Optimizer
+                8. Learning Rate
+                9. Weight Decay
+                10. Gradient Noise
+                11. ML Model e.x.[LeNet, MobileNet, VGG]
+                12. Dropout Layers
+                """]:::leftAlign
+        expDone@{shape: diamond, label: "Have run all experiments?"}
+        loadDataSet@{shape: subproc, label: "Load Time Domain Data Set", href: "loadDataSet.mmd"}
+        loadCWTDataSet@{shape: subproc, label: "Load Load/Generate CWT Data Set", href: "loadCWTData.mmd"}
+        runExp@{shape: subproc, label: "Run Experiment", href: "runExp.mmd"}
+        expDone -- No --> loadDataSet --> loadCWTDataSet --> runExp
+        runExp --> expDone
+    end
+    init --> data --> expDone
+
+    expDone -- Yes --> terminate
+    terminate@{shape: stadium, label: "Exit"}

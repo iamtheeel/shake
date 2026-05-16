@@ -1,0 +1,27 @@
+find . -print | grep -v '/\.' | sed -e 's;[^/]*/;|____;g;s;____|; |;g' > foo.txt
+
+
+data_out
+|____chList-<ch list>_DownSample-<n>x
+| |____regression_winLen-5_step-1_StompThresh-File_DataThresh-2
+| | |____timeD_data.csv
+| | |____timeD_data.hdf5
+| | |____cmorl2-0.7958_fMin-1_fMax-100_scales-256
+| | | |____cmorl2-0.7958_timeD-complex.jpg
+| | | |____dataRate-426.66666675Hz_cmorl2-0.7958.txt
+| | | |____cmorl2-0.7958_timeD.jpg
+| | | |____default-31.9375Hz_cmorl2-0.7958_freqD.jpg
+| | | |____CWT_data.hdf5
+| | | |____default-31.9375Hz_cmorl2-0.7958.txt
+| | | |____time_fft_cwt_plots
+| | | | |____0000_ch-6_5_4_subject-1_run-0_timeStart-13.4921875.png
+| | | | |____0001_ch-6_5_4_subject-1_run-0_timeStart-14.4921875.png
+| | | | |____0002_ch-6_5_4_subject-1_run-0_timeStart-15.4921875.png
+| | | | |____0002_ch-6_5_4_subject-1_run-0_timeStart-15.4921875.png
+| | | | |____...
+| | | | |____0639_ch-6_5_4_subject-1_run-0_timeStart-15.4921875.png
+| | | | |____0640_ch-6_5_4_subject-1_run-0_timeStart-15.4921875.png
+| |____classification_winLen-5_step-1_StompThresh-File_DataThresh-2_runLim-2_windowLim-15
+| | |____timeD_data.csv
+| | |____timeD_data.hdf5
+

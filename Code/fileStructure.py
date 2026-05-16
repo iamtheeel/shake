@@ -58,7 +58,6 @@ class dataDirFiles_class:
         class waveletDir_class:
             #waveletFolder_name:str
             waveletDir_name:str
-            cwtDataSet_Name:str = "CWT_data.hdf5"
             
             ## Files:
             #<name>_<f0>_<bw>_freqD.jpg #Plot of wavelet, frequency domain
@@ -102,7 +101,7 @@ class fileStruct:
     def __init__(self, configs:dict):
         self.timeDData_file:str = 'timeD_data.hdf5' #File with the time domain data selected for this run
         self.timeDDataSumary:str = 'timeD_data.csv' #File with the time domain data selected for this run
-        self.cwtDataSet_Name:str = "CWT_data.hdf5"
+        self.cwtDataSet_FileName:str = "CWT_data.hdf5"
         self.time_fft_cwt:str = "time_fft_cwt_plots"
 
         self.configs = configs
@@ -185,8 +184,17 @@ class fileStruct:
 
         return f"{timeDData_dir}/{dataFolder}"
     
-    def get_timeDData_file(self):
-        return f"{self.get_timeDData_dir(self.dataSetName)}/{self.timeDData_file}"
+    def get_timeDData_file(self, trainOrVal=None):
+        dataPercent = 100
+        if trainOrVal == None: return f"{self.get_timeDData_dir(self.dataSetName)}/" + self.timeDData_file
+
+        trainPercent = int(round(100* self.configs['data']['trainRatio']))
+        if trainOrVal == "train": 
+            dataPercent = trainPercent
+        if trainOrVal == "val": 
+            dataPercent = 100- trainPercent
+        return f"{self.get_timeDData_dir(self.dataSetName)}/{trainOrVal}_{dataPercent}_" + self.timeDData_file    
+
     def get_timeDDataSum_file(self):
         return f"{self.get_timeDData_dir(self.dataSetName)}/{self.timeDDataSumary}"
 
@@ -222,3 +230,13 @@ class fileStruct:
         #logger.info(f"Wavelet Dir: {self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name}")
         #self.makeDir(self.dataDirFiles.saveDataDir.waveletDir.waveletDir_name) #Create it if it doesn't exist
         return waveletFolder_name
+    
+    def getCWTDataset_file(self, trainOrVal=None):
+        if trainOrVal == None: return  self.cwtDataSet_FileName
+
+        trainPercent = int(round(100* self.configs['data']['trainRatio']))
+        if trainOrVal == "train": 
+            dataPercent = trainPercent
+        if trainOrVal == "val": 
+            dataPercent = 100- trainPercent
+        return f"{trainOrVal}_{dataPercent}_" + self.cwtDataSet_FileName

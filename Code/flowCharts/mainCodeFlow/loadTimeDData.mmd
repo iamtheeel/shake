@@ -1,0 +1,42 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+%% Load the time-domain data
+%%{init: {"themeVariables": {"flowchartMaxNodeWidth": 999}}}%%
+
+
+flowchart TD
+    classDef nowrap white-space:nowrap;
+    init([Initialize  DataLoader])
+    dataExist{Time Domain HDF5 Data File Exists?}
+
+    subgraph loadData["Create Time Domain Data from Experiment Files"]
+        %% Header text as a normal node, forced to no-wrap
+        %%style header fill:transparent,stroke:transparent
+        %%classDef header fill:transparent,stroke:transparent,text-align:center,white-space:nowrap;
+        %%header[Create Time Domain Data from Experiment Files]:::header
+
+        subgraph loadSubjectData[Load Each Subject's Data]
+            windowData[Split Data into Windows]
+            hasStomp{Has the stomp event occurred?}
+            isStep{Does window contain footstep?}
+            isClass{Is window for classification or regression?}
+            labelData[Load Labels for Each Window]
+            windowData --> hasStomp -- yes --> isClass 
+            isClass -- Regression --> isStep -- yes--> labelData
+            isClass -- Classification --> labelData
+        end
+        genStats[Calculate Data Statistics]
+        saveData[Save Time Domain Data HDF5 File]
+        saveStats[Add stats and metadata to HDF5 File]
+        loadSubjectData --> genStats --> saveData --> saveStats
+
+    end
+    fin([End])
+    dataExist -- No --> loadData --> fin
+    init --> dataExist -- Yes --> fin

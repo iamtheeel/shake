@@ -1,0 +1,54 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+flowchart TD
+    config{{"Init Experiment, and log configuration"}}
+    loadModel[Load ML Model from Config, configured for data shape]
+    loadTraining{{"Initilize the Training Module:
+                   - Set up Optimizer
+                   - Set up Loss Function
+                   - Set up Learning Rate Scheduler
+                   - Set up Gradient Noise if specified
+                   "}}
+    subgraph runTrain[Run Training Loop for Each Epoch]
+        subgraph eachBatch[Get each Batch from DataLoader]
+            normData[Normalize/Scale Data as per Config]
+            zeroGrad[Clear the Model Gradients]
+            forwardPass[Forward Pass the data batch through Model to get Predictions]
+            computeLoss[Compute Loss between Predictions and Labels]
+            applyGradiantNoise[Apply Gradient Noise to Model Gradients, if specified]
+            backProp[Backpropagate Loss and Update Model Weights]
+            step[Apply the Computed Gradients to Update the Model]
+            computeLoss[Compute Loss between Predictions and Labels] 
+            computeAcc[Compute Accuracy for the Batch Regression/Classification]
+
+            normData --> zeroGrad --> forwardPass -->  computeLoss -->
+            applyGradiantNoise --> backProp --> step --> computeAcc
+        end
+
+        eachBatch --> ifValidate 
+        ifValidate{Validate after this Epoch?} -- Yes --> evalModel
+        subgraph evalModel[Evaluate Model on Training Set]
+            loadValData[Load Validation Data from DataLoader]
+            normValData[Normalize/Scale Validation Data as per Config]
+            valForwardPass[Forward Pass Validation Data through Model to get Predictions]
+            valComputeLoss[Compute Loss between Validation Predictions and Labels]
+
+            loadValData --> normValData --> valForwardPass --> valComputeLoss
+        end
+
+        evalModel --> stepLRScheduler[Step Learning Rate Scheduler if applicable]
+
+        logEpochStats[Log Epoch Statistics: e.x.: Loss, Accuracy, Learning Rate]
+        appendResults[Append Epoch Results to Log Structure]
+
+        ifValidate -- No --> stepLRScheduler --> logEpochStats --> appendResults -->
+        ifPlot{Plot Training Progress this Epoch?} -- Yes --> plotTrainStats
+    end
+    logResults[Log Training and Validation Results to Terminal and Log File]
+    config --> loadModel --> loadTraining --> runTrain --> logResults

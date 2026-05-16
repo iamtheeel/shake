@@ -281,10 +281,9 @@ with open(expTrackFile, 'w', newline='') as csvFile:
     writer.writeheader()
 
 # Last up, get the data from raw if we have not already
-if not os.path.exists(fileStructure.get_timeDData_file()):
+if not os.path.exists(fileStructure.get_timeDData_file("train")) or not os.path.exists(fileStructure.get_timeDData_file("val")):
     logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
     data_preparation.get_data() # Load the data, window it, and save it to file.
-
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            cwt_class, #, f0, bw, #sgTimeRes, sgOverlap,
@@ -404,20 +403,11 @@ wavelet_bases = configs['cwt']['wavelet']
 
 for batchSize in configs['trainer']['batchSize']:
     # The hyperperamiters setup for expTracking
-    data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
+    data_preparation.timeDDataSet_t = data_preparation.load_dataSet(batchSize=batchSize, trainOrVal="train") #Load the timed dataset even if we are doing a cwt
+    data_preparation.timeDDataSet_v = data_preparation.load_dataSet(batchSize=batchSize, trainOrVal="val") #Load the timed dataset even if we are doing a cwt
+
     cwt_class = cwt(fileStructure=fileStructure, dataSet=data_preparation, configs=configs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
-    '''
-    cwt_class = {}
-    for dataset_name, thisData_preperation in data_preparation.items():
-        # Create a cwt class for each dataset, since the sample rate and other data specific peramiters are set in the cwt class
-        # we get data freq rate here, and need it for below
-        thisData_preperation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
-        #sRate = thisData_preperation.dataConfigs.sampleRate_hz
-        #cwt_class[dataset_name] = cwt(fileStructure=fileStructure, sampleRate=sRate, configs=configs)
-        cwt_class[dataset_name] = cwt(fileStructure=fileStructure, dataSet=thisData_preperation, configs=configs)
-        thisData_preperation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
-    '''
 
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")
@@ -448,15 +438,10 @@ for batchSize in configs['trainer']['batchSize']:
                 #    data_preparation.generateSpectraDataByWindow()
                 if wavelet_base != 'None':
                     cwt_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-                    cwt_class.dataSet.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False) 
-                    '''
-                    for dataset_name, thisCWT_class in cwt_class.items():
-                        thisCWT_class.setupWavelet(wavelet_base=wavelet_base, f0=center_freq, bw=bandwidth, useLogForFreq=logScaleFreq)
-
-                        #THis is some circuler pointing that should be cleaned up. The cwt class has a pointer to it's dataset, which has the name, so we can just send the cwt class and get the name from there. We don't need to send the dataset name separately.
-                        thisCWT_class.dataSet.generateCWTDataByWindow(cwt_class=thisCWT_class, logScaleData=False) 
-                        #data_preparation.generateCWTDataByWindow(cwt_class=cwt_class, logScaleData=False)
-                    '''
+                    #TODO: the CWT dataset moves to the CWT class
+                    data_preparation.CWTDataSet_t, normConsts_t = cwt_class.dataSet.generateCWTDataByWindow(cwt_class=cwt_class, trainOrVal="train", logScaleData=False) 
+                    data_preparation.CWTDataSet_v, normConsts_v = cwt_class.dataSet.generateCWTDataByWindow(cwt_class=cwt_class, trainOrVal="val", logScaleData=False) 
+                    data_preparation.combineTrainVal_stats(normConsts_t, normConsts_v)
     
                 for logScaleData in [False]: #Probably not interesting
     
@@ -500,11 +485,10 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
                                                                 logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
               
-                                                                #TODO: just send the cwtClass 
                                                                 if configs['debugs']['runModel']:
                                                                     runExp(expNum=expNum, logScaleData=logScaleData,
                                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
-                                                                           cwt_class=cwt_class, #wavelet=wavelet_base, #f0=center_freq, bw=bandwidth, #sgTimeRes=sgTimeRes, sgOverlap=sgOverlap,
+                                                                           cwt_class=cwt_class, 
                                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
                                                                            batchSize = batchSize, model_name=model_name, dropOut_layers = dropOut_layers)
                                                                 expNum += 1

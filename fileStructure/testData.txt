@@ -1,0 +1,54 @@
+Generated with: find . -print | grep -v '/\.' | sed -e 's;[^/]*/;|____;g;s;____|; |;g' > foo.txt
+
+TestData
+|____STARS_2025
+| |____.....
+|____Sensor_Labeling_12172023_Test_3.pdf
+|____trials_and_timestamps.txt
+|____Sensor_Labeling_12172023.pdf
+|____stompTimes.csv
+|____Trials&Video_timestamps.xlsx
+|____WalkingTest_Sensor8
+|____TestMatrices.xlsx
+| |____Video.MOV
+| |____walking_hallway_classroom_single_person.hdf5
+| |____walking_hallway_classroom_single_person_Plots
+| | |____2025_02_24
+| | | |____2025_02_24-17-47-22.jpg
+|____Test_3
+| |____APDM_data_freepace
+| | |____MLK Walk_trials_001_freepace.csv
+| | |____MLK Walk_trials_002_freepace.csv
+| | |____MLK Walk_trials_003_freepace.csv
+| |____setup
+| | |____walking_hallway_single_person_APDM_001_free_pace.json
+| | |____walking_hallway_single_person_APDM_003_free_pace.json
+| | |____walking_hallway_single_person_APDM_002_free_pace.json
+| |____GH010505.MP4
+| |____data
+| | |____walking_hallway_single_person_APDM_001_free_pace.hdf5
+| | |____walking_hallway_single_person_APDM_002_free_pace.hdf5
+| | |____walking_hallway_single_person_APDM_003_free_pace.hdf5
+|____Test_4
+| |____setup
+| | |____walking_hallway_classroom_two_people_next_to_each_other_001_003.json
+| | |____walking_hallway_classroom_three_people_ritght_after_the_other_001_002_003.json
+| | |____walking_hallway_classroom_two_people_next_to_each_other_002_003.json
+| |____data
+| | |____walking_hallway_classroom_three_people_ritght_after_the_other_001_002_003.hdf5
+| | |____walking_hallway_classroom_two_people_next_to_each_other_002_003.hdf5
+| | |____walking_hallway_classroom_two_people_next_to_each_other_001_003.hdf5
+|____Test_2
+| |____APDM_data_fixed_step
+| | |____MLK Walk_trials_003_fixedstep.csv
+| | |____MLK Walk_trials_002_fixedstep.csv
+| | |____MLK Walk_trials_001_fixedstep.csv
+| |____setup
+| | |____walking_hallway_single_person_APDM_001.json
+| | |____walking_hallway_single_person_APDM_002.json
+| | |____walking_hallway_single_person_APDM_003.json
+| |____data
+| | |____walking_hallway_single_person_APDM_003.hdf5
+| | |____walking_hallway_single_person_APDM_002.hdf5
+| | |____walking_hallway_single_person_APDM_001.hdf5
+

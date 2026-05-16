@@ -1,0 +1,30 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+
+%% STARS2025 MediaPipe pose estimation 
+flowchart TD
+    loadVideo[Load Input Video File]
+    subgraph loopFrames[For Each Frame in Video]
+        extractDateTimeFromFrame[Read Frame Timestamp from Frame Image] -->
+        poseEstimationFull[Run MediaPipe Pose Estimation on full Video Frames] --> lookAtFull
+        poseEstimationTop[Run MediaPipe Pose Estimation at top of hall] --> lookAtTop
+        lookAtFull{Is Person Detected in Full Frame} -- Yes --> trackPerson 
+        lookAtFull -- No --> poseEstimationTop
+        lookAtTop{Is person detected at the top of the hallway} -- Yes --> trackPerson
+        lookAtTop -- No --> poseEstimationFull
+        trackPerson[Track Zoom on Person Across Frames] -->
+        poseEstimation[Run MediaPipe Pose Estimation on Zoom/Track] -->
+        extractKeypoints[Extract Relevant Key-points for Walking Pace Analysis] --> 
+        heelToeCalc[[Calculate Heel and Toe Positions from Key-points]] -->
+        displayFraim[Display Annotated Frames] -->
+        doneFrames{More Frames to Process?} -- Yes --> trackPerson
+    end
+    saveResults[Heel/Toe Locations for each timestamp to Output File]
+
+    loadVideo --> loopFrames -->  saveResults

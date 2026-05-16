@@ -1,0 +1,44 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+flowchart LR
+  classDef step fill:#dfeedd,stroke:#4a7a4a,color:#000,stroke-width:1px;
+  classDef client fill:#f9f9f9,stroke:#333,color:#000,stroke-width:1px;
+  classDef model fill:#cfe8ff,stroke:#2f6fb3,color:#000,stroke-width:1px;
+
+ classDef cluster stroke-dasharray: 5 5,stroke:#999;
+
+  %% Steps
+
+  %% Server with global model
+  subgraph server["Central Server"]
+    direction TB
+    S1["Step 1:<br>Model Initialization"]:::step
+    S3["Step 3:<br>Global Aggregation & Update"]:::step
+    model["Global Model"]:::model
+  end
+  class server cluster;
+
+  %% Clients
+  subgraph clients["Clients (Subject Devices)"]
+  S2["Step 2:<br>Local Training & Upload"]:::step
+    direction LR
+  C1["Client 1"]:::client
+  C2["Client 2"]:::client
+  CN["Client n"]:::client
+  end
+  class clients cluster;
+
+  %% Flow
+  model -->|broadcast model| C1
+  model -->|broadcast model| C2
+  model -->|broadcast model| CN
+
+  C1 -->|"Update W1"| model
+  C2 -->|"Update W2"| model
+  CN -->|"Update Wn"| model

@@ -1,0 +1,29 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+flowchart LR
+  %% Layout
+  classDef server fill:#cfe8ff,stroke:#4a90e2,color:#000,stroke-width:1px;
+  classDef shared fill:#e9e9e9,stroke:#666,color:#000,stroke-width:1px;
+  classDef personal fill:#fff4c2,stroke:#b58900,color:#000,stroke-width:1px;
+  classDef cluster stroke-dasharray: 5 5,stroke:#999;
+
+  %% Nodes
+  S[/"Central Server\n(Global Aggregation)"/]:::server
+
+  subgraph C["Client (Subject Device)"]
+  direction TB
+    GB["Global Backbone\n(shared)"]:::shared
+    WM["Personalized Walker Model\n(subject-specific)"]:::personal
+  end
+  class C cluster;
+
+  %% Edges
+  S -->|"Global model\ndistributed"| GB
+  GB -->|"Model updates\n(no raw data)"| S
+  GB -->|"adaptation"| WM

@@ -1,0 +1,42 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+flowchart TD
+    classDef nowrap white-space:nowrap;
+    init([Initialize CWT Class])
+
+    setupWavelet[Set up CWT Wavelet]
+
+    subgraph loadCWTData["Load/Generate CWT Data from Time Domain Data"]
+        cwtExist{CWT HDF5 Data File Exists?} -- No --> genCWTData --> loadDataSet
+        cwtExist -- Yes --> loadDataSet
+
+        subgraph genCWTData[Generate the CWT Data time Domain]
+            generateCWT[Generate CWT from Time Domain Data, caclulate statistics on the fly]
+            saveCWTDataFile[Create CWT HDF5 Data File]
+            saveCWTStats[Add stats and metadata to CWT HDF5 File]
+            generateCWT --> saveCWTDataFile --> saveCWTStats
+        end
+
+        subgraph loadDataSet[Load the CWT Data Set from HDF5 File]
+            loadDataFile[Load CWT HDF5 Data File]
+            loadHyper[Load CWT Hyperparameters and statistics from HDF5 File]
+            testTrainSplit[Split Data into Train, Validation Sets]
+            createDataLoaders[Create CWT Data Loaders for ML Model]
+            loadDataFile --> loadHyper --> testTrainSplit --> createDataLoaders
+        end
+        loadDataSet --> isPlot
+
+        isPlot{Plot Data?} -- Yes --> saveCWTPlots
+        %%isPlot -- No --> fin
+        saveCWTPlots[Save CWT Plots]
+         %%--> fin
+
+    end
+    fin([End])
+    init --> setupWavelet --> loadCWTData --> fin

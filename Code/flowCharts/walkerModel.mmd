@@ -1,0 +1,20 @@
+%% ─────────────────────────────────────────────
+%% 📈 HOW TO PREVIEW THIS DIAGRAM:
+%% → Right-click this file tab (not the content) → “Command Palette”
+%% → Type: “Preview Mermaid Diagram”
+%% Mac:           CMD  + Shift + P
+%% Linux/Windows: Ctrl + Shift + P
+%% ─────────────────────────────────────────────
+
+sequenceDiagram
+  autonumber
+  participant S as Central Server
+  participant C as Client (Subject Device)
+  participant GB as Global Backbone
+  participant WM as Walker Model (Personalized)
+
+  S->>C: Distribute global model parameters
+  C->>GB: Initialize/Update shared backbone
+  GB->>WM: Adaptation (subject-specific)
+  C->>S: Send model updates (no raw data)
+  S-->>C: Aggregated global weights (FedAvg)

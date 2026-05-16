@@ -5,3 +5,36 @@ __pycache__
 TestData/
 data_out/
 exp_Track/
+
+*.hdf5
+*.h5
+
+# generated/data files
+*.hdf5
+*.h5
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.mp4
+*.mov
+*.avi
+*.npy
+*.npz
+
+# generated plots/data
+*.hdf5
+*.h5
+*.jpg
+*.jpeg
+*.png
+
+# generated/binary files
+*.hdf5
+*.h5
+*.jpg
+*.jpeg
+*.png
+*.gz
+*.pdf

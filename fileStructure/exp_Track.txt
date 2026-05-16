@@ -1,0 +1,31 @@
+find . -print | grep -v '/\.' | sed -e 's;[^/]*/;|____;g;s;____|; |;g' > foo.txt
+
+
+exp_Track
+|____<YYYYMMDD>-<HHMMSS> (TimeStamp of the test start)
+| |____<YYYYMMDD>-<HHMMSS>_DataTrack_Sumary.csv
+| |____<YYYYMMDD>-<HHMMSS>_DataTrack_Log.csv
+| |____exp-1
+| | |____<YYYYMMDD>-<HHMMSS>_DataTrack_Sumary.csv
+| | |____<Model Name>_modelInfo.txt
+| | |____0_validation_1.jpg
+| | |____0_validationResults_1.csv
+| | |____...
+| | |____<n epoch>_validationResults_1.csv
+| | |____<n epoch>_validation_1.jpg
+| | |____loss_acc_Training_1.jpg
+| | |____loss_acc_Validation_1.jpg
+| | |____trainResults_byBatch.csv
+| | |____valiResults_byEpoch.csv
+| |____exp-n
+| | |____<YYYYMMDD>-<HHMMSS>_DataTrack_Sumary.csv
+| | |____<Model Name>_modelInfo.txt
+| | |____0_validation_n.jpg
+| | |____0_validationResults_n.csv
+| | |____...
+| | |____<n epoch>_validationResults_n.csv
+| | |____<n epoch>_validation_n.jpg
+| | |____loss_acc_Training_n.jpg
+| | |____loss_acc_Validation_n.jpg
+| | |____trainResults_byBatch.csv
+| | |____valiResults_byEpoch.csv
