@@ -380,6 +380,7 @@ class dataLoader:
                 speed =  self.getSpeedLabels(label_file_csv)
                 print(f"speeds: {speed}")
     
+                ## The full run plots
                 if self.configs['debugs']['generateTimeFreqPlots']:
                     yLim = configs['plts']['yLim_freqD']
                     self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/{dataSetName}/Subject-{subjectId}", fromRaw=True)
@@ -582,8 +583,8 @@ class dataLoader:
         self.dataPlotter.configTimeD(timeDImageDir, configs['plts']['yLim_timeD'])
         self.dataPlotter.configFreqD(configs['plts']['yLim_freqD'])
         # Plot the data
-        if fromRaw:
-            self.plotFromRaw(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
+        if fromRaw: #The full run plots
+            self.plotFullRun(folder=folder, freqYLim=freqYLim, data=data, subject=subject, speed=speed, freqDImageDir=freqDImageDir)
         else: 
             self.plotFromDataSet(freqDImageDir=freqDImageDir, dataSet=self.timeDDataSet, freqYLim=freqYLim)
 
@@ -597,12 +598,12 @@ class dataLoader:
             data_np = data_tensor.numpy()
             #thisRun = self.runList_raw[row]
             #startTime = self.startTimes_raw[row]
-            fileN = f"{dataSet_name}_subject-{thisSubject}_run{run}_time-{startTime}"
+            fileN = f"{dataSet_name}_subject-{thisSubject}_run-{run}_time-{startTime}_label-{label_subject}"
             title = f"{dataSet_name}, subject:{thisSubject}, run: {run}, time: {startTime}, speed:{speed:.2f}"
             #logger.info(f"**** Window {speed}, {label_subject}, {subject}, {run}, {startTime}")
             self.gen_TimeFreq_plots(fileN=fileN, title=title, dataRow=data_np, freqDImageDir=freqDImageDir, freqYLim=freqYLim)
 
-    def plotFromRaw(self, folder, freqYLim, data, subject, speed, freqDImageDir):
+    def plotFullRun(self, folder, freqYLim, data, subject, speed, freqDImageDir):
         sTime = 0
         desc_str = f"Creating image set for {folder}" 
         logger.info(desc_str)
