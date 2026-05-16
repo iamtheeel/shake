@@ -33,7 +33,7 @@ import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 def _f32(x):
     return np.float32(x) if isinstance(x, (float, np.floating)) else x
@@ -63,6 +63,82 @@ class DatasetInfo:
     vibData: str
     apdmData: str
     sRate: str
+
+@dataclass
+class WindowedData:
+    data: np.ndarray
+    speed_labels: np.ndarray
+    subject_labels: np.ndarray
+    subjects: np.ndarray
+    runs: np.ndarray
+    start_times: np.ndarray
+    dataset_names: np.ndarray | None = None # Fields with defaults must come after fields without defaults
+
+@dataclass
+class WindowedDataBuilder:
+    dataset_names: list = field(default_factory=list)
+    data: list = field(default_factory=list)
+    speed_labels: list = field(default_factory=list)
+    subject_labels: list = field(default_factory=list)
+    subjects: list = field(default_factory=list)
+    runs: list = field(default_factory=list)
+    start_times: list = field(default_factory=list)
+
+    def append_block(self, thisDataBlock, speed_label, subject_label, subject_num, run, start_time):
+        dataSize = thisDataBlock.shape[0] # Each data point needs the lables, subjects, runs, etc
+
+        self.data.append(thisDataBlock)
+        self.speed_labels.append(speed_label)
+        self.subject_labels.append(subject_label)
+        self.subjects.append(subject_num)
+        self.runs.append(run)
+        self.start_times.append(start_time) # Each window has its own start time.
+
+    def append_windowedData(self, windowedData, dataset_name):
+        dataSize = windowedData.data.shape[0]
+
+        self.dataset_names.extend([dataset_name] * dataSize)
+        self.data.append(windowedData.data)
+        self.speed_labels.extend(windowedData.speed_labels)
+        self.subject_labels.extend(windowedData.subject_labels)
+        self.subjects.extend(windowedData.subjects)
+        self.runs.extend(windowedData.runs)
+        self.start_times.extend(windowedData.start_times)
+
+    def finalize(self):
+        data = np.concatenate(self.data, axis=0) # We need to sort the data block prior to print info
+        self.printInfo(data)
+
+        return WindowedData(
+            dataset_names=np.asarray(self.dataset_names) if self.dataset_names else None,
+            data=data,
+            #data=np.concatenate(self.data, axis=0),
+            #speed_labels=np.asarray(self.speed_labels),
+            speed_labels=np.asarray(self.speed_labels).reshape(-1, 1),
+            subject_labels=np.asarray(self.subject_labels),
+            subjects=np.asarray(self.subjects),
+            runs=np.asarray(self.runs),
+            start_times=np.asarray(self.start_times),
+        )
+
+    def printInfo(self, data_for_print):
+        if isinstance(self.speed_labels, list):
+            #logger.error("self.data is still a list of blocks; concat/finalize did not run before printInfo()")
+            #for i, x in enumerate(self.data):
+            #    logger.error(f"block {i}: shape={getattr(x, 'shape', None)}")
+            
+            speed_labels_shape = (len(self.speed_labels),)
+            subject_labels_shape = (len(self.subject_labels),)
+        else:
+            speed_labels_shape = self.speed_labels.shape
+            subject_labels_shape = self.subject_labels.shape
+
+        #logger.info(f"Dataset shape: {np.concatenate(self.data, axis=0).shape}")
+        logger.info(f"Dataset shape: {data_for_print.shape}")
+        logger.info(f"label speed {type(self.speed_labels)}: {speed_labels_shape}")
+        logger.info(f"label subject {type(self.subject_labels)}: {subject_labels_shape}")
+        #logger.info(f"data: min:{np.min(self.data)}, max: {np.max(self.data)}, mean: {np.mean(self.data)}, std: {np.std(self.data)}")
+        logger.info(f"data: min:{np.min(data_for_print)}, max: {np.max(data_for_print)}, mean: {np.mean(data_for_print)}, std: {np.std(data_for_print)}")
 
 class initDataConfigStruct:
     sampleRate_hz: Optional[int] = 0
@@ -240,14 +316,15 @@ class dataLoader:
         self.subjects = self.configs['data']['classes'][1:] # Skip No Step
 
         # Each window has:
-        dataSet_list = []
-        data_list = []
-        dataSet_list = []
-        speed_label_list = []
-        subject_label_list = []
-        subject_list = []
-        run_list = []
-        sTime_list = []
+        data_builder = WindowedDataBuilder()
+        #dataSet_list = []
+        #data_list = []
+        #dataSet_list = []
+        #speed_label_list = []
+        #subject_label_list = []
+        #subject_list = []
+        #run_list = []
+        #sTime_list = []
 
         #Get configs for this dataset
         self.dataSetInfo = {} #Has trialCounts, testDirs, and will have runPerams.
@@ -308,24 +385,31 @@ class dataLoader:
                     self.plotTime_FreqData(data=subjectData, freqYLim=yLim, subject=subjectId, speed=speed, folder=f"../FullRunPlots/{dataSetName}/Subject-{subjectId}", fromRaw=True)
     
                 # Window the data and get the labels
-                windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(dataSetName=dataSetName, data=subjectData, subject=subjectId, speed=speed)
-                nRuns = len(np.unique(runBlock))
-                logger.info(f"Number of runs for subject {subjectId}: {nRuns}")
-                logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
-                logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
-                logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
+                #windowedBlock, labelBlock_speed, labelBlock_subject, subjectBlock, runBlock, startTimes = self.windowData(dataSetName=dataSetName, data=subjectData, subject=subjectId, speed=speed)
+                windowedData_Block= self.windowData(dataSetName=dataSetName, data=subjectData, subject=subjectId, speed=speed)
+                logger.info(f"Finished windowing data for subject: {subjectId}, shape: {windowedData_Block.data.shape}")
 
                 # Append the data to the set
-                data_list.append(windowedBlock)
-                dataSetName_block = np.full(len(subjectBlock), dataSetName, dtype=object)
-                dataSet_list.append(dataSetName_block)
-                #dataSetName_list = [dataSetName] * len(subjectBlock)
-                #dataSet_list.append(dataSetName_list)
-                speed_label_list.append(labelBlock_speed)
-                subject_label_list.append(labelBlock_subject)
-                subject_list.append(subjectBlock)
-                run_list.append(runBlock)
-                sTime_list.append(startTimes)
+                data_builder.append_windowedData(windowedData_Block, dataset_name=dataSetName)
+
+
+                #nRuns = len(np.unique(runBlock))
+                #logger.info(f"Number of runs for subject {subjectId}: {nRuns}")
+                #logger.info(f"label speed {type(labelBlock_speed)}: {labelBlock_speed.shape}")
+                #logger.info(f"label subject {type(labelBlock_subject)}: {labelBlock_subject.shape}")
+                #logger.info(f"data: min:{np.min(windowedBlock)}, max: {np.max(windowedBlock)}, mean: {np.mean(windowedBlock)}, std: {np.std(windowedBlock)}")
+
+                ## Append the data to the set
+                #data_list.append(windowedBlock)
+                #dataSetName_block = np.full(len(subjectBlock), dataSetName, dtype=object)
+                #dataSet_list.append(dataSetName_block)
+                ##dataSetName_list = [dataSetName] * len(subjectBlock)
+                ##dataSet_list.append(dataSetName_list)
+                #speed_label_list.append(labelBlock_speed)
+                #subject_label_list.append(labelBlock_subject)
+                #subject_list.append(subjectBlock)
+                #run_list.append(runBlock)
+                #sTime_list.append(startTimes)
 
 
                 #logger.info(f"Labels: {thisSubLabels}")
@@ -360,34 +444,39 @@ class dataLoader:
         #exit()
     
 
-        ## Convert our lists to numpys
-        data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
-        #dataSetName_np = np.concatenate(dataSet_list, axis=0)
-        dataSetName_np = np.concatenate(dataSet_list, axis=0).reshape(-1)
-        labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
-        labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
-        subjects_np = np.concatenate(subject_list, axis=0)
-        #print(f"Run list: {run_list}")
-        #print(f"Subject list: {subject_list}")
-        runs_np = np.concatenate(run_list, axis=0)
-        sTimes_np = np.concatenate(sTime_list, axis=0)
+        ### Convert our lists to numpys
+        #data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
+        ##dataSetName_np = np.concatenate(dataSet_list, axis=0)
+        #dataSetName_np = np.concatenate(dataSet_list, axis=0).reshape(-1)
+        #labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
+        #labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
+        #subjects_np = np.concatenate(subject_list, axis=0)
+        ##print(f"Run list: {run_list}")
+        ##print(f"Subject list: {subject_list}")
+        #runs_np = np.concatenate(run_list, axis=0)
+        #sTimes_np = np.concatenate(sTime_list, axis=0)
 
-        print("len data:", len(data_np))
-        print("len labelsSpeed:", len(labelsSpeed_np))
-        print("len labelsSubject:", len(labelsSubject_np))
-        print("len subjects:", len(subjects_np))
-        print("len runs:", len(runs_np))
-        print("len dataSetName:", len(dataSetName_np))
+        #print("len data:", len(data_np))
+        #print("len labelsSpeed:", len(labelsSpeed_np))
+        #print("len labelsSubject:", len(labelsSubject_np))
+        #print("len subjects:", len(subjects_np))
+        #print("len runs:", len(runs_np))
+        #print("len dataSetName:", len(dataSetName_np))
 
-        #Reshape the speed labels for batch processing
-        labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
+        ##Reshape the speed labels for batch processing
+        #labelsSpeed_np = labelsSpeed_np.reshape(-1,1) #go from (num,) to (num,1)
+        windowed_dataSet = data_builder.finalize()
 
-        data_min, data_max, data_mean, data_std = self.getStats(data_np)
-        lab_min, lab_max, lab_mean, lab_std = self.getStats(labelsSpeed_np)
+        data_min, data_max, data_mean, data_std = self.getStats(windowed_dataSet.data)
+        lab_min, lab_max, lab_mean, lab_std = self.getStats(windowed_dataSet.speed_labels)
+        #data_min, data_max, data_mean, data_std = self.getStats(data_np)
+        #lab_min, lab_max, lab_mean, lab_std = self.getStats(labelsSpeed_np)
 
-        logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
+        #logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
         logger.info(f"Label min: {lab_min}, max: {lab_max}, mean: {lab_mean}, std: {lab_std}")
+
+
 
         self.setNormConst(isData=True, norm=self.dataNormConst, dataSetFile="Original Time Domain Data", 
                           min=data_min, max=data_max, mean=data_mean, std=data_std)
@@ -398,9 +487,10 @@ class dataLoader:
         #dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
         #timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
         timeDFileName = self.fileStruct.get_timeDData_file()
-        self.saveHDF5TimeData(filename=timeDFileName, data_np=data_np, dataSetName_np=dataSetName_np, 
-                              labelsSpeed_np=labelsSpeed_np, labelsSubject_np=labelsSubject_np, 
-                              subjects_np=subjects_np, runs_np=runs_np, sTimes_np=sTimes_np)
+        self.saveHDF5TimeData(windowedDataSet=windowed_dataSet, filename=timeDFileName)
+        #self.saveHDF5TimeData(filename=timeDFileName, data_np=data_np, dataSetName_np=dataSetName_np, 
+        #                      labelsSpeed_np=labelsSpeed_np, labelsSubject_np=labelsSubject_np, 
+        #                      subjects_np=subjects_np, runs_np=runs_np, sTimes_np=sTimes_np)
         self.saveHDF5MetaData(timeDFileName)
 
         logger.info(f"====================================================")
@@ -413,17 +503,28 @@ class dataLoader:
         data_std = np.std(data)
         return data_min, data_max, data_mean, data_std
 
-    def saveHDF5TimeData(self, filename, data_np, dataSetName_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
+    #def saveHDF5TimeData(self, filename, data_np, dataSetName_np, labelsSpeed_np, labelsSubject_np, subjects_np, runs_np, sTimes_np):
+    #    with h5py.File(filename, "w") as h5dataFile:
+    #        #TODO: add sameple rate, etc
+    #        dt = h5py.string_dtype(encoding='utf-8')
+    #        h5dataFile.create_dataset("data", data=data_np)
+    #        h5dataFile.create_dataset( "dataSetName", data=dataSetName_np.astype(object), dtype=dt)
+    #        h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
+    #        h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
+    #        h5dataFile.create_dataset("subjects", data=subjects_np)
+    #        h5dataFile.create_dataset("runs", data=runs_np)
+    #        h5dataFile.create_dataset("sTimes", data=sTimes_np)
+    def saveHDF5TimeData(self, windowedDataSet:WindowedData, filename=None):
         with h5py.File(filename, "w") as h5dataFile:
             #TODO: add sameple rate, etc
             dt = h5py.string_dtype(encoding='utf-8')
-            h5dataFile.create_dataset("data", data=data_np)
-            h5dataFile.create_dataset( "dataSetName", data=dataSetName_np.astype(object), dtype=dt)
-            h5dataFile.create_dataset("labelsSpeed", data=labelsSpeed_np)
-            h5dataFile.create_dataset("labelsSubject", data=labelsSubject_np)
-            h5dataFile.create_dataset("subjects", data=subjects_np)
-            h5dataFile.create_dataset("runs", data=runs_np)
-            h5dataFile.create_dataset("sTimes", data=sTimes_np)
+            h5dataFile.create_dataset("data", data=windowedDataSet.data.astype(np.float32))
+            h5dataFile.create_dataset( "dataSetName", data=windowedDataSet.dataset_names.astype(object), dtype=dt)
+            h5dataFile.create_dataset("labelsSpeed", data=windowedDataSet.speed_labels)
+            h5dataFile.create_dataset("labelsSubject", data=windowedDataSet.subject_labels)
+            h5dataFile.create_dataset("subjects", data=windowedDataSet.subjects)
+            h5dataFile.create_dataset("runs", data=windowedDataSet.runs)
+            h5dataFile.create_dataset("sTimes", data=windowedDataSet.start_times)
 
     def saveHDF5MetaData(self, hd5File):
         logger.info(f"Saveing MetaData to File: {hd5File}")
@@ -782,6 +883,8 @@ class dataLoader:
         logger.info(f"Window length: {self.windowLen} points, step: {self.stepSize} points, data len: {data.shape} points")
         #runs = np.array([], dtype=np.int32)
 
+        data_builder = der = WindowedDataBuilder()
+
         with open(self.fileStruct.get_timeDDataSum_file() , 'a', newline='') as csvFile:
             csvFile.write('Subject, speed (m/s), run, startTime (s), label')
             #for i in range(data.shape[1]):
@@ -930,21 +1033,27 @@ class dataLoader:
                         windowsWithData_perRun += 1
                         #print(f"using data | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}")
                         thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
+                        thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
 
                         # Append the data, labels, and all that junk
-                        try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-                        except NameError: windowedData = thisDataBlock
-                        try:              labels_speed = np.append(labels_speed, speed[run])
-                        except NameError: labels_speed = speed[run]
-                        try:              labels_subject = np.append(labels_subject, thisSubjectId)
-                        except NameError: labels_subject = thisSubjectId
-                        thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
-                        try:              subjects = np.append(subjects, thisSubjectNumber)
-                        except NameError: subjects = thisSubjectNumber
-                        try:              runs = np.append(runs, run)
-                        except NameError: runs = run
-                        try:              startTimes = np.append(startTimes, thisStartTime)
-                        except NameError: startTimes = thisStartTime
+                        #try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
+                        #except NameError: windowedData = thisDataBlock
+                        #try:              labels_speed = np.append(labels_speed, speed[run])
+                        #except NameError: labels_speed = speed[run]
+                        #try:              labels_subject = np.append(labels_subject, thisSubjectId)
+                        #except NameError: labels_subject = thisSubjectId
+                        #try:              subjects = np.append(subjects, thisSubjectNumber)
+                        #except NameError: subjects = thisSubjectNumber
+                        #try:              runs = np.append(runs, run)
+                        #except NameError: runs = run
+                        #try:              startTimes = np.append(startTimes, thisStartTime)
+                        #except NameError: startTimes = thisStartTime
+
+
+                        logger.info(f"Appending data block | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
+                        data_builder.append_block(thisDataBlock=thisDataBlock, speed_label=speed[run], 
+                                                  subject_label=thisSubjectId, subject_num=thisSubjectNumber, 
+                                                  run=run, start_time=thisStartTime)
 
                     # Do we want to log the 0 vel data for regresion too? Yes
                     csvFile.write(f"{subject}, {speed[run]}, {run}, {thisStartTime}, {thisSubjectId}\n")
@@ -966,7 +1075,8 @@ class dataLoader:
             #end Run
 
 
-        return windowedData, labels_speed, labels_subject, subjects, runs, startTimes
+        #return windowedData, labels_speed, labels_subject, subjects, runs, startTimes
+        return data_builder.finalize()
 
     def findDataStart(self, dataPtsAfterStomp, rms_ratio, nSkips):
         thisSubjectID = 0

@@ -4,12 +4,12 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     trainModel: True   #Otherwize, load the saved weights
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
+    generateTimeFreqPlots: True
+    generateTimeFreqWindowPlots: True
     generateCWTPlots: False
 
 plts:
@@ -39,8 +39,8 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    #testDirs: ["Test_2"] #datasets to load
-    testDirs: ["20251124_Testing"] #datasets to load
+    testDirs: ["Test_2"] #datasets to load
+    #testDirs: ["20251124_Testing"] #datasets to load
     #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
@@ -54,9 +54,9 @@ data:
     #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns:  3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
+    limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
-    limitWindowsPerRun: 5 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitWindowsPerRun: 0 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -157,8 +157,8 @@ trainer:
 
     optimizer: ["Adam"]
     #optimizer: ["Adam", "AdamW" "SGD"]
-    learning_rate: [0.05, 0.00005]  #
-    weight_decay:  [0.05, 0.0005]  #
+    learning_rate: [0.00005]  #
+    weight_decay:  [0.0005]  #
 
     # Learing rate schetuler use 2x to 3x the lr
     LR_sch: None #None to not use
@@ -179,7 +179,7 @@ trainer:
     saveModel: True
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
