@@ -174,16 +174,6 @@ class dataLoader:
         self.dataPoints = 0 #99120
         #self.nTrials = 0
 
-        # These all go away... uh, how?
-        #self.data_raw = None
-        #self.labels_raw = None
-        #self.subjectList_raw = None
-        #self.runList_raw = None
-        #self.startTimes_raw = None
-
-        self.data = None
-        self.labels = None
-
         self.timeDDataSet = None
         self.CWTDataSet = None
         self.dataLoader_t = None
@@ -447,7 +437,7 @@ class dataLoader:
             # Store statistics as attributes
             data_ds.attrs["min"] = self.dataNormConst.min
             data_ds.attrs["max"] = self.dataNormConst.max
-            data_ds.attrs["mean"] = self.dataNormConst.max
+            data_ds.attrs["mean"] = self.dataNormConst.mean
             data_ds.attrs["std"] = self.dataNormConst.std
             label_ds.attrs["min"] = self.labNormConst.min
             label_ds.attrs["max"] = self.labNormConst.max
