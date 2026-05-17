@@ -445,18 +445,6 @@ class dataLoader:
         #exit()
     
 
-        ### Convert our lists to numpys
-        #data_np = np.vstack(data_list) # (datapoints, ch, timepoints)
-        ##dataSetName_np = np.concatenate(dataSet_list, axis=0)
-        #dataSetName_np = np.concatenate(dataSet_list, axis=0).reshape(-1)
-        #labelsSpeed_np = np.concatenate(speed_label_list, axis=0) # datapoints
-        #labelsSubject_np = np.concatenate(subject_label_list, axis=0) # datapoints
-        #subjects_np = np.concatenate(subject_list, axis=0)
-        ##print(f"Run list: {run_list}")
-        ##print(f"Subject list: {subject_list}")
-        #runs_np = np.concatenate(run_list, axis=0)
-        #sTimes_np = np.concatenate(sTime_list, axis=0)
-
         #print("len data:", len(data_np))
         #print("len labelsSpeed:", len(labelsSpeed_np))
         #print("len labelsSubject:", len(labelsSubject_np))
@@ -470,8 +458,6 @@ class dataLoader:
 
         data_min, data_max, data_mean, data_std = self.getStats(windowed_dataSet.data)
         lab_min, lab_max, lab_mean, lab_std = self.getStats(windowed_dataSet.speed_labels)
-        #data_min, data_max, data_mean, data_std = self.getStats(data_np)
-        #lab_min, lab_max, lab_mean, lab_std = self.getStats(labelsSpeed_np)
 
         #logger.info(f"Dataset: {data_np.shape}, labels Speed: {labelsSpeed_np.shape}")
         logger.info(f"Data min: {data_min}, max: {data_max}, mean: {data_mean}, std: {data_std}")
@@ -484,14 +470,8 @@ class dataLoader:
         self.setNormConst(isData=False, norm=self.labNormConst, dataSetFile="Original Time Domain Data", 
                           min=lab_min, max=lab_max, mean=lab_mean, std=lab_std)
 
-        #timdDataFile_str = self.fileStruct.dataDirFiles.saveDataDir
-        #dataSaveDir_str = self.fileStruct.dataDirFiles.saveDataDir.saveDataDir_name
-        #timeDFileName = f"{dataSaveDir_str}/{timdDataFile_str.timeDData_file}"
         timeDFileName = self.fileStruct.get_timeDData_file()
         self.saveHDF5TimeData(windowedDataSet=windowed_dataSet, filename=timeDFileName)
-        #self.saveHDF5TimeData(filename=timeDFileName, data_np=data_np, dataSetName_np=dataSetName_np, 
-        #                      labelsSpeed_np=labelsSpeed_np, labelsSubject_np=labelsSubject_np, 
-        #                      subjects_np=subjects_np, runs_np=runs_np, sTimes_np=sTimes_np)
         self.saveHDF5MetaData(timeDFileName)
 
         logger.info(f"====================================================")
@@ -1036,22 +1016,6 @@ class dataLoader:
                         thisDataBlock = np.expand_dims(thisDataBlock, axis=0) # add the run dim back to append
                         thisSubjectNumber = self.getSubjectNumber(subject) #Keep track of the subject number appart from the label
 
-                        # Append the data, labels, and all that junk
-                        #try:              windowedData = np.append(windowedData, thisDataBlock, axis=0) # append on trials, now trials/windows
-                        #except NameError: windowedData = thisDataBlock
-                        #try:              labels_speed = np.append(labels_speed, speed[run])
-                        #except NameError: labels_speed = speed[run]
-                        #try:              labels_subject = np.append(labels_subject, thisSubjectId)
-                        #except NameError: labels_subject = thisSubjectId
-                        #try:              subjects = np.append(subjects, thisSubjectNumber)
-                        #except NameError: subjects = thisSubjectNumber
-                        #try:              runs = np.append(runs, run)
-                        #except NameError: runs = run
-                        #try:              startTimes = np.append(startTimes, thisStartTime)
-                        #except NameError: startTimes = thisStartTime
-
-
-                        logger.info(f"Appending data block | subjectId: {thisSubjectId}, run:{run}, startTime: {thisStartTime}, windowsWithData: {windowsWithData}")
                         data_builder.append_block(thisDataBlock=thisDataBlock, speed_label=speed[run], 
                                                   subject_label=thisSubjectId, subject_num=thisSubjectNumber, 
                                                   run=run, start_time=thisStartTime)

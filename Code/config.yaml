@@ -4,7 +4,7 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     trainModel: True   #Otherwize, load the saved weights
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
@@ -56,7 +56,7 @@ data:
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
-    limitWindowsPerRun: 0 #20 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitWindowsPerRun: 0 #10 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -113,7 +113,7 @@ cwt:
     fMax: 100 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
-    wavelet: ["None"] 
+    wavelet: ["cmorl"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
