@@ -716,6 +716,7 @@ class dataLoader:
             shuffled_groups = groups.copy()
             rng.shuffle(shuffled_groups)
 
+            #TODO: move to the log file
             logger.info( f"Subject: {subject_key}: unique runs={[g[2] for g in groups]}")
     
             nRuns = len(shuffled_groups)

@@ -39,9 +39,9 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    testDirs: ["Test_2"] #datasets to load
+    #testDirs: ["Test_2"] #datasets to load
     #testDirs: ["20251124_Testing"] #datasets to load
-    #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
+    testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
@@ -170,7 +170,7 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 10 #Set to upper limit and validate every... (see below)
+    epochs: 25 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
