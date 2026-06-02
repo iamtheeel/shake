@@ -407,17 +407,6 @@ for batchSize in configs['trainer']['batchSize']:
     data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
     cwt_class = cwt(fileStructure=fileStructure, dataSet=data_preparation, configs=configs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
-    '''
-    cwt_class = {}
-    for dataset_name, thisData_preperation in data_preparation.items():
-        # Create a cwt class for each dataset, since the sample rate and other data specific peramiters are set in the cwt class
-        # we get data freq rate here, and need it for below
-        thisData_preperation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
-        #sRate = thisData_preperation.dataConfigs.sampleRate_hz
-        #cwt_class[dataset_name] = cwt(fileStructure=fileStructure, sampleRate=sRate, configs=configs)
-        cwt_class[dataset_name] = cwt(fileStructure=fileStructure, dataSet=thisData_preperation, configs=configs)
-        thisData_preperation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
-    '''
 
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")

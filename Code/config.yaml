@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     trainModel: True   #Otherwize, load the saved weights
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: True
     generateTimeFreqWindowPlots: True
-    generateCWTPlots: False
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -39,19 +39,19 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    #testDirs: ["Test_2"] #datasets to load
+    testDirs: ["Test_2"] #datasets to load
     #testDirs: ["20251124_Testing"] #datasets to load
-    testDirs: ["Test_2", "20251124_Testing"] #datasets to load
+    #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
     #classes: ['No Step', '001', '002', '003']
 
-    dsDataRate_hz: 400 # Desired sample rate after downsampleing 
+    dsDataRate_hz: 1706.666 #400 # Desired sample rate after downsampleing 
 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
-    chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    #chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
+    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # 
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)

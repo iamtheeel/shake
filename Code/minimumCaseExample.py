@@ -12,6 +12,7 @@
 from datetime import datetime           # Built in
 import h5py                             # For loading the data : pip install h5py
 import matplotlib.pyplot as plt         # For plotting the data: pip install matplotlib
+from matplotlib.ticker import MultipleLocator # For making the grid lines
 import numpy as np                      # cool datatype, fun matix stuff and lots of math (we use the fft)    : pip install numpy==1.26.4 for FStep to work
 from scipy.signal import spectrogram    # For spectrogram
 import pywt                             # The CWT              : pip install pywavelets
@@ -34,41 +35,45 @@ from foot_step_wavelet import FootStepWavelet, foot_step_cwt  # The custum foots
 ## First dataset
 # No trigger time
 # Wrong sample rate in file
-#sampleRate = 1706.666667
-#dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_002.hdf5"
+sampleRate = 1706.666667
+dataFile = "../TestData/Test_2/data/walking_hallway_single_person_APDM_003.hdf5"
 
 ## Stars Data
 # Has trigger time
 # Correct sample rate in file
-sampleRate = None # Get from file
+#sampleRate = None # Get from file
 #dataFile = "../TestData/STARS_2025/25_06_18/Yoko_s3_Run1.hdf5" #Has trigger time
-#dataFile = "../TestData/20251124_Testing/vib/Data/TestSetupt_006.hdf5" # Has trigger time
-dataFile = "/Volumes/Data/thesis/TestData/20251124_Testing/vib/Data/TestSetupt_006.hdf5" # Runs 5, 9, 11 very recognised as "no step"
+#dataFile = "../TestData/20251124_Testing/vib/Data/TestSetupt_003.hdf5" # Has trigger time
+#dataFile = "/Volumes/Data/thesis/TestData/20251124_Testing/vib/Data/TestSetupt_006.hdf5" # Runs 5, 9, 11 very recognised as "no step"
 # Time 0 is init
 # Run 5 window start (s):  17 - 20 bad, 21-24 ok
 # Run 9 window start (s):  18 - 23 bad, 24 ok
 # Run 11 window start (s):  18     bad, 19-24 ok
 #trialList = [5, 9, 11]
-trialList = [5]
+#trialList = [5]
+trialList = [6]
 
 # What data are we interested in
-dataTimeRange_s = [17, 22] # [0 0] for full dataset
+dataTimeRange_s = [10,10.25] # [0 0] for full dataset
 #dataTimeRange_s = [20, 25] # [0 0] for full dataset
 
-dataFreqRange_hz = [1, 100] # If the second argument is 0, use the nyquist
+dataFreqRange_hz = [1, 0] # If the second argument is 0, use the nyquist
 
 logFreq = False
 # What data are we interested in
 #chToPlot = list(range(1,20+1)) # all the chns
 #chToPlot = [1, 16, 2, 3, 4, 5, 6, 7, 10]
 #chToPlot = [10, 7, 6, 2, 3, 4, 5, 16, 1] # Reorder to put the CWT ch South to north
-chToPlot = [6, 7, 10] # by sensor position
+chToPlot = [2,3,4,5,6,7,8,9,18,19] # by sensor position
+#chToPlot = [1,2,3,4,5, 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] # by sensor position
+#chToPlot = [1, 10]
+#cwtChList = [0, 1, 2] # by sensor position
 #cwtChList = [0, 1, 2] # by sensor position
 #cwtChList = [6, 7, 10] # by sensor position
 #cwtChList = chToPlot # CWT for only 3 ch (rgb)
 
 #Ranges for the plotting: If the timerange is 0, it will be set to the max of the data
-timeYRange = 0.01 
+timeYRange = 0.001 
 freqYRange = [0.01, 10]
 
 pltXRange = dataFreqRange_hz #[10, 45]
@@ -468,6 +473,13 @@ def dataPlot_2Axis(dataBlockToPlot:np, plotChList, trial:int, xAxisRange, yAxisR
         if i < len(plotChList) - 1:
             axs[i].set_xticklabels([]) # Hide the xTicks from all but the last
 
+        axs[i].minorticks_on() # Add minor ticks for the grid
+        axs[i].yaxis.set_major_locator(MultipleLocator(5))
+        axs[i].yaxis.set_minor_locator(MultipleLocator(1))
+        axs[i].grid(True, axis="x", which="major", linewidth=0.8, alpha=0.8)
+        axs[i].grid(True, axis="x", which="minor", linewidth=0.5, linestyle=":", alpha=0.6)
+        #axs[i].grid(True) # Add a grid to make it easier to see the data
+
     #Only show the x-axis on the last plot
     axs[-1].get_xaxis().set_visible(True)
     axs[-1].set_xlabel(f"{xAxis_str} {xAxisUnits_str}")
@@ -570,9 +582,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
 
     
     #Pre Filter the data
-    print(f"Apply Filters and norms")
+    #print(f"Apply Filters and norms")
     ## Downsample the data
-    dataBlock_sliced = downSampleData(data=dataBlock_sliced, oldRate=dataCapRate_hz, newRate=400) # 400Hz
+    #dataBlock_sliced = downSampleData(data=dataBlock_sliced, oldRate=dataCapRate_hz, newRate=400) # 400Hz
     #from scipy.signal import wiener
     #dataBlock_sliced = wiener(dataBlock_sliced)
 #
@@ -589,9 +601,9 @@ for i, trial in enumerate(trialList): # Cycle through the trials
 
     # Plot the post Transfromed Data
     #timeYRange = 1
-    timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
-                              xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time",
-                              title=": After TimeD Data Mods", save="postMod")
+    #timeSpan = dataPlot_2Axis(dataBlockToPlot=dataBlock_sliced, plotChList=chToPlot, trial=trial, 
+    #                          xAxisRange=dataTimeRange_s, yAxisRange=[-1*timeYRange, timeYRange], domainToPlot="time",
+    #                          title=": After TimeD Data Mods", save="postMod")
     
     # Plot the data in the frequency domain
     # TODO: Move the fft outside of the plot
@@ -601,11 +613,11 @@ for i, trial in enumerate(trialList): # Cycle through the trials
     #                          dataRate=dataCapRate_hz, domainToPlot="freq", logX=logFreq, logY=True,# save="postMod")
     #                          title=": After TimeD Data Mods", save="postMod")
 
-    # Combined plot
-    print(f"Generate and plot the CWT Data")
-    cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
-    cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
-    plot_3D(data=cwtData, freqs=cwtFreqs,  title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
-    #plot_3D(data=cwtData, freqs=cwtFreqs, ch=cwtChList, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
+    ## Combined plot
+    #print(f"Generate and plot the CWT Data")
+    #cwtData, cwtFreqs, waveletName  = generateCWT(data=dataBlock_sliced, freqRange=dataFreqRange_hz, dataRate=dataCapRate_hz, waveletBase=waveletBase, f0=f0, bw=bw, log=False)
+    #cwtData = np.transpose(cwtData, (0, 2, 1)) #Needs to be [h, w, ch] for plot
+    #plot_3D(data=cwtData, freqs=cwtFreqs,  title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
+    ##plot_3D(data=cwtData, freqs=cwtFreqs, ch=cwtChList, title=f"Wavelet: {waveletName}", extraBump=1, save=f"{waveletName}", log=logFreq)
     
     plt.show() # SHow all the plots
