@@ -121,7 +121,7 @@ class Trainer:
                                                                             T_mult=self.configs['trainer']['T-mult'], 
                                                                             eta_min=eta_min)
         elif self.configs['trainer']['LR_sch'] == 'ReduceLROnPlateau':
-            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.9, patience=3, min_lr=eta_min
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=10, min_lr=eta_min
 )
 
         ## Loss Functions
