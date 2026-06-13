@@ -210,7 +210,6 @@ def writeExpSum(cwt_class:cwt,
         writer.writerow(['gradiant_noise', gradiant_noise])
     #return logfile 
 
-torch.manual_seed(configs['trainer']['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
@@ -285,6 +284,13 @@ if not os.path.exists(fileStructure.get_timeDData_file()):
     logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
     data_preparation.get_data() # Load the data, window it, and save it to file.
 
+def set_all_seeds(seed):
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():   
+        torch.cuda.manual_seed(seed)
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            cwt_class, #, f0, bw, #sgTimeRes, sgOverlap,
@@ -294,6 +300,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     global device
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
+    set_all_seeds(configs['trainer']['seed'])
 
     #cwt_class = list(cwt_class.values())[0] # Get the first CWT class to use for the summary, since they should all be the same in terms of wavelet and data shape, we just have one per dataset for organizational purposes. This is a bit of a hack, but it works for now. We can clean up later if we want to support different CWTs for different datasets, but for now we just want to loop through the same CWT for each dataset.
     #writeExpSum(first_CWT_class, 
@@ -392,8 +399,6 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     if configs['debugs']['validateModel']:
         valLoss, valAcc, classAcc = trainer.validation(epochs) # TODO: remove this, we validate during training
     
-
-        
 
     del model
     del trainer

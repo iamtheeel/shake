@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: False
+    runModel: True
     trainModel: True   #Otherwize, load the saved weights
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
-    generateCWTPlots: True
+    generateTimeFreqPlots: False
+    generateTimeFreqWindowPlots: False
+    generateCWTPlots: False
 
 plts:
     pltDir: "plots"
@@ -19,8 +19,8 @@ plts:
 
     #For CWT plottited data
     #rgbPlotChList: [6, 5, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
-    rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
-    #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
+    #rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     
     yLim_freqD: [0.00001, 0.01]
     yLim_timeD: [-0.02, 0.02]
@@ -38,16 +38,16 @@ data:
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
     #classes: ['No Step', '001', '002', '003']
 
-    dsDataRate_hz: 1600 #400 # Desired sample rate after downsampleing 
+    dsDataRate_hz: 400 # Desired sample rate after downsampleing 
 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
     chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # Test_2 data has a problm ch 10, use the x instead (ch8)
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
-    limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
+    limitRuns:  2  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
-    limitWindowsPerRun: 0 #10 # Limit the number of windows to load: 0 to load all, Must have at least 2
+    limitWindowsPerRun: 10 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
     windowLen: 5 #sec
     stepSize: 1 #0.0333 #sec
@@ -104,7 +104,7 @@ cwt:
     fMax: 200 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
-    wavelet: ["cmorl"] 
+    wavelet: ["None"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
@@ -138,7 +138,7 @@ trainer:
     #batchSize: [64, 128] 
 
     #batchSize: [8, 16, 32] #8 #For mobilenet timeD
-    batchSize: [1] #Should be power of 2
+    batchSize: [4] #Should be power of 2
 
     #criterion_regresh: "Huber" # for regresion
     #criterion_regresh: "MAE" # for regresion
@@ -148,7 +148,7 @@ trainer:
 
     optimizer: ["Adam"]
     #optimizer: ["Adam", "AdamW" "SGD"]
-    learning_rate: [0.00005]  #
+    learning_rate: [0.00005, 0.00005]  #
     weight_decay:  [0.0005]  #
 
     # Learing rate schetuler use 2x to 3x the lr
@@ -161,16 +161,16 @@ trainer:
 
     gradiant_noise: [0] #[1e-3]
 
-    epochs: 25 #Set to upper limit and validate every... (see below)
+    epochs: 5 #Set to upper limit and validate every... (see below)
     epochValiStart: 0 #90
     validEveryNEpochs: 1
     nEpochsStats: 100 # Run stats on the last n Epochs
     seed: 4601
 
-    saveModel: True
+    saveModel: False
 
 model: 
-    regression: False #Or Clasification
+    regression: True #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
