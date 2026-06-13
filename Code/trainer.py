@@ -114,8 +114,8 @@ class Trainer:
         else:
             raise NotImplementedError("Unsupported optimiser")
 
+        eta_min = float(self.configs['trainer']['eta_min'])
         if self.configs['trainer']['LR_sch'] == 'CosineAnnealingWarmRestarts':
-            eta_min = float(self.configs['trainer']['eta_min'])
             self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, 
                                                                             T_0=self.configs['trainer']['T_0'], 
                                                                             T_mult=self.configs['trainer']['T-mult'], 
