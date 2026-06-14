@@ -505,6 +505,7 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 #
                                                                 # This is just not working for some reason, even though I have set the seeds in the trainer and here, so I'm just going to leave it for now and maybe come back to it later if I have time. It's possible that there is some other source of randomness that I'm not accounting for.
                                                                 # Untill this gets sorted running expTrack will not give same/same results for repeated runs with the same hyperparameters, but it will still give us a good idea of the general trends and differences between experiments, which is what we care about most right now.
+                                                                # The clue may be in cuda, running the expTrack does not give same/same on cuda!
                                                                 #
                                                                 #if rng_state is None:
                                                                 #    rng_state = torch.get_rng_state()
