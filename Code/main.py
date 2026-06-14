@@ -210,6 +210,15 @@ def writeExpSum(cwt_class:cwt,
         writer.writerow(['gradiant_noise', gradiant_noise])
     #return logfile 
 
+def set_all_seeds(seed):
+    import random
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():   
+        torch.cuda.manual_seed(seed)
+
+set_all_seeds(configs['trainer']['seed'])
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
@@ -284,13 +293,6 @@ if not os.path.exists(fileStructure.get_timeDData_file()):
     logger.info(f"getting data for dataset from raw: {test_dir}, to {timeDDataDir}")
     data_preparation.get_data() # Load the data, window it, and save it to file.
 
-def set_all_seeds(seed):
-    import random
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():   
-        torch.cuda.manual_seed(seed)
 
 def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale, 
            cwt_class, #, f0, bw, #sgTimeRes, sgOverlap,
