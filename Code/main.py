@@ -496,7 +496,12 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 logger.info(f"Experiment:{expNum}, type: {dataScaler}, labelScaler: {labelScaler}, dataScale: {dataScale_value}, labelScale: {labelScale_value}")
                                                                 logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
               
+                                                                rng_state = torch.get_rng_state()
+                                                                cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+                                                                np_rng_state = np.random.get_state()
+                                                                #py_rng_state = random.getstate()
                                                                 #TODO: just send the cwtClass 
+
                                                                 if configs['debugs']['runModel']:
                                                                     runExp(expNum=expNum, logScaleData=logScaleData,
                                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
@@ -504,3 +509,8 @@ for batchSize in configs['trainer']['batchSize']:
                                                                            lossFunction=lossFunction, optimizer=optimizer, learning_rate=learning_rate, weight_decay=weight_decay,  gradiant_noise=gradiant_noise,
                                                                            batchSize = batchSize, model_name=model_name, dropOut_layers = dropOut_layers)
                                                                 expNum += 1
+
+                                                                torch.set_rng_state(rng_state)
+                                                                if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
+                                                                np.random.set_state(np_rng_state)
+                                                                #random.setstate(py_rng_state)

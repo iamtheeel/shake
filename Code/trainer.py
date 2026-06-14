@@ -7,6 +7,7 @@
 # Trainer
 ###
 
+import random
 from timeit import default_timer as timer
 import numpy as np
 from tqdm import tqdm  #progress bar
@@ -75,9 +76,7 @@ class Trainer:
         self.trainLog = f"{self.logDir}/trainResults_byBatch.csv"
         self.validLog = f"{self.logDir}/valiResults_byEpoch.csv"
 
-        torch.manual_seed(configs['trainer']['seed'])
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        #self.set_all_seeds(configs['trainer']['seed'])  
 
         self.set_training_config()
         waveletStr = ""
@@ -148,6 +147,15 @@ class Trainer:
             raise NotImplementedError("Unsupported loss function")
         
         torch.autograd.set_detect_anomaly(True)
+
+    def set_all_seeds(self,seed):
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():   
+            torch.cuda.manual_seed(seed)
 
     def add_gradient_noise(self, model, std=1e-3):
         for param in model.parameters():
