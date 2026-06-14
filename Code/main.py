@@ -502,17 +502,20 @@ for batchSize in configs['trainer']['batchSize']:
 
                                                                 # Reset the RNG state for each experiment to ensure that the only thing that changes between experiments is the hyperparameters and not the random initialization of the model or the data shuffling. 
                                                                 # t This is important for a fair comparison between experiments.
-              
-                                                                if rng_state is None:
-                                                                    rng_state = torch.get_rng_state()
-                                                                    cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
-                                                                    np_rng_state = np.random.get_state()
-                                                                    py_rng_state = random.getstate()
-                                                                else:
-                                                                    torch.set_rng_state(rng_state)
-                                                                    if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
-                                                                    np.random.set_state(np_rng_state)
-                                                                    random.setstate(py_rng_state)
+                                                                #
+                                                                # This is just not working for some reason, even though I have set the seeds in the trainer and here, so I'm just going to leave it for now and maybe come back to it later if I have time. It's possible that there is some other source of randomness that I'm not accounting for.
+                                                                # Untill this gets sorted running expTrack will not give same/same results for repeated runs with the same hyperparameters, but it will still give us a good idea of the general trends and differences between experiments, which is what we care about most right now.
+                                                                #
+                                                                #if rng_state is None:
+                                                                #    rng_state = torch.get_rng_state()
+                                                                #    cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+                                                                #    np_rng_state = np.random.get_state()
+                                                                #    py_rng_state = random.getstate()
+                                                                #else:
+                                                                #    torch.set_rng_state(rng_state)
+                                                                #    if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
+                                                                #    np.random.set_state(np_rng_state)
+                                                                #    random.setstate(py_rng_state)
 
                                                                 #TODO: just send the cwtClass 
                                                                 if configs['debugs']['runModel']:
