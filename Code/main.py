@@ -411,16 +411,13 @@ wavelet_bases = configs['cwt']['wavelet']
 
 # Save the RNG state before we start the experiments, so we can reset it for each experiment to ensure that the only thing that changes between experiments is the hyperparameters and not the random initialization of the model or the data shuffling. 
 # This is important for a fair comparison between experiments.
-rng_state = torch.get_rng_state()
-cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
-np_rng_state = np.random.get_state()
-py_rng_state = random.getstate()
-
+rng_state = None
 for batchSize in configs['trainer']['batchSize']:
     # The hyperperamiters setup for expTracking
     data_preparation.loadDataSet(writeLog=True, batchSize=batchSize) #Load the timed dataset even if we are doing a cwt
     cwt_class = cwt(fileStructure=fileStructure, dataSet=data_preparation, configs=configs)
     data_preparation.plotDataByWindow(cwt_class=cwt_class, logScaleData=False)
+
 
     for wavelet_base in wavelet_bases:
         #logger.info(f"Wavelet: {wavelet_base}")
@@ -504,14 +501,20 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 logger.info(f"Loss: {lossFunction}, Optimizer: {optimizer}, Learning Rate: {learning_rate}, Weight Decay: {weight_decay}, Gradiant Noise: {gradiant_noise}")
 
                                                                 # Reset the RNG state for each experiment to ensure that the only thing that changes between experiments is the hyperparameters and not the random initialization of the model or the data shuffling. 
-                                                                # This is important for a fair comparison between experiments.
+                                                                # t This is important for a fair comparison between experiments.
               
-                                                                torch.set_rng_state(rng_state)
-                                                                if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
-                                                                np.random.set_state(np_rng_state)
-                                                                random.setstate(py_rng_state)
-                                                                #TODO: just send the cwtClass 
+                                                                if rng_state is None:
+                                                                    rng_state = torch.get_rng_state()
+                                                                    cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+                                                                    np_rng_state = np.random.get_state()
+                                                                    py_rng_state = random.getstate()
+                                                                else:
+                                                                    torch.set_rng_state(rng_state)
+                                                                    if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
+                                                                    np.random.set_state(np_rng_state)
+                                                                    random.setstate(py_rng_state)
 
+                                                                #TODO: just send the cwtClass 
                                                                 if configs['debugs']['runModel']:
                                                                     runExp(expNum=expNum, logScaleData=logScaleData,
                                                                            dataScaler=dataScaler, dataScale=dataScale_value, labelScaler=labelScaler, labelScale=labelScale_value, 
