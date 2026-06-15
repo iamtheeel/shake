@@ -302,7 +302,7 @@ def runExp(expNum, logScaleData, dataScaler, dataScale, labelScaler, labelScale,
     global device
     epochs = configs['trainer']['epochs']
     fileStructure.setExpTrack_run(expNum=expNum)
-    set_all_seeds(configs['trainer']['seed'])
+    #set_all_seeds(configs['trainer']['seed'])
 
     #cwt_class = list(cwt_class.values())[0] # Get the first CWT class to use for the summary, since they should all be the same in terms of wavelet and data shape, we just have one per dataset for organizational purposes. This is a bit of a hack, but it works for now. We can clean up later if we want to support different CWTs for different datasets, but for now we just want to loop through the same CWT for each dataset.
     #writeExpSum(first_CWT_class, 
@@ -507,16 +507,16 @@ for batchSize in configs['trainer']['batchSize']:
                                                                 # Untill this gets sorted running expTrack will not give same/same results for repeated runs with the same hyperparameters, but it will still give us a good idea of the general trends and differences between experiments, which is what we care about most right now.
                                                                 # The clue may be in cuda, running the expTrack does not give same/same on cuda!
                                                                 #
-                                                                #if rng_state is None:
-                                                                #    rng_state = torch.get_rng_state()
-                                                                #    cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
-                                                                #    np_rng_state = np.random.get_state()
-                                                                #    py_rng_state = random.getstate()
-                                                                #else:
-                                                                #    torch.set_rng_state(rng_state)
-                                                                #    if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
-                                                                #    np.random.set_state(np_rng_state)
-                                                                #    random.setstate(py_rng_state)
+                                                                if rng_state is None:
+                                                                    rng_state = torch.get_rng_state()
+                                                                    cuda_rng_state = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+                                                                    np_rng_state = np.random.get_state()
+                                                                    py_rng_state = random.getstate()
+                                                                else:
+                                                                    torch.set_rng_state(rng_state)
+                                                                    if cuda_rng_state is not None: torch.cuda.set_rng_state_all(cuda_rng_state)
+                                                                    np.random.set_state(np_rng_state)
+                                                                    random.setstate(py_rng_state)
 
                                                                 #TODO: just send the cwtClass 
                                                                 if configs['debugs']['runModel']:

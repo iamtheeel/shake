@@ -76,10 +76,10 @@ class Trainer:
         self.trainLog = f"{self.logDir}/trainResults_byBatch.csv"
         self.validLog = f"{self.logDir}/valiResults_byEpoch.csv"
 
-        #self.set_all_seeds(configs['trainer']['seed'])  
-        seed = configs['trainer']['seed']
-        torch.manual_seed(seed)
-        if torch.cuda.is_available(): torch.cuda.manual_seed(seed)
+        self.set_all_seeds(configs['trainer']['seed'])  
+        #seed = configs['trainer']['seed']
+        #torch.manual_seed(seed)
+        #if torch.cuda.is_available(): torch.cuda.manual_seed(seed)
 
         self.set_training_config()
         waveletStr = ""
