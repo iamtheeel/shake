@@ -5,8 +5,8 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: True
-    trainModel: True   #Otherwize, load the saved weights
-    validateModel: False #Run on a saved model.
+    trainModel: False   #Otherwize, load the saved weights
+    validateModel: True #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: False
     generateTimeFreqWindowPlots: False
@@ -33,6 +33,8 @@ data:
     testDirs: ["Test_2"] #datasets to load
     #testDirs: ["20251124_Testing"] #datasets to load
     #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
+    #testDirs: ["20251124_Testing_noSub6"] #datasets to load
+    #testDirs: ["Test_2", "20251124_Testing_noSub6"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
@@ -49,7 +51,7 @@ data:
                         #UnboundLocalError: cannot access local variable 'windowedData' where it is not associated with a value
     limitWindowsPerRun: 0 #10 # Limit the number of windows to load: 0 to load all, Must have at least 2
 
-    windowLen: 5 #sec
+    windowLen: 3 #sec
     stepSize: 1 #0.0333 #sec
 
     dataScalers: ["std"]
@@ -113,7 +115,6 @@ cwt:
 
     wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
-    ##waveLet_bandwidth_freq:  [2, 10] # best for cmorl
     waveLet_bandwidth_freq:  [10] # cmorl mattching morl
 
     #wavelet: ['fstep'] #bw not used for fstep
@@ -174,24 +175,22 @@ trainer:
     saveModel: False
 
 model: 
-    regression: True #Or Clasification
+    regression: False #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
     #name: ["leNetV5_unFolded"] #To send the timeDomain as a bunch of points
     #name: ["MobileNet_v2", "leNetV5"] # The models we have
-    #modelWeights: "exp_Track/20251201-111348/exp-1/model_exp1.pt"
-    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/modelSave/20251201-172020/exp-1/model_exp1.pt"
-    #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-154744_class_ch8_origData/exp-1/model_exp1.pt"
-    #modelWeights: "/Volumes/Data/thesis/exp_Track/startStop_noStep_asFile/20260213-193800_class_ch8_2ndDayData/exp-1/model_exp1.pt"
-    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-090044_400Hz_class_Test2/exp-1/model_exp1.pt" #Orig data.
-    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/sRate-400Hz/20260326-193453_400Hz_class_20251124_Testing/exp-1/model_exp1.pt" #new data.
     ## train/val split by run, not window.
     #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260327-182029_trainVal-run_Test2/exp-1/model_exp1.pt" #Orig data.
-    modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/20260328-082716_trainVal_2ndDay/exp-1/model_exp1.pt" #new data.
-    
-    batchNorm2GroupNorm: False #Switch BatchNorm2d to GroupNorm for small batch sizes
+    #modelWeights: "/Volumes/Data/thesis/exp_Track_HPC/trainVal_fromRun-nAotWindow/20260328-082716_trainVal_2ndDay/exp-1/model_exp1.pt" #new data.
+    #modelWeights: "/Volumes/DataDisk/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/fixedStats/x-Train_training/20260628-143037/exp-1/model_exp1.pt" #Trained on Regression Test_2
+    #modelWeights: "/Volumes/DataDisk/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/fixedStats/x-Train_training/20260628-143123/exp-1/model_exp1.pt" #Trained on Regression 20251124_Testing_noSub6
+    #modelWeights: "/Volumes/DataDisk/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/fixedStats/x-Train_training/20260628-145059/exp-1/model_exp1.pt" #Trained on Clasification Test_2
+    modelWeights: "/Volumes/DataDisk/thesis/exp_Track_HPC/trainVal_fromRun-notWindow/fixedStats/x-Train_training/20260628-145224/exp-1/model_exp1.pt" #Trained on Clasification 20251124_Testing_noSub6
 
+    batchNorm2GroupNorm: False #Switch BatchNorm2d to GroupNorm for small batch sizes
+ 
     dropOut: [.25] #0.5 Not implemented on leNet
 
     VGG:
