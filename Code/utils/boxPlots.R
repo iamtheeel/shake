@@ -1,10 +1,9 @@
 # Get the running dir
 this_dir <- dirname(sys.frame(1)$ofile)  # If running via source()
 
-#source(file.path(this_dir, "last10Epo_full.R"))
-#source(file.path(this_dir, "last10Epo_full_fixedFS.R"))
+
 source(file.path(this_dir, "last10Epo_rmCH16.R"))
-#source(file.path(this_dir, "last10Epo_ds-4x_beanStuff.R"))
+source(file.path(this_dir, "last10Epo_crapWavelets.R"))
 
 
 
@@ -101,6 +100,28 @@ data_list_vgg_LR <- list(
 )
 
 # Split by run, fix stats, rm ch 16, use ch 10 not 8
+data_list_waveLets <- list(
+  yMin =0.00, 
+  yMax = 0.085,
+  titleStr = "Validation Error for Last 10 Epochs",
+  
+  data = list(
+    # Baselines
+    `Time\n` =`timeD`, #worst
+    `Complex\nMorelet\nbw:2` = `cMore-2-cplx`, #best
+    `Shan\nbw:2\nf_0:0.8` = `shann_2_pt8`,
+    `Gauss 1` = `gaus1`,
+    `Gauss 2` = `gaus2`,
+    `Gauss 3` = `gaus3`,
+    `Gauss 4` = `gaus4`,
+    `Gauss 5` = `gaus5`,
+    `Gauss 6` = `gaus6`,
+    `Gauss 7` = `gaus7`,
+    `Gauss 8` = `gaus8`
+  )
+)
+
+# Split by run, fix stats, rm ch 16, use ch 10 not 8
 data_list_RMch16 <- list(
   yMin =0.00, 
   yMax = 0.085,
@@ -120,8 +141,28 @@ data_list_RMch16 <- list(
     )
 )
 
+# Split by run, fix stats, rm ch 16, use ch 10 not 8
+data_list_4Paper <- list(
+  yMin =0.00, 
+  yMax = 0.085,
+  titleStr = "Validation Error for Last 10 Epochs",
+  
+  data = list(
+    `Time\n` =`timeD`,
+    `Spectra\n` =`sGram`,
+    `Shan\nbw:2\nf_0:0.8` = `shann_2_pt8`,
+    `Gauss 1\n` = `gaus1`,
+    `Gauss 2\n` = `gaus2`,
+    `Gauss 6\n` = `gaus6`,
+    `Ricker\n` =`ricker`,
+    `Morlet\n` =`morlet`,
+    `Complex\nMorelet\nbw:2` = `cMore-2-cplx`
 
-dataList = data_list_RMch16
+  )
+)
+#dataList = data_list_RMch16
+dataList = data_list_waveLets
+#dataList = data_list_4Paper
 #dataList = data_list_mNet
 #dataList = data_list_vgg_LR
 

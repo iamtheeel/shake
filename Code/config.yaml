@@ -4,13 +4,13 @@ debugs:
     debug: True 
     writeValData: True
     saveModelInfo: True
-    runModel: True
+    runModel: False
     trainModel: False   #Otherwize, load the saved weights
-    validateModel: True #Run on a saved model.
+    validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
-    generateTimeFreqPlots: False
-    generateTimeFreqWindowPlots: False
-    generateCWTPlots: False
+    generateTimeFreqPlots: True
+    generateTimeFreqWindowPlots: True
+    generateCWTPlots: True
 
 plts:
     pltDir: "plots"
@@ -18,8 +18,9 @@ plts:
     showFilesForAnimation: False #Show instead of save
 
     #For CWT plottited data
-    #rgbPlotChList: [6, 5, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
-    rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    rgbPlotChList: [1, 2, 3] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    #rgbPlotChList: [6, 5, 4] # For 3 channel plot, 0 to use the chList (Must be in chList)
+    #rgbPlotChList: [6, 7, 10] # For 3 channel plot, 0 to use the chList (Must be in chList)
     #rgbPlotChList: [7, 6, 5] # For 3 channel plot, 0 to use the chList
     
     yLim_freqD: [0.00001, 0.01]
@@ -30,11 +31,11 @@ data:
     dataOutDir: "../data_out" # Link on the MAC
     dataInDir: "../TestData" # The input data
 
-    testDirs: ["Test_2"] #datasets to load
+    #testDirs: ["Test_2"] #datasets to load
     #testDirs: ["20251124_Testing"] #datasets to load
     #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
     #testDirs: ["20251124_Testing_noSub6"] #datasets to load
-    #testDirs: ["Test_2", "20251124_Testing_noSub6"] #datasets to load
+    testDirs: ["Test_2", "20251124_Testing_noSub6"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
@@ -44,7 +45,8 @@ data:
 
     #chList: [1, 8, 7, 6, 5, 4] # for testing 
     #chList: [10, 7, 6, 5, 4, 3, 2, 16, 1] # 
-    chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # Test_2 data has a problm ch 10, use the x instead (ch8)
+    #chList: [8, 7, 6, 5, 4, 3, 2, 16, 1] # Test_2 data has a problm ch 10, use the x instead (ch8)
+    chList: [10, 7, 6, 5, 4, 3, 2, 1] # 
 
     trainRatio: 0.8 #.8 # 80% train, 20% of the data for validation
     limitRuns:  0 #3  #Limit the number of runs to load: 0 to load all the data (must have at lest 2 runs to train and validate)
@@ -107,15 +109,18 @@ cwt:
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
     #wavelet: ["None"] 
+    #wavelet: ["spectroGram"] 
+    #wavelet: ["morl"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
     # Shannon shanB-F : Freq precision, less time localization
-    #wavelet: ["shan"] 
+    wavelet: ["shan"] 
 
-    wavelet: ["cmorl"] 
+    #wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
-    waveLet_bandwidth_freq:  [10] # cmorl mattching morl
+    waveLet_bandwidth_freq:  [2] # cmorl mattching morl
+    #waveLet_bandwidth_freq:  [10] # cmorl prior "best"
 
     #wavelet: ['fstep'] #bw not used for fstep
     #waveLet_bandwidth_freq:  [0] # best for cmorl
@@ -175,7 +180,7 @@ trainer:
     saveModel: False
 
 model: 
-    regression: False #Or Clasification
+    regression: True #Or Clasification
     #name: ["VGG"]
     #name: ["leNetV5"]
     name: ["MobileNet_v2"] #
