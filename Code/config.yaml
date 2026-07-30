@@ -5,11 +5,11 @@ debugs:
     writeValData: True
     saveModelInfo: True
     runModel: False
-    trainModel: False   #Otherwize, load the saved weights
+    trainModel: True   #Otherwize, load the saved weights
     validateModel: False #Run on a saved model.
     testNormCorr: False #This loads up the entire matrix
     generateTimeFreqPlots: True
-    generateTimeFreqWindowPlots: True
+    generateTimeFreqWindowPlots: False
     generateCWTPlots: True
 
 plts:
@@ -34,8 +34,8 @@ data:
     #testDirs: ["Test_2"] #datasets to load
     #testDirs: ["20251124_Testing"] #datasets to load
     #testDirs: ["Test_2", "20251124_Testing"] #datasets to load
-    #testDirs: ["20251124_Testing_noSub6"] #datasets to load
-    testDirs: ["Test_2", "20251124_Testing_noSub6"] #datasets to load
+    testDirs: ["20251124_Testing_noSub6"] #datasets to load
+    #testDirs: ["Test_2", "20251124_Testing_noSub6"] #datasets to load
 
     ## Must be in order... I think this is fixed, can be in any order.
     classes: ['No Step', '001', '002', '003', '004', '005', '006', '007', '008'] #Combined labels from Test_2 and 20251124_Testing  
@@ -108,14 +108,14 @@ cwt:
     fMax: 200 #5 #0 = use the nyquist
     #cmorB-C where B is the bandwidth parameter and C is the center frequency
     #wavelet: ["None", "spectroGram", "ricker", "morl", "cmorl", "fstep", 'cfstep', 'gaus1x', 'shan'] #"None" for no Time Domain
-    #wavelet: ["None"] 
+    wavelet: ["None"] 
     #wavelet: ["spectroGram"] 
     #wavelet: ["morl"] 
     # gaus1, gaus4 iedge detection
     #wavelet: ["gaus2", "gaus3", 'gaus4'] 
     # B-Spline: fbspM-F-B : M: order, F: F0, B: BW: Peritic content
     # Shannon shanB-F : Freq precision, less time localization
-    wavelet: ["shan"] 
+    #wavelet: ["shan"] 
 
     #wavelet: ["cmorl"] 
     waveLet_center_freq: [0.8]  # cmorl mattching morl 5/(2*pi)
